@@ -66,9 +66,9 @@ type pushServiceState struct {
 
 func newPushService() *pushServiceState {
 	service := &pushServiceState{
-		channel: NewMethodChannel("github.com/go-drift/drift/push"),
-		tokens:  NewEventChannel("github.com/go-drift/drift/push/token"),
-		errors:  NewEventChannel("github.com/go-drift/drift/push/error"),
+		channel: NewMethodChannel("drift/push"),
+		tokens:  NewEventChannel("drift/push/token"),
+		errors:  NewEventChannel("drift/push/error"),
 		tokenCh: make(chan PushToken, 4),
 		errorCh: make(chan PushError, 4),
 	}
@@ -80,9 +80,9 @@ func newPushService() *pushServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "push.parseToken",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/push/token",
+					Channel: "drift/push/token",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/push/token",
+						Channel:  "drift/push/token",
 						DataType: "PushToken",
 						Got:      data,
 					},
@@ -95,7 +95,7 @@ func newPushService() *pushServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "push.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/push/token",
+				Channel: "drift/push/token",
 				Err:     err,
 			})
 		},
@@ -108,9 +108,9 @@ func newPushService() *pushServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "push.parseError",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/push/error",
+					Channel: "drift/push/error",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/push/error",
+						Channel:  "drift/push/error",
 						DataType: "PushError",
 						Got:      data,
 					},
@@ -123,7 +123,7 @@ func newPushService() *pushServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "push.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/push/error",
+				Channel: "drift/push/error",
 				Err:     err,
 			})
 		},

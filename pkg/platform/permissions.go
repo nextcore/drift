@@ -78,8 +78,8 @@ type permissionServiceState struct {
 
 func newPermissionService() *permissionServiceState {
 	service := &permissionServiceState{
-		channel:  NewMethodChannel("github.com/go-drift/drift/permissions"),
-		changes:  NewEventChannel("github.com/go-drift/drift/permissions/changes"),
+		channel:  NewMethodChannel("drift/permissions"),
+		changes:  NewEventChannel("drift/permissions/changes"),
 		changeCh: make(chan PermissionChange, 4),
 	}
 
@@ -90,9 +90,9 @@ func newPermissionService() *permissionServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "permissions.parseChange",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/permissions/changes",
+					Channel: "drift/permissions/changes",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/permissions/changes",
+						Channel:  "drift/permissions/changes",
 						DataType: "PermissionChange",
 						Got:      data,
 					},
@@ -105,7 +105,7 @@ func newPermissionService() *permissionServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "permissions.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/permissions/changes",
+				Channel: "drift/permissions/changes",
 				Err:     err,
 			})
 		},

@@ -29,8 +29,8 @@ type deepLinkServiceState struct {
 
 func newDeepLinkService() *deepLinkServiceState {
 	service := &deepLinkServiceState{
-		channel: NewMethodChannel("github.com/go-drift/drift/deeplinks"),
-		events:  NewEventChannel("github.com/go-drift/drift/deeplinks/events"),
+		channel: NewMethodChannel("drift/deeplinks"),
+		events:  NewEventChannel("drift/deeplinks/events"),
 		linksCh: make(chan DeepLink, 4),
 	}
 

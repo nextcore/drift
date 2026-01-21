@@ -157,12 +157,12 @@ type notificationServiceState struct {
 
 func newNotificationService() *notificationServiceState {
 	service := &notificationServiceState{
-		channel:       NewMethodChannel("github.com/go-drift/drift/notifications"),
-		received:      NewEventChannel("github.com/go-drift/drift/notifications/received"),
-		opened:        NewEventChannel("github.com/go-drift/drift/notifications/opened"),
-		permissions:   NewEventChannel("github.com/go-drift/drift/notifications/permission"),
-		tokens:        NewEventChannel("github.com/go-drift/drift/notifications/token"),
-		errors:        NewEventChannel("github.com/go-drift/drift/notifications/error"),
+		channel:       NewMethodChannel("drift/notifications"),
+		received:      NewEventChannel("drift/notifications/received"),
+		opened:        NewEventChannel("drift/notifications/opened"),
+		permissions:   NewEventChannel("drift/notifications/permission"),
+		tokens:        NewEventChannel("drift/notifications/token"),
+		errors:        NewEventChannel("drift/notifications/error"),
 		receivedCh:    make(chan NotificationEvent, 4),
 		openedCh:      make(chan NotificationOpen, 4),
 		permissionsCh: make(chan PermissionStatus, 4),
@@ -177,9 +177,9 @@ func newNotificationService() *notificationServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "notifications.parseEvent",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/notifications/received",
+					Channel: "drift/notifications/received",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/notifications/received",
+						Channel:  "drift/notifications/received",
 						DataType: "NotificationEvent",
 						Got:      data,
 					},
@@ -192,7 +192,7 @@ func newNotificationService() *notificationServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/notifications/received",
+				Channel: "drift/notifications/received",
 				Err:     err,
 			})
 		},
@@ -204,9 +204,9 @@ func newNotificationService() *notificationServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "notifications.parseOpen",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/notifications/opened",
+					Channel: "drift/notifications/opened",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/notifications/opened",
+						Channel:  "drift/notifications/opened",
 						DataType: "NotificationOpen",
 						Got:      data,
 					},
@@ -219,7 +219,7 @@ func newNotificationService() *notificationServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/notifications/opened",
+				Channel: "drift/notifications/opened",
 				Err:     err,
 			})
 		},
@@ -231,9 +231,9 @@ func newNotificationService() *notificationServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "notifications.parsePermission",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/notifications/permission",
+					Channel: "drift/notifications/permission",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/notifications/permission",
+						Channel:  "drift/notifications/permission",
 						DataType: "PermissionStatus",
 						Got:      data,
 					},
@@ -246,7 +246,7 @@ func newNotificationService() *notificationServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/notifications/permission",
+				Channel: "drift/notifications/permission",
 				Err:     err,
 			})
 		},
@@ -258,9 +258,9 @@ func newNotificationService() *notificationServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "notifications.parseToken",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/notifications/token",
+					Channel: "drift/notifications/token",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/notifications/token",
+						Channel:  "drift/notifications/token",
 						DataType: "DeviceToken",
 						Got:      data,
 					},
@@ -273,7 +273,7 @@ func newNotificationService() *notificationServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/notifications/token",
+				Channel: "drift/notifications/token",
 				Err:     err,
 			})
 		},
@@ -285,9 +285,9 @@ func newNotificationService() *notificationServiceState {
 				errors.Report(&errors.DriftError{
 					Op:      "notifications.parseError",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/notifications/error",
+					Channel: "drift/notifications/error",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/notifications/error",
+						Channel:  "drift/notifications/error",
 						DataType: "NotificationError",
 						Got:      data,
 					},
@@ -300,7 +300,7 @@ func newNotificationService() *notificationServiceState {
 			errors.Report(&errors.DriftError{
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/notifications/error",
+				Channel: "drift/notifications/error",
 				Err:     err,
 			})
 		},

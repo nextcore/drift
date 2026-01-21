@@ -63,7 +63,7 @@ func newPlatformViewRegistry() *PlatformViewRegistry {
 	r := &PlatformViewRegistry{
 		factories: make(map[string]PlatformViewFactory),
 		views:     make(map[int64]PlatformView),
-		channel:   NewMethodChannel("github.com/go-drift/drift/platform_views"),
+		channel:   NewMethodChannel("drift/platform_views"),
 	}
 
 	// Handle incoming calls from native

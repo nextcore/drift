@@ -20,7 +20,7 @@ type SystemUIStyle struct {
 	Transparent     bool             // Android only (no-op on iOS)
 }
 
-var systemUIChannel = NewMethodChannel("github.com/go-drift/drift/system_ui")
+var systemUIChannel = NewMethodChannel("drift/system_ui")
 
 // SetSystemUI updates the system UI appearance.
 func SetSystemUI(style SystemUIStyle) error {

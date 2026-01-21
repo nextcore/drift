@@ -8,8 +8,8 @@ import (
 
 // LifecycleService provides app lifecycle state management.
 var Lifecycle = &LifecycleService{
-	channel:  NewMethodChannel("github.com/go-drift/drift/lifecycle"),
-	events:   NewEventChannel("github.com/go-drift/drift/lifecycle/events"),
+	channel:  NewMethodChannel("drift/lifecycle"),
+	events:   NewEventChannel("drift/lifecycle/events"),
 	state:    LifecycleStateResumed,
 	handlers: make([]LifecycleHandler, 0),
 }
@@ -53,9 +53,9 @@ func init() {
 				errors.Report(&errors.DriftError{
 					Op:      "lifecycle.parseEvent",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/lifecycle/events",
+					Channel: "drift/lifecycle/events",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/lifecycle/events",
+						Channel:  "drift/lifecycle/events",
 						DataType: "LifecycleState",
 						Got:      data,
 					},
@@ -67,9 +67,9 @@ func init() {
 				errors.Report(&errors.DriftError{
 					Op:      "lifecycle.parseEvent",
 					Kind:    errors.KindParsing,
-					Channel: "github.com/go-drift/drift/lifecycle/events",
+					Channel: "drift/lifecycle/events",
 					Err: &errors.ParseError{
-						Channel:  "github.com/go-drift/drift/lifecycle/events",
+						Channel:  "drift/lifecycle/events",
 						DataType: "LifecycleState",
 						Got:      data,
 					},
@@ -82,7 +82,7 @@ func init() {
 			errors.Report(&errors.DriftError{
 				Op:      "lifecycle.streamError",
 				Kind:    errors.KindPlatform,
-				Channel: "github.com/go-drift/drift/lifecycle/events",
+				Channel: "drift/lifecycle/events",
 				Err:     err,
 			})
 		},

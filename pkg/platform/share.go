@@ -4,7 +4,7 @@ import "github.com/go-drift/drift/pkg/errors"
 
 // ShareService provides access to the system share sheet.
 var Share = &ShareService{
-	channel: NewMethodChannel("github.com/go-drift/drift/share"),
+	channel: NewMethodChannel("drift/share"),
 }
 
 // ShareService manages sharing content with other apps.
@@ -107,9 +107,9 @@ func (s *ShareService) share(data map[string]any) (ShareResult, error) {
 		errors.Report(&errors.DriftError{
 			Op:      "share.parseResult",
 			Kind:    errors.KindParsing,
-			Channel: "github.com/go-drift/drift/share",
+			Channel: "drift/share",
 			Err: &errors.ParseError{
-				Channel:  "github.com/go-drift/drift/share",
+				Channel:  "drift/share",
 				DataType: "ShareResult",
 				Got:      result,
 			},
