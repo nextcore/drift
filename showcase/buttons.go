@@ -14,10 +14,10 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 	_, colors, _ := theme.UseTheme(ctx)
 	buttonGradient := rendering.NewLinearGradient(
 		rendering.Offset{X: 0, Y: 0},
-		rendering.Offset{X: 220, Y: 0},
+		rendering.Offset{X: 100, Y: 0},
 		[]rendering.GradientStop{
 			{Position: 0, Color: colors.Primary},
-			{Position: 1, Color: colors.Secondary},
+			{Position: 1, Color: colors.Tertiary},
 		},
 	)
 
