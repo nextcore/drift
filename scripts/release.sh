@@ -42,6 +42,13 @@ if git tag -l "$version" | grep -q "^${version}$"; then
 fi
 
 git tag -a "$version" -m "Release $version"
+
+read -rp "Push tag $version to origin? [y/N] " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  echo "Aborted. Tag created locally but not pushed."
+  exit 0
+fi
+
 git push origin "$version"
 
 echo "Release tag created and pushed: $version"
