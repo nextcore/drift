@@ -187,9 +187,10 @@ func sanitizeSegment(segment string, allowLeadingDigit bool) string {
 		case r >= '0' && r <= '9':
 			out = append(out, r)
 		case r == '_' || r == '-':
-			out = append(out, '_')
+			// Skip hyphens and underscores - they cause issues with xtool's
+			// bundle ID name generation for Apple's Developer API
 		default:
-			out = append(out, '_')
+			// Skip other invalid characters
 		}
 	}
 
@@ -198,9 +199,6 @@ func sanitizeSegment(segment string, allowLeadingDigit bool) string {
 	}
 
 	if !allowLeadingDigit && out[0] >= '0' && out[0] <= '9' {
-		out = append([]rune{'a'}, out...)
-	}
-	if out[0] == '_' {
 		out = append([]rune{'a'}, out...)
 	}
 
