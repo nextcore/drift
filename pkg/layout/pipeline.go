@@ -1,31 +1,35 @@
 package layout
 
-import "slices"
-
 // PipelineOwner tracks render objects that need layout or paint.
 type PipelineOwner struct {
-	dirtyLayout []RenderObject
-	dirtyPaint  []RenderObject
+	dirtyLayout map[RenderObject]struct{}
+	dirtyPaint  map[RenderObject]struct{}
 	needsLayout bool
 	needsPaint  bool
 }
 
 // ScheduleLayout marks a render object as needing layout.
 func (p *PipelineOwner) ScheduleLayout(object RenderObject) {
-	if slices.Contains(p.dirtyLayout, object) {
+	if p.dirtyLayout == nil {
+		p.dirtyLayout = make(map[RenderObject]struct{})
+	}
+	if _, exists := p.dirtyLayout[object]; exists {
 		return
 	}
-	p.dirtyLayout = append(p.dirtyLayout, object)
+	p.dirtyLayout[object] = struct{}{}
 	p.needsLayout = true
 	p.needsPaint = true
 }
 
 // SchedulePaint marks a render object as needing paint.
 func (p *PipelineOwner) SchedulePaint(object RenderObject) {
-	if slices.Contains(p.dirtyPaint, object) {
+	if p.dirtyPaint == nil {
+		p.dirtyPaint = make(map[RenderObject]struct{})
+	}
+	if _, exists := p.dirtyPaint[object]; exists {
 		return
 	}
-	p.dirtyPaint = append(p.dirtyPaint, object)
+	p.dirtyPaint[object] = struct{}{}
 	p.needsPaint = true
 }
 
