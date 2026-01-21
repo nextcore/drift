@@ -108,7 +108,12 @@ func (s *nativeTextFieldState) InitState() {
 		OnFocusChange: func(hasFocus bool) {
 			if hasFocus && !s.focused {
 				// Focus node gained focus, activate the text field
-				s.focus(nil)
+				// Pass render object as target for tap-outside-to-unfocus detection
+				var target any
+				if s.element != nil {
+					target = s.element.RenderObject()
+				}
+				s.focus(target)
 			}
 		},
 	}
