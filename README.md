@@ -153,6 +153,125 @@ drift run ios
 drift run xtool
 ```
 
+## Features
+
+### Implemented Features
+
+#### Core Framework
+- [x] Widget architecture - StatelessWidget, StatefulWidget, InheritedWidget patterns
+- [x] Element tree - Efficient build/rebuild system with dirty tracking
+- [x] Render tree - Constraint-based layout with RenderObjects
+- [x] Build context - Tree traversal and dependency injection
+
+#### Widgets
+- [x] Layout - Row, Column, Stack, IndexedStack, Positioned, Center, Padding, SizedBox, Expanded, Container, SafeArea
+- [x] Scrolling - ListView, ListViewBuilder, ScrollView with customizable physics
+- [x] Display - Text, Icon, SVGIcon, Image
+- [x] Input - Button, TextField, NativeTextField, Checkbox, Radio, Switch, Dropdown, Form
+- [x] Decorative - ClipRRect, DecoratedBox, Opacity, AnimatedOpacity, AnimatedContainer
+- [x] Navigation - TabBar, TabItem, TabScaffold
+- [x] Platform - NativeWebView, NativeTextField
+
+#### Layout System
+- [x] Flex layout - MainAxisAlignment, CrossAxisAlignment, MainAxisSize
+- [x] Alignment - EdgeInsets, Alignment, BoxParentData
+- [x] Constraints - BoxConstraints with min/max width/height
+- [x] Positioned stacking - Absolute positioning within Stack
+
+#### Rendering (Skia)
+- [x] Canvas API - DrawRect, DrawRRect, DrawOval, DrawPath, DrawText, DrawImage
+- [x] Styling - Colors, gradients, paint styles, text styling
+- [x] Geometry - Size, Offset, Rect, RRect, Path
+- [x] Canvas state - Save/Restore, clipping, transforms
+
+#### State Management
+- [x] Core patterns - StatelessWidget, StatefulWidget, InheritedWidget
+- [x] Lifecycle - InitState, Dispose, DidChangeDependencies, DidUpdateWidget
+- [x] Helpers - ManagedState, Observable, Listenable
+- [x] Hooks - UseController, UseObservable, UseListenable
+- [x] Thread safety - drift.Dispatch for UI thread scheduling
+
+#### Animation
+- [x] Controllers - AnimationController with status tracking
+- [x] Curves - Linear, Ease, EaseIn, EaseOut, EaseInOut, CubicBezier
+- [x] Spring physics - SpringDescription, SpringSimulation, IOSSpring, BouncySpring
+- [x] Animated widgets - AnimatedContainer, AnimatedOpacity
+- [x] Ticker system - Frame-synchronized timing
+
+#### Navigation & Routing
+- [x] Navigator - Stack-based route management
+- [x] Routes - MaterialPageRoute, custom Route interface
+- [x] Route generation - OnGenerateRoute, OnUnknownRoute, InitialRoute
+- [x] Navigation methods - Push, Pop, PushNamed, CanPop, MaybePop
+- [x] Deep linking - DeepLinkController with URL parsing and routing
+- [x] Back button - Platform back button handling
+
+#### Gesture & Input
+- [x] Gesture detection - GestureDetector, TapGestureRecognizer
+- [x] Gesture arena - Multi-touch gesture competition
+- [x] Focus management - FocusNode, FocusScopeNode, directional navigation
+- [x] Scroll physics - ClampingScrollPhysics, BouncingScrollPhysics
+
+#### Theming
+- [x] Theme system - Theme widget with InheritedWidget propagation
+- [x] Color scheme - Material Design 3 colors (primary, secondary, surface, etc.)
+- [x] Typography - TextTheme with display, headline, title, body, label styles
+- [x] Built-in themes - DefaultLightTheme, DefaultDarkTheme
+
+#### Platform Support
+- [x] Android - Full support via Android SDK/NDK
+- [x] iOS - macOS builds + Linux builds via xtool
+- [x] Cross-compilation - iOS builds from Linux using xtool
+
+#### Platform Services
+- [x] Clipboard - Copy/paste operations
+- [x] Haptics - Light/medium/heavy impacts, selection vibration
+- [x] Text input - Platform-native text editing with keyboard types
+- [x] Permissions - Runtime permission handling
+- [x] Notifications - Local and push notification support
+- [x] Lifecycle - App lifecycle events
+- [x] Location - Geolocation services
+- [x] Camera - Camera integration
+- [x] Background - Background task execution
+- [x] Share - Native share sheet
+- [x] Storage - File system and preferences
+- [x] System UI - Status bar and navigation bar customization
+
+#### Build System
+- [x] CLI - drift build/run/clean commands
+- [x] Configuration - drift.yaml for app metadata
+- [x] Skia integration - Prebuilt binary fetching and source builds
+
+### Partially Implemented
+
+- [ ] Drag gestures - Framework in place, recognizers need completion
+- [ ] Accessibility - Safe area and focus support exist, semantic labels needed
+- [ ] Hot reload - Not yet implemented
+- [ ] Developer tools - Widget inspector, performance overlay
+
+### Roadmap to v1.0.0
+
+#### Must Have
+- [ ] API stability - Finalize public API surface and deprecation policy
+- [ ] Comprehensive documentation - API reference, tutorials, migration guides
+- [ ] Testing framework - Widget testing utilities and golden tests
+- [ ] Accessibility - Screen reader support, semantic labels, contrast ratios
+- [ ] Error boundaries - Graceful error handling in widget tree
+- [ ] Hot reload - Development-time code reloading
+
+#### Should Have
+- [ ] More widgets - Dialog, BottomSheet, Drawer, Snackbar, DataTable, Slider
+- [ ] Form validation - Built-in validators and form field error display
+- [ ] Internationalization - i18n/l10n support
+- [ ] Performance profiling - Built-in performance monitoring tools
+
+#### Nice to Have
+- [ ] Widget inspector - Visual debugging tool
+- [ ] Adaptive widgets - Platform-aware widget variants
+- [ ] Custom painters - User-defined canvas drawing widgets
+- [ ] Implicit animations - More animated widget variants
+- [ ] Plugin system - Third-party plugin architecture
+
 ## Contributing
 
 Contributions are welcome!
