@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DRIFT_SKIA_OUT="$HOME/.drift/drift_skia"
+DRIFT_CACHE_ROOT="${DRIFT_CACHE_DIR:-$HOME/.drift}"
 REPO="go-drift/drift"
 
 detect_drift_version() {
@@ -38,8 +38,17 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [--android] [--ios]
 
-Downloads prebuilt Drift Skia artifacts from GitHub Releases and extracts them into
-~/.drift/drift_skia. If no platform flags are provided, both are fetched.
+Downloads prebuilt Drift Skia artifacts from GitHub Releases and extracts them
+into the versioned cache directory.
+
+Output: \$DRIFT_CACHE_DIR/lib/<version>/<platform>/<arch>/libdrift_skia.a
+        (defaults to ~/.drift/lib/<version>/...)
+
+Environment:
+  DRIFT_CACHE_DIR   Override cache directory (default: ~/.drift)
+  DRIFT_VERSION     Override version detection
+
+If no platform flags are provided, both are fetched.
 EOF
 }
 
@@ -74,9 +83,19 @@ if [[ -z "$drift_version" ]]; then
   exit 1
 fi
 
+# Normalize version to match CLI cache paths (see cache.normalizeVersion)
+# Strip "drift-" prefix, "-dev" suffix, ensure "v" prefix
+drift_version="${drift_version#drift-}"
+drift_version="${drift_version%-dev}"
+if [[ "$drift_version" != v* ]]; then
+  drift_version="v$drift_version"
+fi
+
 release_tag="$drift_version"
 base_url="https://github.com/$REPO/releases/download/$release_tag"
 manifest_url="$base_url/manifest.json"
+
+DRIFT_SKIA_OUT="$DRIFT_CACHE_ROOT/lib/$drift_version"
 
 work_dir="$(mktemp -d)"
 cleanup() {
@@ -84,7 +103,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "Fetching Drift Skia $drift_version..."
+
 manifest="$work_dir/manifest.json"
+echo "  Downloading manifest..."
 curl -fsSL "$manifest_url" -o "$manifest"
 
 extract_tarball() {
@@ -101,6 +123,7 @@ print(data["$platform"]["sha256"])
 PY
 )
 
+  echo "  Downloading $tarball..."
   curl -fsSL "$base_url/$tarball" -o "$tar_path"
   local actual_sha
   actual_sha=$(sha256sum "$tar_path" | cut -d ' ' -f1)
@@ -112,6 +135,7 @@ PY
     exit 1
   fi
 
+  echo "  Extracting $platform..."
   mkdir -p "$DRIFT_SKIA_OUT"
   tar -C "$DRIFT_SKIA_OUT" -xzf "$tar_path"
 }

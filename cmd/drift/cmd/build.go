@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/go-drift/drift/cmd/drift/internal/cache"
 	"github.com/go-drift/drift/cmd/drift/internal/config"
 	"github.com/go-drift/drift/cmd/drift/internal/workspace"
 	"github.com/go-drift/drift/cmd/drift/internal/xtool"
@@ -465,8 +466,6 @@ func androidSkiaLinkerFlags(skiaDir string) string {
 }
 
 func findSkiaLib(projectRoot, platform, arch string) (string, string, error) {
-	homeDir, _ := os.UserHomeDir()
-
 	// Find drift module root from this source file's location
 	// build.go is at cmd/drift/cmd/build.go, so go up 3 levels
 	_, thisFile, _, _ := runtime.Caller(0)
@@ -477,8 +476,11 @@ func findSkiaLib(projectRoot, platform, arch string) (string, string, error) {
 		filepath.Join(driftRoot, "third_party", "drift_skia", platform, arch),
 		// Project-relative (user customization)
 		filepath.Join(projectRoot, "third_party", "drift_skia", platform, arch),
-		// Global fallback for downloaded prebuilt binaries
-		filepath.Join(homeDir, ".drift", "drift_skia", platform, arch),
+	}
+
+	// Versioned lib path from cache
+	if libDir, err := cache.LibDir(platform, arch); err == nil {
+		candidates = append(candidates, libDir)
 	}
 
 	for _, dir := range candidates {

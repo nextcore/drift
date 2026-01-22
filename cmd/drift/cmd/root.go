@@ -7,6 +7,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
+
+	"github.com/go-drift/drift/cmd/drift/internal/cache"
 )
 
 // Version information set at build time.
@@ -47,6 +50,8 @@ func RegisterCommand(cmd *Command) {
 
 // Execute runs the CLI with the given arguments.
 func Execute() error {
+	cache.SetGlobal(Version)
+
 	args := os.Args[1:]
 
 	// Handle no arguments
@@ -55,20 +60,43 @@ func Execute() error {
 		return nil
 	}
 
-	// Handle global flags
-	for i, arg := range args {
+	// Handle global flags and extract --cache-dir
+	var filteredArgs []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "-h", "--help", "help":
-			if i == 0 {
+			if len(filteredArgs) == 0 {
 				printHelp(rootCmd)
 				return nil
 			}
+			filteredArgs = append(filteredArgs, arg)
 		case "-v", "--version", "version":
-			if i == 0 {
+			if len(filteredArgs) == 0 {
 				fmt.Printf("Drift CLI version %s (built %s)\n", Version, BuildTime)
 				return nil
 			}
+			filteredArgs = append(filteredArgs, arg)
+		case "--cache-dir":
+			if i+1 < len(args) {
+				cache.SetCacheDir(args[i+1])
+				i++
+			} else {
+				return fmt.Errorf("--cache-dir requires a directory path")
+			}
+		default:
+			if strings.HasPrefix(arg, "--cache-dir=") {
+				cache.SetCacheDir(strings.TrimPrefix(arg, "--cache-dir="))
+				continue
+			}
+			filteredArgs = append(filteredArgs, arg)
 		}
+	}
+	args = filteredArgs
+
+	if len(args) == 0 {
+		printHelp(rootCmd)
+		return nil
 	}
 
 	// Find and execute the command
@@ -104,8 +132,12 @@ func printHelp(cmd *Command) {
 	}
 	fmt.Println()
 	fmt.Println("Flags:")
-	fmt.Println("  -h, --help      Show help for a command")
-	fmt.Println("  -v, --version   Show version information")
+	fmt.Println("  -h, --help           Show help for a command")
+	fmt.Println("  -v, --version        Show version information")
+	fmt.Println("  --cache-dir DIR      Override cache directory (default: ~/.drift)")
+	fmt.Println()
+	fmt.Println("Environment:")
+	fmt.Println("  DRIFT_CACHE_DIR      Cache directory override (lower priority than --cache-dir)")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  drift build android       Build for Android")

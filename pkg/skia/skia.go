@@ -6,8 +6,8 @@
 // The static CGO directives below reference third_party/drift_skia paths relative
 // to this source file. These paths work when building directly in the drift repo.
 // When building with the drift CLI (drift build android/ios), these paths are
-// overridden via CGO_LDFLAGS to use ~/.drift/drift_skia/ where the prebuilt
-// binaries are downloaded by fetch_skia_release.sh.
+// overridden via CGO_LDFLAGS to use versioned prebuilt binaries downloaded by
+// fetch_skia_release.sh (located at ~/.drift/lib/<version>/<platform>/<arch>/).
 package skia
 
 /*

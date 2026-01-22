@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-drift/drift/cmd/drift/internal/cache"
 	"github.com/go-drift/drift/cmd/drift/internal/config"
 	"github.com/go-drift/drift/cmd/drift/internal/scaffold"
 	"github.com/go-drift/drift/cmd/drift/internal/templates"
@@ -107,13 +108,7 @@ func BuildRoot(cfg *config.Resolved) (string, error) {
 }
 
 func moduleBuildRoot(cfg *config.Resolved) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve home directory: %w", err)
-	}
-
-	moduleSlug := strings.ReplaceAll(cfg.ModulePath, "/", "_")
-	return filepath.Join(home, ".drift", "build", moduleSlug), nil
+	return cache.BuildRoot(cfg.ModulePath)
 }
 
 func writeBridgeFiles(dir string, cfg *config.Resolved) error {
