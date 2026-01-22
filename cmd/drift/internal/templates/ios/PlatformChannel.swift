@@ -694,9 +694,13 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         if let interval = dict["intervalSeconds"] as? NSNumber, interval.doubleValue > 0 {
             trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval.doubleValue, repeats: repeats)
         } else if let atMillis = dict["at"] as? NSNumber {
-            let date = Date(timeIntervalSince1970: atMillis.doubleValue / 1000.0)
-            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-            trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: repeats)
+            let scheduledDate = Date(timeIntervalSince1970: atMillis.doubleValue / 1000.0)
+            let timeInterval = scheduledDate.timeIntervalSinceNow
+            if timeInterval > 0 {
+                trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeInterval, repeats: repeats)
+            } else {
+                trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            }
         } else {
             trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         }
