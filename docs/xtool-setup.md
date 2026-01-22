@@ -150,6 +150,16 @@ export XTOOL_CERT=~/certs/dev_certificate.p12
 export XTOOL_PROFILE=~/certs/dev_profile.mobileprovision
 ```
 
+## Skia Binaries
+
+Ensure iOS Skia binaries are available before building. They are downloaded automatically on first build, or you can fetch them manually:
+
+```bash
+drift fetch-skia --ios
+```
+
+For more options, see [docs/skia.md](skia.md).
+
 ## Usage
 
 ### Building
@@ -288,15 +298,3 @@ When you run `drift build xtool`, the following structure is generated:
 └── Runner.app/                # Final app bundle
 ```
 
-## Pre-built Skia Library
-
-The xtool build requires `libdrift_skia.a` (Skia + drift bridge) for iOS arm64. The easiest way to get it is using the fetch script:
-
-```bash
-# Fetch prebuilt libraries
-$(go env GOPATH)/pkg/mod/github.com/go-drift/drift@*/scripts/fetch_skia_release.sh --ios
-```
-
-This downloads the library to `~/.drift/drift_skia/ios/arm64/libdrift_skia.a`.
-
-To build from source instead, see [skia.md](skia.md) for instructions using the drift build scripts.

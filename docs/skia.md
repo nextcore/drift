@@ -28,11 +28,9 @@ Supported architectures:
 | iOS simulator | `arm64`, `x64`          |
 
 
-## Setup
+## Option 1: Automatic download (recommended)
 
 Skia libraries are automatically downloaded when you run `drift build` for the first time. No manual setup is required for most users.
-
-## Option 1: Automatic download (recommended)
 
 When you run `drift build`, missing Skia libraries are automatically downloaded:
 
@@ -47,7 +45,7 @@ To disable auto-download and fail with an error instead:
 drift build android --no-fetch
 ```
 
-## Option 2: Manual download
+## Option 2: Fetch via CLI
 
 You can manually download libraries using the `fetch-skia` command:
 
@@ -62,31 +60,14 @@ The command downloads tarballs from `https://github.com/go-drift/drift/releases`
 
 Version is determined automatically from the CLI version, or you can set `DRIFT_VERSION` environment variable or use the `--version` flag.
 
-## Option 3: Legacy shell script
+## Option 3: Build from source
 
-A shell script is also available for environments where the drift CLI is not installed:
-
-```bash
-DRIFT=$(go env GOMODCACHE)/github.com/go-drift/drift@<version>
-
-# Fetch both Android and iOS
-$DRIFT/scripts/fetch_skia_release.sh
-
-# Fetch only one platform
-$DRIFT/scripts/fetch_skia_release.sh --android
-$DRIFT/scripts/fetch_skia_release.sh --ios
-```
-
-## Option 4: Build from source
+Building from source is intended for drift contributors or users who need custom Skia builds. Most app developers should use the prebuilt binaries (Options 1 or 2).
 
 For source builds, you need a writable checkout of the drift repository:
 
 ```bash
 git clone https://github.com/go-drift/drift.git
-DRIFT_SRC=$PWD/drift
-
-# Or, copy the module cache entry to a writable location
-cp -R "$(go env GOMODCACHE)/github.com/go-drift/drift@<version>" "$PWD/drift"
 DRIFT_SRC=$PWD/drift
 ```
 

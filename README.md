@@ -24,19 +24,32 @@ app with CGO + Skia.
 
 ## Quick Start
 
-1. Create a new project and install Drift:
+1. Install drift 
+
+```bash
+go install github.com/go-drift/drift/cmd/drift@latest
+```
+
+Make sure `$(go env GOPATH)/bin` or `GOBIN` is on your `PATH` so the `drift` command is available.
+
+2. Create a new project:
+
+**Option A: Using drift init (recommended)**
+
+```bash
+drift init hello-drift
+cd hello-drift
+```
+
+**Option B: Manual setup**
 
 ```bash
 mkdir hello-drift && cd hello-drift
 go mod init example.com/hello-drift
 go get github.com/go-drift/drift@latest
-go install github.com/go-drift/drift/cmd/drift@latest
 ```
 
-Make sure `$(go env GOPATH)/bin` or `GOBIN` is on your `PATH` so the `drift`
-command is available.
-
-2. Create `main.go`:
+Then create `main.go`:
 
 ```go
 package main
@@ -58,21 +71,19 @@ func App() core.Widget {
 }
 ```
 
-3. Fetch Skia binaries:
-
-```bash
-$(go env GOPATH)/pkg/mod/github.com/go-drift/drift@latest/scripts/fetch_skia_release.sh
-```
-
-4. Run your app:
+3. Run your app:
 
 ```bash
 drift run android
 # or
 drift run ios --simulator "iPhone 17"
+# or
+drift run xtool
 ```
 
-5. (Optional) Add `drift.yaml` to customize app metadata:
+Skia binaries are downloaded automatically on first run. See [Skia Binaries](#skia-binaries) for manual download options or [docs/skia.md](docs/skia.md) for building from source.
+
+4. (Optional) Add `drift.yaml` to customize app metadata:
 
 ```yaml
 app:
@@ -91,22 +102,14 @@ Skia and the Drift bridge code. Download prebuilt artifacts from GitHub Releases
 or build them locally (see [skia.md](docs/skia.md) for details).
 
 ```bash
-DRIFT=$(go env GOMODCACHE)/github.com/go-drift/drift@<version>
-
-# Fetch both Android and iOS
-$DRIFT/scripts/fetch_skia_release.sh
-
-# Fetch only one platform
-$DRIFT/scripts/fetch_skia_release.sh --android
-$DRIFT/scripts/fetch_skia_release.sh --ios
+drift fetch-skia              # fetch all platforms
+drift fetch-skia --android    # android only
+drift fetch-skia --ios        # ios only
+drift fetch-skia --version v0.2.0  # specific version
 ```
 
-The script downloads binaries to `~/.drift/drift_skia/` where the drift CLI finds
-them. Release artifacts are pinned to the Drift version and published under
-`https://github.com/go-drift/drift/releases` with tags like `v<version>`. The
-module cache is read-only, so source builds must run from a writable checkout
-(see `docs/skia.md`).
-
+Release artifacts are pinned to the Drift version and published under
+`https://github.com/go-drift/drift/releases` with tags like `v<version>`.
 For building Skia from source, see [skia.md](docs/skia.md).
 
 ## Build and Run Your App
