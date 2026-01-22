@@ -30,41 +30,41 @@ Supported architectures:
 
 ## Setup
 
-After adding drift to your project (`go get github.com/go-drift/drift`), the module will be located at:
+Skia libraries are automatically downloaded when you run `drift build` for the first time. No manual setup is required for most users.
 
-```
-$(go env GOMODCACHE)/github.com/go-drift/drift@<version>
-```
+## Option 1: Automatic download (recommended)
 
-The Go module cache is read-only. Fetching prebuilt binaries is safe because the
-artifacts are written to `~/.drift/drift_skia/`, but source builds write into
-`third_party/` and must run from a writable checkout.
-
-For source builds, clone the repo or copy the module directory into your
-workspace:
+When you run `drift build`, missing Skia libraries are automatically downloaded:
 
 ```bash
-git clone https://github.com/go-drift/drift.git
-DRIFT_SRC=$PWD/drift
-
-# Or, copy the module cache entry to a writable location
-cp -R "$(go env GOMODCACHE)/github.com/go-drift/drift@<version>" "$PWD/drift"
-DRIFT_SRC=$PWD/drift
+drift build android    # auto-downloads Android libraries if missing
+drift build ios        # auto-downloads iOS libraries if missing
 ```
 
-All script examples below use one of the following path prefixes:
+To disable auto-download and fail with an error instead:
 
 ```bash
-# Prebuilt binaries (ok from module cache)
-$(go env GOMODCACHE)/github.com/go-drift/drift@<version>/scripts/fetch_skia_release.sh
-
-# Source builds (run from a writable checkout)
-$DRIFT_SRC/scripts/build_skia_android.sh
+drift build android --no-fetch
 ```
 
-## Option 1: Fetch prebuilt binaries (recommended)
+## Option 2: Manual download
 
-Prebuilt binaries are published to GitHub Releases for each Drift version. This is the fastest way to get started.
+You can manually download libraries using the `fetch-skia` command:
+
+```bash
+drift fetch-skia              # fetch all platforms
+drift fetch-skia --android    # android only
+drift fetch-skia --ios        # ios only
+drift fetch-skia --version v0.2.0  # specific version
+```
+
+The command downloads tarballs from `https://github.com/go-drift/drift/releases`, verifies SHA256 checksums, and extracts them to `~/.drift/lib/<version>/`.
+
+Version is determined automatically from the CLI version, or you can set `DRIFT_VERSION` environment variable or use the `--version` flag.
+
+## Option 3: Legacy shell script
+
+A shell script is also available for environments where the drift CLI is not installed:
 
 ```bash
 DRIFT=$(go env GOMODCACHE)/github.com/go-drift/drift@<version>
@@ -77,9 +77,18 @@ $DRIFT/scripts/fetch_skia_release.sh --android
 $DRIFT/scripts/fetch_skia_release.sh --ios
 ```
 
-The script downloads tarballs from `https://github.com/go-drift/drift/releases`, verifies SHA256 checksums, and extracts them to `~/.drift/drift_skia/`.
+## Option 4: Build from source
 
-## Option 2: Build from source
+For source builds, you need a writable checkout of the drift repository:
+
+```bash
+git clone https://github.com/go-drift/drift.git
+DRIFT_SRC=$PWD/drift
+
+# Or, copy the module cache entry to a writable location
+cp -R "$(go env GOMODCACHE)/github.com/go-drift/drift@<version>" "$PWD/drift"
+DRIFT_SRC=$PWD/drift
+```
 
 Building from source requires:
 - Python 3

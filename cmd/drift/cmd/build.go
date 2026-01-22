@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,6 +30,10 @@ Flags:
   --release          Build a release version (default: debug)
   --device           Build for physical iOS device (default: simulator)
   --team-id TEAM_ID  Apple Developer Team ID for code signing (required for device)
+  --no-fetch         Disable auto-download of missing Skia libraries
+
+Skia libraries are automatically downloaded when missing. Use --no-fetch to
+disable this behavior and fail with an error instead.
 
 For xtool builds:
   drift build xtool                Build debug for device
@@ -36,20 +41,31 @@ For xtool builds:
 
 To find your Team ID, run: grep -r "DEVELOPMENT_TEAM" ~/Library/MobileDevice/Provisioning\ Profiles/
 Or check Xcode -> Settings -> Accounts -> select team -> View Details`,
-		Usage: "drift build <platform> [--release] [--device] [--team-id TEAM_ID]",
+		Usage: "drift build <platform> [--release] [--device] [--team-id TEAM_ID] [--no-fetch]",
 		Run:   runBuild,
 	})
 }
 
+type buildOptions struct {
+	noFetch bool
+}
+
 type iosBuildOptions struct {
+	buildOptions
 	release bool
 	device  bool
 	teamID  string
 }
 
 type xtoolBuildOptions struct {
+	buildOptions
 	release bool
 	device  bool
+}
+
+type androidBuildOptions struct {
+	buildOptions
+	release bool
 }
 
 func runBuild(args []string) error {
@@ -58,19 +74,23 @@ func runBuild(args []string) error {
 	}
 
 	platform := strings.ToLower(args[0])
+	androidOpts := androidBuildOptions{}
 	iosOpts := iosBuildOptions{}
 	xtoolOpts := xtoolBuildOptions{}
-	release := false
 
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--release":
-			release = true
+			androidOpts.release = true
 			iosOpts.release = true
 			xtoolOpts.release = true
 		case "--device":
 			iosOpts.device = true
 			xtoolOpts.device = true
+		case "--no-fetch":
+			androidOpts.noFetch = true
+			iosOpts.noFetch = true
+			xtoolOpts.noFetch = true
 		case "--team-id":
 			if i+1 < len(args) {
 				iosOpts.teamID = args[i+1]
@@ -96,7 +116,7 @@ func runBuild(args []string) error {
 
 	switch platform {
 	case "android":
-		return buildAndroid(ws, release)
+		return buildAndroid(ws, androidOpts)
 	case "ios":
 		return buildIOS(ws, iosOpts)
 	case "xtool":
@@ -107,7 +127,7 @@ func runBuild(args []string) error {
 }
 
 // buildAndroid builds the Android application.
-func buildAndroid(ws *workspace.Workspace, release bool) error {
+func buildAndroid(ws *workspace.Workspace, opts androidBuildOptions) error {
 	fmt.Println("Building for Android...")
 
 	ndkHome := os.Getenv("ANDROID_NDK_HOME")
@@ -148,7 +168,7 @@ func buildAndroid(ws *workspace.Workspace, release bool) error {
 		fmt.Printf("  Compiling for %s...\n", abi.abi)
 
 		// Find Skia library for this architecture
-		_, skiaDir, err := findSkiaLib(ws.Root, "android", abi.skiaArch)
+		_, skiaDir, err := findSkiaLib(ws.Root, "android", abi.skiaArch, opts.noFetch)
 		if err != nil {
 			return err
 		}
@@ -209,7 +229,7 @@ func buildAndroid(ws *workspace.Workspace, release bool) error {
 	}
 
 	buildTask := "assembleDebug"
-	if release {
+	if opts.release {
 		buildTask = "assembleRelease"
 	}
 
@@ -224,7 +244,7 @@ func buildAndroid(ws *workspace.Workspace, release bool) error {
 
 	apkDir := filepath.Join(ws.AndroidDir, "app", "build", "outputs", "apk")
 	variant := "debug"
-	if release {
+	if opts.release {
 		variant = "release"
 	}
 	apkPath := filepath.Join(apkDir, variant, fmt.Sprintf("app-%s.apk", variant))
@@ -291,7 +311,7 @@ func buildIOS(ws *workspace.Workspace, opts iosBuildOptions) error {
 		skiaPlatform = "ios"
 	}
 
-	skiaLib, skiaDir, err := findSkiaLib(ws.Root, skiaPlatform, arch)
+	skiaLib, skiaDir, err := findSkiaLib(ws.Root, skiaPlatform, arch, opts.noFetch)
 	if err != nil {
 		return err
 	}
@@ -465,7 +485,7 @@ func androidSkiaLinkerFlags(skiaDir string) string {
 	}, " ")
 }
 
-func findSkiaLib(projectRoot, platform, arch string) (string, string, error) {
+func findSkiaLib(projectRoot, platform, arch string, noFetch bool) (string, string, error) {
 	// Find drift module root from this source file's location
 	// build.go is at cmd/drift/cmd/build.go, so go up 3 levels
 	_, thisFile, _, _ := runtime.Caller(0)
@@ -490,7 +510,38 @@ func findSkiaLib(projectRoot, platform, arch string) (string, string, error) {
 		}
 	}
 
-	return "", "", fmt.Errorf("drift skia library not found for %s/%s\n\nRun the fetch script to download prebuilt binaries:\n  $(go env GOPATH)/pkg/mod/github.com/go-drift/drift@*/scripts/fetch_skia_release.sh", platform, arch)
+	// Library not found - try auto-fetch if enabled
+	if !noFetch {
+		// Determine which platform to fetch (ios-simulator maps to ios tarball)
+		fetchPlatform := platform
+		if platform == "ios-simulator" {
+			fetchPlatform = "ios"
+		}
+
+		fmt.Printf("Skia library not found for %s/%s. Downloading...\n", platform, arch)
+
+		opts := FetchSkiaOptions{}
+		switch fetchPlatform {
+		case "android":
+			opts.Android = true
+		case "ios":
+			opts.IOS = true
+		}
+
+		if err := FetchSkia(context.Background(), opts); err != nil {
+			return "", "", fmt.Errorf("auto-fetch failed: %w\n\nRun 'drift fetch-skia' to download prebuilt binaries", err)
+		}
+
+		// Retry finding the library after fetch
+		if libDir, err := cache.LibDir(platform, arch); err == nil {
+			lib := filepath.Join(libDir, "libdrift_skia.a")
+			if _, err := os.Stat(lib); err == nil {
+				return lib, libDir, nil
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("drift skia library not found for %s/%s\n\nRun 'drift fetch-skia' to download prebuilt binaries", platform, arch)
 }
 
 // copyFile copies a file from src to dst.
@@ -553,7 +604,7 @@ func buildXtool(ws *workspace.Workspace, opts xtoolBuildOptions) error {
 	}
 
 	// Find Skia library for iOS device (arm64)
-	skiaLib, _, err := findSkiaLib(ws.Root, "ios", "arm64")
+	skiaLib, _, err := findSkiaLib(ws.Root, "ios", "arm64", opts.noFetch)
 	if err != nil {
 		return err
 	}

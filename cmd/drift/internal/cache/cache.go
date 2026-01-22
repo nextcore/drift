@@ -18,10 +18,10 @@ var global struct {
 // SetGlobal initializes the cache resolver with the CLI version.
 // This should be called at startup from root.go.
 func SetGlobal(version string) {
-	global.version = normalizeVersion(version)
+	global.version = NormalizeVersion(version)
 }
 
-// normalizeVersion returns a clean release version, or empty if the version
+// NormalizeVersion returns a clean release version, or empty if the version
 // is not a valid release (e.g., dev builds, pseudo-versions from go install).
 // Explicit prerelease tags (v0.2.0-rc1) are allowed.
 //
@@ -33,7 +33,7 @@ func SetGlobal(version string) {
 //	"v0.2.0-rc1"                      -> "v0.2.0-rc1" (prerelease allowed)
 //	"0.1.0-dev"                       -> "" (dev build)
 //	"v0.2.1-0.20260122153045-abc123"  -> "" (pseudo-version)
-func normalizeVersion(version string) string {
+func NormalizeVersion(version string) string {
 	version = strings.TrimPrefix(version, "drift-")
 
 	// Reject -dev builds
@@ -131,7 +131,7 @@ func findCachedVersion(root, platform, arch string) (string, error) {
 	entries, err := os.ReadDir(libDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("cache directory %s does not exist; run fetch_skia_release.sh", libDir)
+			return "", fmt.Errorf("cache directory %s does not exist; run 'drift fetch-skia'", libDir)
 		}
 		return "", fmt.Errorf("failed to read cache directory %s: %w", libDir, err)
 	}
@@ -148,7 +148,7 @@ func findCachedVersion(root, platform, arch string) (string, error) {
 	}
 
 	if len(candidates) == 0 {
-		return "", fmt.Errorf("no cached libraries found for %s/%s; run fetch_skia_release.sh", platform, arch)
+		return "", fmt.Errorf("no cached libraries found for %s/%s; run 'drift fetch-skia'", platform, arch)
 	}
 
 	// Pick highest semver version

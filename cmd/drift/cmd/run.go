@@ -30,6 +30,7 @@ The command will:
 
 Flags:
   --no-logs          Launch without streaming logs
+  --no-fetch         Disable auto-download of missing Skia libraries
   --device [UDID]    Run on a physical iOS device (optional: specify UDID)
   --simulator NAME   Run on a specific iOS simulator (default: iPhone 15)
   --team-id TEAM_ID  Apple Developer Team ID for code signing (required for --device)
@@ -50,13 +51,18 @@ For xtool (Linux/macOS):
 
 Note: Physical device deployment requires ios-deploy (brew install ios-deploy)
       or ideviceinstaller (part of libimobiledevice)`,
-		Usage: "drift run <platform> [--no-logs] [--device [UDID]] [--simulator NAME] [--team-id TEAM_ID]",
+		Usage: "drift run <platform> [--no-logs] [--no-fetch] [--device [UDID]] [--simulator NAME] [--team-id TEAM_ID]",
 		Run:   runRun,
 	})
 }
 
+type runOptions struct {
+	noLogs  bool
+	noFetch bool
+}
+
 func runRun(args []string) error {
-	platformArgs, noLogs := parseRunArgs(args)
+	platformArgs, opts := parseRunArgs(args)
 	if len(platformArgs) == 0 {
 		return fmt.Errorf("platform is required (android, ios, or xtool)\n\nUsage: drift run <platform> [--no-logs]")
 	}
@@ -80,11 +86,11 @@ func runRun(args []string) error {
 
 	switch platform {
 	case "android":
-		return runAndroid(ws, cfg, platformArgs[1:], noLogs)
+		return runAndroid(ws, cfg, platformArgs[1:], opts)
 	case "ios":
-		return runIOS(ws, cfg, platformArgs[1:], noLogs)
+		return runIOS(ws, cfg, platformArgs[1:], opts)
 	case "xtool":
-		return runXtool(ws, cfg, platformArgs[1:], noLogs)
+		return runXtool(ws, cfg, platformArgs[1:], opts)
 	default:
 		return fmt.Errorf("unknown platform %q (use android, ios, or xtool)", platform)
 	}
@@ -103,17 +109,20 @@ type xtoolRunOptions struct {
 	noLogs   bool
 }
 
-func parseRunArgs(args []string) ([]string, bool) {
-	noLogs := false
+func parseRunArgs(args []string) ([]string, runOptions) {
+	opts := runOptions{}
 	filtered := make([]string, 0, len(args))
 	for _, arg := range args {
-		if arg == "--no-logs" {
-			noLogs = true
-			continue
+		switch arg {
+		case "--no-logs":
+			opts.noLogs = true
+		case "--no-fetch":
+			opts.noFetch = true
+		default:
+			filtered = append(filtered, arg)
 		}
-		filtered = append(filtered, arg)
 	}
-	return filtered, noLogs
+	return filtered, opts
 }
 
 func parseIOSRunArgs(args []string) iosRunOptions {
@@ -147,8 +156,8 @@ func parseIOSRunArgs(args []string) iosRunOptions {
 }
 
 // runAndroid builds, installs, and runs on Android.
-func runAndroid(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLogs bool) error {
-	if err := buildAndroid(ws, false); err != nil {
+func runAndroid(ws *workspace.Workspace, cfg *config.Resolved, args []string, opts runOptions) error {
+	if err := buildAndroid(ws, androidBuildOptions{buildOptions: buildOptions{noFetch: opts.noFetch}, release: false}); err != nil {
 		return err
 	}
 
@@ -187,7 +196,7 @@ func runAndroid(ws *workspace.Workspace, cfg *config.Resolved, args []string, no
 	fmt.Println("Application running!")
 	fmt.Println()
 
-	if !noLogs {
+	if !opts.noLogs {
 		if err := logAndroid(); err != nil {
 			return err
 		}
@@ -197,25 +206,25 @@ func runAndroid(ws *workspace.Workspace, cfg *config.Resolved, args []string, no
 }
 
 // runIOS builds and runs on iOS simulator or physical device.
-func runIOS(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLogs bool) error {
+func runIOS(ws *workspace.Workspace, cfg *config.Resolved, args []string, opts runOptions) error {
 	if runtime.GOOS != "darwin" {
 		return fmt.Errorf("iOS development requires macOS")
 	}
 
-	opts := parseIOSRunArgs(args)
-	if noLogs {
-		opts.noLogs = true
+	iosOpts := parseIOSRunArgs(args)
+	if opts.noLogs {
+		iosOpts.noLogs = true
 	}
 
-	if opts.device {
-		return runIOSDevice(ws, cfg, opts)
+	if iosOpts.device {
+		return runIOSDevice(ws, cfg, iosOpts, opts.noFetch)
 	}
-	return runIOSSimulator(ws, cfg, opts)
+	return runIOSSimulator(ws, cfg, iosOpts, opts.noFetch)
 }
 
 // runIOSSimulator builds and runs on iOS simulator.
-func runIOSSimulator(ws *workspace.Workspace, cfg *config.Resolved, opts iosRunOptions) error {
-	buildOpts := iosBuildOptions{release: false, device: false}
+func runIOSSimulator(ws *workspace.Workspace, cfg *config.Resolved, opts iosRunOptions, noFetch bool) error {
+	buildOpts := iosBuildOptions{buildOptions: buildOptions{noFetch: noFetch}, release: false, device: false}
 	if err := buildIOS(ws, buildOpts); err != nil {
 		return err
 	}
@@ -290,13 +299,13 @@ func runIOSSimulator(ws *workspace.Workspace, cfg *config.Resolved, opts iosRunO
 }
 
 // runIOSDevice builds and runs on a physical iOS device.
-func runIOSDevice(ws *workspace.Workspace, cfg *config.Resolved, opts iosRunOptions) error {
+func runIOSDevice(ws *workspace.Workspace, cfg *config.Resolved, opts iosRunOptions, noFetch bool) error {
 	// Check for ios-deploy
 	if _, err := exec.LookPath("ios-deploy"); err != nil {
 		return fmt.Errorf("ios-deploy not found; install with: brew install ios-deploy")
 	}
 
-	buildOpts := iosBuildOptions{release: false, device: true, teamID: opts.teamID}
+	buildOpts := iosBuildOptions{buildOptions: buildOptions{noFetch: noFetch}, release: false, device: true, teamID: opts.teamID}
 	if err := buildIOS(ws, buildOpts); err != nil {
 		return err
 	}
@@ -375,14 +384,14 @@ func parseXtoolRunArgs(args []string) xtoolRunOptions {
 }
 
 // runXtool builds and runs on iOS device using xtool (no Xcode required).
-func runXtool(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLogs bool) error {
-	opts := parseXtoolRunArgs(args)
-	if noLogs {
-		opts.noLogs = true
+func runXtool(ws *workspace.Workspace, cfg *config.Resolved, args []string, opts runOptions) error {
+	xtoolOpts := parseXtoolRunArgs(args)
+	if opts.noLogs {
+		xtoolOpts.noLogs = true
 	}
 
 	// Build the app first
-	buildOpts := xtoolBuildOptions{release: false, device: true}
+	buildOpts := xtoolBuildOptions{buildOptions: buildOptions{noFetch: opts.noFetch}, release: false, device: true}
 	if err := buildXtool(ws, buildOpts); err != nil {
 		return err
 	}
@@ -398,8 +407,8 @@ func runXtool(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLo
 	}
 
 	runArgs := []string{"dev", "run"}
-	if opts.deviceID != "" {
-		runArgs = append(runArgs, "--device", opts.deviceID)
+	if xtoolOpts.deviceID != "" {
+		runArgs = append(runArgs, "--device", xtoolOpts.deviceID)
 	}
 
 	cmd := exec.Command(xtoolPath, runArgs...)
@@ -417,7 +426,7 @@ func runXtool(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLo
 	fmt.Println()
 
 	// Stream logs if requested
-	if !opts.noLogs {
+	if !xtoolOpts.noLogs {
 		idevicesyslog, err := exec.LookPath("idevicesyslog")
 		if err != nil {
 			fmt.Println("Note: idevicesyslog not found, cannot stream logs")
@@ -429,8 +438,8 @@ func runXtool(ws *workspace.Workspace, cfg *config.Resolved, args []string, noLo
 		fmt.Println()
 
 		logArgs := []string{"--match", cfg.AppID}
-		if opts.deviceID != "" {
-			logArgs = append([]string{"-u", opts.deviceID}, logArgs...)
+		if xtoolOpts.deviceID != "" {
+			logArgs = append([]string{"-u", xtoolOpts.deviceID}, logArgs...)
 		}
 
 		cmd = exec.Command(idevicesyslog, logArgs...)
