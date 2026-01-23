@@ -270,11 +270,30 @@ func (c *SkiaCanvas) DrawText(layout *TextLayout, position Offset) {
 		centerY = float32(payload.center.Y + position.Y)
 		gradientRadius = float32(payload.radius)
 	}
+	shadow := layout.Style.Shadow
 	for i, line := range layout.Lines {
 		if line.Text == "" {
 			continue
 		}
 		baseline := position.Y + layout.Ascent + float64(i)*lineHeight
+
+		// Draw shadow first if present
+		if shadow != nil {
+			skia.CanvasDrawTextShadow(
+				c.canvas,
+				line.Text,
+				layout.Style.FontFamily,
+				float32(position.X+shadow.Offset.X),
+				float32(baseline+shadow.Offset.Y),
+				float32(fontSize),
+				uint32(shadow.Color),
+				float32(shadow.Sigma()),
+				int(layout.Style.FontWeight),
+				int(layout.Style.FontStyle),
+			)
+		}
+
+		// Draw foreground text
 		if hasGradient {
 			skia.CanvasDrawTextGradient(
 				c.canvas,

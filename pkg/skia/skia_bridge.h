@@ -203,6 +203,7 @@ void drift_skia_canvas_draw_text_gradient(
     int count
 );
 void drift_skia_canvas_draw_text(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t argb, int weight, int style);
+void drift_skia_canvas_draw_text_shadow(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t color, float sigma, int weight, int style);
 void drift_skia_canvas_draw_image_rgba(DriftSkiaCanvas canvas, const uint8_t* pixels, int width, int height, int stride, float x, float y);
 int drift_skia_register_font(const char* name, const uint8_t* data, int length);
 int drift_skia_measure_text(const char* text, const char* family, float size, int weight, int style, float* width);

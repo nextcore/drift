@@ -415,6 +415,18 @@ func CanvasDrawText(canvas unsafe.Pointer, text, family string, x, y, size float
 	C.drift_skia_canvas_draw_text(C.DriftSkiaCanvas(canvas), cstr, cfamily, C.float(x), C.float(y), C.float(size), C.uint(argb), C.int(weight), C.int(style))
 }
 
+// CanvasDrawTextShadow draws UTF-8 text with an optional blur mask filter for shadow effects.
+func CanvasDrawTextShadow(canvas unsafe.Pointer, text, family string, x, y, size float32, color uint32, sigma float32, weight int, style int) {
+	cstr := C.CString(text)
+	defer C.free(unsafe.Pointer(cstr))
+	var cfamily *C.char
+	if family != "" {
+		cfamily = C.CString(family)
+		defer C.free(unsafe.Pointer(cfamily))
+	}
+	C.drift_skia_canvas_draw_text_shadow(C.DriftSkiaCanvas(canvas), cstr, cfamily, C.float(x), C.float(y), C.float(size), C.uint(color), C.float(sigma), C.int(weight), C.int(style))
+}
+
 // CanvasDrawImageRGBA draws an RGBA image at the provided offset.
 func CanvasDrawImageRGBA(canvas unsafe.Pointer, pixels []uint8, width, height, stride int, x, y float32) {
 	if len(pixels) == 0 {

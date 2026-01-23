@@ -142,11 +142,18 @@ func (r *renderText) Paint(ctx *layout.PaintContext) {
 	if r.layout == nil {
 		return
 	}
-	ctx.Canvas.Save()
-	size := r.Size()
-	ctx.Canvas.ClipRect(rendering.Rect{Left: 0, Top: 0, Right: size.Width, Bottom: size.Height})
+	// NOTE: No clipping here (matches Flutter's Clip.none default) so text shadows
+	// can paint outside bounds. This means all text can overflow, not just shadows.
+	// If overflow becomes an issue, consider conditional clipping:
+	//
+	//   if r.layout.Style.Shadow == nil {
+	//       ctx.Canvas.Save()
+	//       size := r.Size()
+	//       ctx.Canvas.ClipRect(rendering.Rect{Left: 0, Top: 0, Right: size.Width, Bottom: size.Height})
+	//       defer ctx.Canvas.Restore()
+	//   }
+	//
 	ctx.Canvas.DrawText(r.layout, rendering.Offset{})
-	ctx.Canvas.Restore()
 }
 
 func (r *renderText) HitTest(position rendering.Offset, result *layout.HitTestResult) bool {

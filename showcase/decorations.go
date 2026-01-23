@@ -197,6 +197,47 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 				},
 			},
 		},
+		widgets.VSpace(24),
+		sectionTitle("Text Shadows", colors),
+		widgets.VSpace(12),
+		widgets.TextOf("Drop shadows for text elements.", labelStyle(colors)),
+		widgets.VSpace(16),
+		widgets.ColumnOf(
+			widgets.MainAxisAlignmentStart,
+			widgets.CrossAxisAlignmentStart,
+			widgets.MainAxisSizeMin,
+			widgets.TextOf("Hard Shadow", rendering.TextStyle{
+				Color:      colors.OnSurface,
+				FontSize:   24,
+				FontWeight: rendering.FontWeightBold,
+				Shadow: &rendering.TextShadow{
+					Color:  colors.Primary.WithAlpha(80),
+					Offset: rendering.Offset{X: 2, Y: 2},
+				},
+			}),
+			widgets.VSpace(16),
+			widgets.TextOf("Soft Shadow", rendering.TextStyle{
+				Color:      colors.OnSurface,
+				FontSize:   24,
+				FontWeight: rendering.FontWeightBold,
+				Shadow: &rendering.TextShadow{
+					Color:      colors.Primary.WithAlpha(100),
+					Offset:     rendering.Offset{X: 2, Y: 3},
+					BlurRadius: 4,
+				},
+			}),
+			widgets.VSpace(16),
+			widgets.TextOf("Glow Effect", rendering.TextStyle{
+				Color:      colors.Primary,
+				FontSize:   24,
+				FontWeight: rendering.FontWeightBold,
+				Shadow: &rendering.TextShadow{
+					Color:      colors.SurfaceTint.WithAlpha(200),
+					Offset:     rendering.Offset{X: 0, Y: 0},
+					BlurRadius: 8,
+				},
+			}),
+		),
 		widgets.VSpace(40),
 	)
 }

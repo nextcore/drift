@@ -64,3 +64,29 @@ func BoxShadowElevation(level int, color Color) *BoxShadow {
 		BlurStyle:  BlurStyleNormal,
 	}
 }
+
+// TextShadow defines a shadow to draw behind text.
+type TextShadow struct {
+	Color      Color
+	Offset     Offset
+	BlurRadius float64 // sigma = blurRadius * 0.5, 0 = hard shadow
+}
+
+// Sigma returns the blur sigma for Skia's mask filter.
+// Returns 0 if BlurRadius is zero or negative.
+func (s TextShadow) Sigma() float64 {
+	if s.BlurRadius <= 0 {
+		return 0
+	}
+	return s.BlurRadius * 0.5
+}
+
+// NewTextShadow creates a simple text shadow with the given color and blur radius.
+// Offset defaults to (0, 2) for a subtle downward shadow.
+func NewTextShadow(color Color, blurRadius float64) *TextShadow {
+	return &TextShadow{
+		Color:      color,
+		Offset:     Offset{X: 0, Y: 2},
+		BlurRadius: blurRadius,
+	}
+}

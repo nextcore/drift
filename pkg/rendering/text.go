@@ -45,6 +45,7 @@ type TextStyle struct {
 	FontWeight         FontWeight
 	FontStyle          FontStyle
 	PreserveWhitespace bool
+	Shadow             *TextShadow
 }
 
 // TextLine represents a single laid-out line of text.

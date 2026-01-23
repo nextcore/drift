@@ -746,6 +746,29 @@ void drift_skia_canvas_draw_text(DriftSkiaCanvas canvas, const char* text, const
     );
 }
 
+void drift_skia_canvas_draw_text_shadow(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t color, float sigma, int weight, int style) {
+    if (!canvas || !text) {
+        return;
+    }
+    SkFont font = make_font(family, size, weight, style);
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(to_sk_color(color));
+    if (sigma > 0) {
+        paint.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, sigma));
+    }
+
+    reinterpret_cast<SkCanvas*>(canvas)->drawSimpleText(
+        text,
+        std::strlen(text),
+        SkTextEncoding::kUTF8,
+        x,
+        y,
+        font,
+        paint
+    );
+}
+
 int drift_skia_register_font(const char* name, const uint8_t* data, int length) {
     return register_font(name, data, length) ? 1 : 0;
 }
