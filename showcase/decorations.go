@@ -81,6 +81,122 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 				},
 			},
 		},
+		widgets.VSpace(24),
+		sectionTitle("Drop Shadows", colors),
+		widgets.VSpace(12),
+		widgets.TextOf("Material elevation levels 1-5 using BoxShadowElevation.", labelStyle(colors)),
+		widgets.VSpace(16),
+		widgets.RowOf(
+			widgets.MainAxisAlignmentStart,
+			widgets.CrossAxisAlignmentCenter,
+			widgets.MainAxisSizeMin,
+			widgets.DecoratedBox{
+				Color:        colors.SurfaceVariant,
+				BorderRadius: 12,
+				Shadow:       rendering.BoxShadowElevation(1, colors.SurfaceTint.WithAlpha(80)),
+				ChildWidget: widgets.SizedBox{
+					Width:  72,
+					Height: 72,
+					ChildWidget: widgets.Center{
+						ChildWidget: widgets.TextOf("1", rendering.TextStyle{
+							Color:    colors.OnSurface,
+							FontSize: 14,
+						}),
+					},
+				},
+			},
+			widgets.HSpace(16),
+			widgets.DecoratedBox{
+				Color:        colors.SurfaceVariant,
+				BorderRadius: 12,
+				Shadow:       rendering.BoxShadowElevation(2, colors.SurfaceTint.WithAlpha(80)),
+				ChildWidget: widgets.SizedBox{
+					Width:  72,
+					Height: 72,
+					ChildWidget: widgets.Center{
+						ChildWidget: widgets.TextOf("2", rendering.TextStyle{
+							Color:    colors.OnSurface,
+							FontSize: 14,
+						}),
+					},
+				},
+			},
+			widgets.HSpace(16),
+			widgets.DecoratedBox{
+				Color:        colors.SurfaceVariant,
+				BorderRadius: 12,
+				Shadow:       rendering.BoxShadowElevation(3, colors.SurfaceTint.WithAlpha(80)),
+				ChildWidget: widgets.SizedBox{
+					Width:  72,
+					Height: 72,
+					ChildWidget: widgets.Center{
+						ChildWidget: widgets.TextOf("3", rendering.TextStyle{
+							Color:    colors.OnSurface,
+							FontSize: 14,
+						}),
+					},
+				},
+			},
+			widgets.HSpace(16),
+			widgets.DecoratedBox{
+				Color:        colors.SurfaceVariant,
+				BorderRadius: 12,
+				Shadow:       rendering.BoxShadowElevation(5, colors.SurfaceTint.WithAlpha(80)),
+				ChildWidget: widgets.SizedBox{
+					Width:  72,
+					Height: 72,
+					ChildWidget: widgets.Center{
+						ChildWidget: widgets.TextOf("5", rendering.TextStyle{
+							Color:    colors.OnSurface,
+							FontSize: 14,
+						}),
+					},
+				},
+			},
+		),
+		widgets.VSpace(24),
+		sectionTitle("Backdrop Blur", colors),
+		widgets.VSpace(12),
+		widgets.TextOf("Frosted glass effect over content.", labelStyle(colors)),
+		widgets.VSpace(16),
+		widgets.SizedBox{
+			Width:  280,
+			Height: 160,
+			ChildWidget: widgets.Stack{
+				ChildrenWidgets: []core.Widget{
+					widgets.ClipRRect{
+						Radius: 16,
+						ChildWidget: widgets.Image{
+							Source: logo,
+							Width:  280,
+							Height: 160,
+							Fit:    widgets.ImageFitCover,
+						},
+					},
+					widgets.Positioned{
+						Left:   widgets.Ptr(40),
+						Top:    widgets.Ptr(40),
+						Right:  widgets.Ptr(40),
+						Bottom: widgets.Ptr(40),
+						ChildWidget: widgets.ClipRRect{
+							Radius: 12,
+							ChildWidget: widgets.NewBackdropFilter(10,
+								widgets.DecoratedBox{
+									Color: rendering.RGBA(255, 255, 255, 77),
+									ChildWidget: widgets.Center{
+										ChildWidget: widgets.TextOf("Frosted Glass", rendering.TextStyle{
+											Color:      rendering.RGBA(10, 10, 10, 90),
+											FontSize:   14,
+											FontWeight: rendering.FontWeightBold,
+										}),
+									},
+								},
+							),
+						},
+					},
+				},
+			},
+		},
 		widgets.VSpace(40),
 	)
 }

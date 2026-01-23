@@ -571,3 +571,51 @@ func CanvasDrawPath(canvas unsafe.Pointer, path *Path, argb uint32, style int32,
 	}
 	C.drift_skia_canvas_draw_path(C.DriftSkiaCanvas(canvas), path.ptr, C.uint(argb), C.int(style), C.float(strokeWidth), boolToInt(aa))
 }
+
+// CanvasDrawRectShadow draws a shadow behind a rectangle.
+func CanvasDrawRectShadow(
+	canvas unsafe.Pointer,
+	left, top, right, bottom float32,
+	color uint32,
+	sigma float32,
+	dx, dy float32,
+	spread float32,
+	blurStyle int32,
+) {
+	C.drift_skia_canvas_draw_rect_shadow(
+		C.DriftSkiaCanvas(canvas),
+		C.float(left), C.float(top), C.float(right), C.float(bottom),
+		C.uint(color), C.float(sigma), C.float(dx), C.float(dy), C.float(spread), C.int(blurStyle),
+	)
+}
+
+// CanvasDrawRRectShadow draws a shadow behind a rounded rectangle.
+func CanvasDrawRRectShadow(
+	canvas unsafe.Pointer,
+	left, top, right, bottom float32,
+	rx1, ry1, rx2, ry2, rx3, ry3, rx4, ry4 float32,
+	color uint32,
+	sigma float32,
+	dx, dy float32,
+	spread float32,
+	blurStyle int32,
+) {
+	C.drift_skia_canvas_draw_rrect_shadow(
+		C.DriftSkiaCanvas(canvas),
+		C.float(left), C.float(top), C.float(right), C.float(bottom),
+		C.float(rx1), C.float(ry1),
+		C.float(rx2), C.float(ry2),
+		C.float(rx3), C.float(ry3),
+		C.float(rx4), C.float(ry4),
+		C.uint(color), C.float(sigma), C.float(dx), C.float(dy), C.float(spread), C.int(blurStyle),
+	)
+}
+
+// CanvasSaveLayerBlur saves a layer with a backdrop blur effect.
+func CanvasSaveLayerBlur(canvas unsafe.Pointer, left, top, right, bottom, sigmaX, sigmaY float32) {
+	C.drift_skia_canvas_save_layer_blur(
+		C.DriftSkiaCanvas(canvas),
+		C.float(left), C.float(top), C.float(right), C.float(bottom),
+		C.float(sigmaX), C.float(sigmaY),
+	)
+}

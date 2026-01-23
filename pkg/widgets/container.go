@@ -15,6 +15,7 @@ type Container struct {
 	Color       rendering.Color
 	Gradient    *rendering.Gradient
 	Alignment   layout.Alignment
+	Shadow      *rendering.BoxShadow
 }
 
 func (c Container) CreateElement() core.Element {
@@ -37,6 +38,7 @@ func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject
 		color:     c.Color,
 		gradient:  c.Gradient,
 		alignment: c.Alignment,
+		shadow:    c.Shadow,
 	}
 	box.SetSelf(box)
 	return box
@@ -50,6 +52,7 @@ func (c Container) UpdateRenderObject(ctx core.BuildContext, renderObject layout
 		box.color = c.Color
 		box.gradient = c.Gradient
 		box.alignment = c.Alignment
+		box.shadow = c.Shadow
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 	}
@@ -64,6 +67,7 @@ type renderContainer struct {
 	color     rendering.Color
 	gradient  *rendering.Gradient
 	alignment layout.Alignment
+	shadow    *rendering.BoxShadow
 }
 
 func (r *renderContainer) SetChild(child layout.RenderObject) {
@@ -124,14 +128,15 @@ func (r *renderContainer) Layout(constraints layout.Constraints) {
 }
 
 func (r *renderContainer) Paint(ctx *layout.PaintContext) {
+	rect := rendering.RectFromLTWH(0, 0, r.Size().Width, r.Size().Height)
+	if r.shadow != nil {
+		ctx.Canvas.DrawRectShadow(rect, *r.shadow)
+	}
 	if r.color != rendering.ColorTransparent || r.gradient != nil {
 		paint := rendering.DefaultPaint()
 		paint.Color = r.color
 		paint.Gradient = r.gradient
-		ctx.Canvas.DrawRect(
-			rendering.RectFromLTWH(0, 0, r.Size().Width, r.Size().Height),
-			paint,
-		)
+		ctx.Canvas.DrawRect(rect, paint)
 	}
 	if r.child != nil {
 		ctx.PaintChild(r.child, getChildOffset(r.child))

@@ -14,6 +14,7 @@ type DecoratedBox struct {
 	BorderColor  rendering.Color
 	BorderWidth  float64
 	BorderRadius float64
+	Shadow       *rendering.BoxShadow
 }
 
 func (d DecoratedBox) CreateElement() core.Element {
@@ -39,6 +40,7 @@ func (d DecoratedBox) CreateRenderObject(ctx core.BuildContext) layout.RenderObj
 		borderColor:  d.BorderColor,
 		borderWidth:  d.BorderWidth,
 		borderRadius: d.BorderRadius,
+		shadow:       d.Shadow,
 	}
 	box.SetSelf(box)
 	return box
@@ -55,6 +57,7 @@ func (d DecoratedBox) UpdateRenderObject(ctx core.BuildContext, renderObject lay
 		box.borderColor = d.BorderColor
 		box.borderWidth = d.BorderWidth
 		box.borderRadius = d.BorderRadius
+		box.shadow = d.Shadow
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 	}
@@ -68,6 +71,7 @@ type renderDecoratedBox struct {
 	borderColor  rendering.Color
 	borderWidth  float64
 	borderRadius float64
+	shadow       *rendering.BoxShadow
 }
 
 func (r *renderDecoratedBox) SetChild(child layout.RenderObject) {
@@ -98,6 +102,9 @@ func (r *renderDecoratedBox) Paint(ctx *layout.PaintContext) {
 		return
 	}
 	rect := rendering.RectFromLTWH(0, 0, size.Width, size.Height)
+	if r.shadow != nil {
+		r.drawShadow(ctx, rect, *r.shadow)
+	}
 	if r.color != rendering.ColorTransparent || r.gradient != nil {
 		paint := rendering.DefaultPaint()
 		paint.Color = r.color
@@ -134,4 +141,13 @@ func (r *renderDecoratedBox) drawShape(ctx *layout.PaintContext, rect rendering.
 		return
 	}
 	ctx.Canvas.DrawRect(rect, paint)
+}
+
+func (r *renderDecoratedBox) drawShadow(ctx *layout.PaintContext, rect rendering.Rect, shadow rendering.BoxShadow) {
+	if r.borderRadius > 0 {
+		rrect := rendering.RRectFromRectAndRadius(rect, rendering.CircularRadius(r.borderRadius))
+		ctx.Canvas.DrawRRectShadow(rrect, shadow)
+		return
+	}
+	ctx.Canvas.DrawRectShadow(rect, shadow)
 }

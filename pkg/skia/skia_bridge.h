@@ -217,6 +217,23 @@ void drift_skia_path_cubic_to(DriftSkiaPath path, float x1, float y1, float x2, 
 void drift_skia_path_close(DriftSkiaPath path);
 void drift_skia_canvas_draw_path(DriftSkiaCanvas canvas, DriftSkiaPath path, uint32_t argb, int style, float stroke_width, int aa);
 
+void drift_skia_canvas_draw_rect_shadow(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    uint32_t color, float sigma, float dx, float dy, float spread, int blur_style
+);
+void drift_skia_canvas_draw_rrect_shadow(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    float rx1, float ry1, float rx2, float ry2, float rx3, float ry3, float rx4, float ry4,
+    uint32_t color, float sigma, float dx, float dy, float spread, int blur_style
+);
+void drift_skia_canvas_save_layer_blur(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    float sigma_x, float sigma_y
+);
+
 #ifdef __cplusplus
 }
 #endif

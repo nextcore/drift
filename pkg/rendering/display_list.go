@@ -130,6 +130,18 @@ func (c *recordingCanvas) DrawPath(path *Path, paint Paint) {
 	c.recorder.append(opPath{path: path, paint: paint})
 }
 
+func (c *recordingCanvas) DrawRectShadow(rect Rect, shadow BoxShadow) {
+	c.recorder.append(opRectShadow{rect: rect, shadow: shadow})
+}
+
+func (c *recordingCanvas) DrawRRectShadow(rrect RRect, shadow BoxShadow) {
+	c.recorder.append(opRRectShadow{rrect: rrect, shadow: shadow})
+}
+
+func (c *recordingCanvas) SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64) {
+	c.recorder.append(opSaveLayerBlur{bounds: bounds, sigmaX: sigmaX, sigmaY: sigmaY})
+}
+
 func (c *recordingCanvas) Size() Size {
 	return c.size
 }
@@ -265,4 +277,32 @@ type opPath struct {
 
 func (op opPath) execute(canvas Canvas) {
 	canvas.DrawPath(op.path, op.paint)
+}
+
+type opRectShadow struct {
+	rect   Rect
+	shadow BoxShadow
+}
+
+func (op opRectShadow) execute(canvas Canvas) {
+	canvas.DrawRectShadow(op.rect, op.shadow)
+}
+
+type opRRectShadow struct {
+	rrect  RRect
+	shadow BoxShadow
+}
+
+func (op opRRectShadow) execute(canvas Canvas) {
+	canvas.DrawRRectShadow(op.rrect, op.shadow)
+}
+
+type opSaveLayerBlur struct {
+	bounds Rect
+	sigmaX float64
+	sigmaY float64
+}
+
+func (op opSaveLayerBlur) execute(canvas Canvas) {
+	canvas.SaveLayerBlur(op.bounds, op.sigmaX, op.sigmaY)
 }

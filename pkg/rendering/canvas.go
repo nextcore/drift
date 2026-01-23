@@ -53,6 +53,17 @@ type Canvas interface {
 	// DrawPath draws a path with the provided paint.
 	DrawPath(path *Path, paint Paint)
 
+	// DrawRectShadow draws a shadow behind a rectangle.
+	DrawRectShadow(rect Rect, shadow BoxShadow)
+
+	// DrawRRectShadow draws a shadow behind a rounded rectangle.
+	DrawRRectShadow(rrect RRect, shadow BoxShadow)
+
+	// SaveLayerBlur saves a layer with a backdrop blur effect.
+	// Content drawn before this call will be blurred within the bounds.
+	// Call Restore() to apply the blur and pop the layer.
+	SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64)
+
 	// Size returns the size of the canvas in pixels.
 	Size() Size
 }

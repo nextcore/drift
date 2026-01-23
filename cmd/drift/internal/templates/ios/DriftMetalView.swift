@@ -155,7 +155,7 @@ final class DriftMetalView: UIView {
     /// Sets up:
     ///   - device: The Metal device for creating resources
     ///   - pixelFormat: RGBA8 to match Go engine output
-    ///   - framebufferOnly: true to enable fast render targets
+    ///   - framebufferOnly: false to allow texture reads (needed for backdrop blur)
     ///   - contentScaleFactor: Matches screen scale for Retina support
     private func configureLayer() {
         // Use the same Metal device as the renderer for resource sharing.
@@ -165,8 +165,9 @@ final class DriftMetalView: UIView {
         // Unorm means unsigned normalized (0.0-1.0 range).
         metalLayer.pixelFormat = .rgba8Unorm
 
-        // Allow only rendering to the drawable for best performance.
-        metalLayer.framebufferOnly = true
+        // Allow texture reads for backdrop blur and other effects.
+        // Setting to false matches Flutter/Impeller behavior.
+        metalLayer.framebufferOnly = false
 
         // Use triple buffering for smoother frame pacing.
         // Default is 2, but 3 gives more headroom for GPU/CPU overlap.

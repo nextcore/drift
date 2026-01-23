@@ -24,6 +24,11 @@ func (c Color) RGBAF() (r, g, b, a float64) {
 		float64(uint8(c>>24)) / maxByte
 }
 
+// WithAlpha returns a copy of the color with the given alpha (0-255).
+func (c Color) WithAlpha(a uint8) Color {
+	return Color(uint32(a)<<24 | uint32(c)&0x00FFFFFF)
+}
+
 // Common colors.
 var (
 	ColorTransparent = Color(0x00000000)

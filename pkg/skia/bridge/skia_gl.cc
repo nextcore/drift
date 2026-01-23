@@ -27,9 +27,12 @@
 #include "core/SkImageInfo.h"
 #include "core/SkPaint.h"
 #include "effects/SkGradient.h"
+#include "core/SkBlurTypes.h"
+#include "core/SkMaskFilter.h"
 #include "core/SkRRect.h"
 #include "core/SkScalar.h"
 #include "core/SkSurface.h"
+#include "effects/SkImageFilters.h"
 #include "core/SkSurfaceProps.h"
 #include "core/SkTypeface.h"
 #include "core/SkFontMgr.h"
@@ -888,6 +891,107 @@ void drift_skia_canvas_draw_path(DriftSkiaCanvas canvas, DriftSkiaPath path, uin
     }
     SkPaint paint = make_paint(argb, style, stroke_width, aa);
     reinterpret_cast<SkCanvas*>(canvas)->drawPath(drift_skia_path_snapshot(path), paint);
+}
+
+void drift_skia_canvas_draw_rect_shadow(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    uint32_t color, float sigma, float dx, float dy, float spread, int blur_style
+) {
+    if (!canvas) {
+        return;
+    }
+    if (spread < 0) spread = 0;
+    SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(to_sk_color(color));
+    if (sigma > 0) {
+        SkBlurStyle skStyle;
+        switch (blur_style) {
+            case 1: skStyle = kSolid_SkBlurStyle; break;
+            case 2: skStyle = kOuter_SkBlurStyle; break;
+            case 3: skStyle = kInner_SkBlurStyle; break;
+            default: skStyle = kNormal_SkBlurStyle; break;
+        }
+        paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
+    }
+    auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
+    sk_canvas->save();
+    sk_canvas->translate(dx, dy);
+    sk_canvas->drawRect(rect, paint);
+    sk_canvas->restore();
+}
+
+void drift_skia_canvas_draw_rrect_shadow(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    float rx1, float ry1, float rx2, float ry2, float rx3, float ry3, float rx4, float ry4,
+    uint32_t color, float sigma, float dx, float dy, float spread, int blur_style
+) {
+    if (!canvas) {
+        return;
+    }
+    if (spread < 0) spread = 0;
+    SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
+    SkVector radii[4] = {
+        {rx1 + spread, ry1 + spread},
+        {rx2 + spread, ry2 + spread},
+        {rx3 + spread, ry3 + spread},
+        {rx4 + spread, ry4 + spread}
+    };
+    SkRRect rrect;
+    rrect.setRectRadii(rect, radii);
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(to_sk_color(color));
+    if (sigma > 0) {
+        SkBlurStyle skStyle;
+        switch (blur_style) {
+            case 1: skStyle = kSolid_SkBlurStyle; break;
+            case 2: skStyle = kOuter_SkBlurStyle; break;
+            case 3: skStyle = kInner_SkBlurStyle; break;
+            default: skStyle = kNormal_SkBlurStyle; break;
+        }
+        paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
+    }
+    auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
+    sk_canvas->save();
+    sk_canvas->translate(dx, dy);
+    sk_canvas->drawRRect(rrect, paint);
+    sk_canvas->restore();
+}
+
+void drift_skia_canvas_save_layer_blur(
+    DriftSkiaCanvas canvas,
+    float l, float t, float r, float b,
+    float sigma_x, float sigma_y
+) {
+    if (!canvas) {
+        return;
+    }
+    auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
+    SkRect bounds = SkRect::MakeLTRB(l, t, r, b);
+
+    // Skip blur if sigma is negligible
+    if (sigma_x < 0.5f && sigma_y < 0.5f) {
+        sk_canvas->saveLayer(&bounds, nullptr);
+        return;
+    }
+
+    // kDecal avoids edge artifacts for bounded blur
+    auto blur = SkImageFilters::Blur(sigma_x, sigma_y, SkTileMode::kDecal, nullptr);
+    if (!blur) {
+        sk_canvas->saveLayer(&bounds, nullptr);
+        return;
+    }
+
+    // fBackdrop applies blur to existing content (the backdrop)
+    // Note: kInitWithPrevious is implicit when fBackdrop is set
+    SkCanvas::SaveLayerRec rec;
+    rec.fBounds = &bounds;
+    rec.fBackdrop = blur.get();
+    sk_canvas->saveLayer(rec);
 }
 
 }  // extern "C"

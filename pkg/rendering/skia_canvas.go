@@ -396,6 +396,58 @@ func (c *SkiaCanvas) DrawPath(path *Path, paint Paint) {
 	)
 }
 
+func (c *SkiaCanvas) DrawRectShadow(rect Rect, shadow BoxShadow) {
+	skia.CanvasDrawRectShadow(
+		c.canvas,
+		float32(rect.Left),
+		float32(rect.Top),
+		float32(rect.Right),
+		float32(rect.Bottom),
+		uint32(shadow.Color),
+		float32(shadow.Sigma()),
+		float32(shadow.Offset.X),
+		float32(shadow.Offset.Y),
+		float32(shadow.Spread),
+		int32(shadow.BlurStyle),
+	)
+}
+
+func (c *SkiaCanvas) DrawRRectShadow(rrect RRect, shadow BoxShadow) {
+	skia.CanvasDrawRRectShadow(
+		c.canvas,
+		float32(rrect.Rect.Left),
+		float32(rrect.Rect.Top),
+		float32(rrect.Rect.Right),
+		float32(rrect.Rect.Bottom),
+		float32(rrect.TopLeft.X),
+		float32(rrect.TopLeft.Y),
+		float32(rrect.TopRight.X),
+		float32(rrect.TopRight.Y),
+		float32(rrect.BottomRight.X),
+		float32(rrect.BottomRight.Y),
+		float32(rrect.BottomLeft.X),
+		float32(rrect.BottomLeft.Y),
+		uint32(shadow.Color),
+		float32(shadow.Sigma()),
+		float32(shadow.Offset.X),
+		float32(shadow.Offset.Y),
+		float32(shadow.Spread),
+		int32(shadow.BlurStyle),
+	)
+}
+
+func (c *SkiaCanvas) SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64) {
+	skia.CanvasSaveLayerBlur(
+		c.canvas,
+		float32(bounds.Left),
+		float32(bounds.Top),
+		float32(bounds.Right),
+		float32(bounds.Bottom),
+		float32(sigmaX),
+		float32(sigmaY),
+	)
+}
+
 func (c *SkiaCanvas) Size() Size {
 	return c.size
 }
