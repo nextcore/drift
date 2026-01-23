@@ -72,7 +72,6 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			KeyboardType: platform.KeyboardTypeText,
 			InputAction:  platform.TextInputActionNext,
 			Autocorrect:  false,
-			Enabled:      true,
 			BorderRadius: 8,
 		},
 		widgets.VSpace(16),
@@ -85,7 +84,6 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			KeyboardType: platform.KeyboardTypeEmail,
 			InputAction:  platform.TextInputActionNext,
 			Autocorrect:  false,
-			Enabled:      true,
 			BorderRadius: 8,
 		},
 		widgets.VSpace(16),
@@ -100,7 +98,6 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			KeyboardType: platform.KeyboardTypePassword,
 			InputAction:  platform.TextInputActionDone,
 			Obscure:      true,
-			Enabled:      true,
 			BorderRadius: 8,
 			OnSubmitted: func(text string) {
 				s.handleSubmit()
@@ -119,7 +116,6 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			KeyboardType:    platform.KeyboardTypeText,
 			InputAction:     platform.TextInputActionDone,
 			Autocorrect:     true,
-			Enabled:         true,
 			Height:          48,
 			BorderRadius:    8,
 			BackgroundColor: colors.Surface,

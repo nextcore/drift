@@ -34,8 +34,8 @@ type TextField struct {
 	OnSubmitted func(string)
 	// OnEditingComplete is called when editing is complete.
 	OnEditingComplete func()
-	// Enabled controls whether the field accepts input.
-	Enabled bool
+	// Disabled controls whether the field rejects input.
+	Disabled bool
 	// Width of the text field (0 = expand to fill).
 	Width float64
 	// Height of the text field.
@@ -133,7 +133,7 @@ func (t TextField) Build(ctx core.BuildContext) core.Widget {
 		OnChanged:         t.OnChanged,
 		OnSubmitted:       t.OnSubmitted,
 		OnEditingComplete: t.OnEditingComplete,
-		Enabled:           t.Enabled,
+		Disabled:          t.Disabled,
 		Width:             t.Width,
 		Height:            height,
 		Padding:           padding,

@@ -45,8 +45,8 @@ type NativeTextField struct {
 	// OnEditingComplete is called when editing is complete.
 	OnEditingComplete func()
 
-	// Enabled controls whether the field accepts input.
-	Enabled bool
+	// Disabled controls whether the field rejects input.
+	Disabled bool
 
 	// Width of the text field (0 = expand to fill).
 	Width float64
@@ -300,7 +300,7 @@ func (s *nativeTextFieldState) focus(target any) {
 	}
 
 	w := s.element.Widget().(NativeTextField)
-	if !w.Enabled {
+	if w.Disabled {
 		return
 	}
 
@@ -561,7 +561,7 @@ func (r *renderNativeTextField) DescribeSemanticsConfiguration(config *semantics
 	// Check if enabled via the state's widget config
 	if r.state != nil && r.state.element != nil {
 		if w, ok := r.state.element.Widget().(NativeTextField); ok {
-			if w.Enabled {
+			if !w.Disabled {
 				flags = flags.Set(semantics.SemanticsIsEnabled)
 			}
 			if w.Obscure {
