@@ -348,7 +348,6 @@ func (s *nativeTextFieldState) unfocus() {
 	s.focused = false
 
 	if s.connection != nil {
-		s.connection.Hide()
 		s.connection.Close()
 		s.connection = nil
 	}

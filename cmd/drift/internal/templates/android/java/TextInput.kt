@@ -147,6 +147,7 @@ class TextInputConnection(
 ) {
     private var editText: EditText? = null
     private var isUpdatingState = false
+    private var isKeyboardShown = false
 
     fun show() {
         hostView.post {
@@ -159,25 +160,31 @@ class TextInputConnection(
                 et.requestFocus()
                 val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(et, InputMethodManager.SHOW_IMPLICIT)
+                isKeyboardShown = true
             }
         }
     }
 
     fun hide() {
         hostView.post {
+            if (!isKeyboardShown) return@post
             editText?.let { et ->
                 val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.hideSoftInputFromWindow(et.windowToken, 0)
                 et.clearFocus()
             }
+            isKeyboardShown = false
         }
     }
 
     fun close() {
         hostView.post {
             editText?.let { et ->
-                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(et.windowToken, 0)
+                if (isKeyboardShown) {
+                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(et.windowToken, 0)
+                    isKeyboardShown = false
+                }
                 hostView.removeView(et)
             }
             editText = null
