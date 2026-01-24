@@ -1,0 +1,142 @@
+/**
+ * Custom CSS for Drift documentation site.
+ * Colors based on the Drift logo: Cyan (#2FF9EE) and Magenta (#EE1782)
+ */
+
+:root {
+  --ifm-color-primary: #EE1782;
+  --ifm-color-primary-dark: #d61474;
+  --ifm-color-primary-darker: #c9126d;
+  --ifm-color-primary-darkest: #a60f5a;
+  --ifm-color-primary-light: #f02e8f;
+  --ifm-color-primary-lighter: #f13b96;
+  --ifm-color-primary-lightest: #f45eaa;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(238, 23, 130, 0.1);
+  --drift-cyan: #2FF9EE;
+  --drift-magenta: #EE1782;
+  --ifm-font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --ifm-heading-font-family: var(--ifm-font-family-base);
+  --ifm-navbar-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #2FF9EE;
+  --ifm-color-primary-dark: #10f8eb;
+  --ifm-color-primary-darker: #08f5e8;
+  --ifm-color-primary-darkest: #06ccc1;
+  --ifm-color-primary-light: #4efaf1;
+  --ifm-color-primary-lighter: #5cfaf2;
+  --ifm-color-primary-lightest: #8afcf6;
+  --docusaurus-highlighted-code-line-bg: rgba(47, 249, 238, 0.15);
+  --ifm-background-color: #0f0f0f;
+  --ifm-background-surface-color: #1a1a1a;
+}
+
+/* Better code blocks */
+.theme-code-block {
+  border-radius: 8px;
+}
+
+/* Hero section styling */
+.hero--primary {
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero--primary::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(238, 23, 130, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.hero--primary::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: 20%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(47, 249, 238, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.hero__subtitle {
+  font-size: 1.5rem;
+  opacity: 0.7;
+  font-weight: 400;
+  color: #fff;
+  margin-bottom: 2rem;
+}
+
+/* Button styling */
+.hero--primary .button--secondary {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  padding: 0.875rem 2rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.hero--primary .button--secondary:hover {
+  background: var(--drift-cyan);
+  color: #0a0a0a;
+  border-color: var(--drift-cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(47, 249, 238, 0.5);
+}
+
+.button--secondary {
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  transition: all 0.2s ease;
+}
+
+/* Navbar styling */
+.navbar {
+  backdrop-filter: blur(8px);
+}
+
+.navbar__title {
+  font-weight: 700;
+}
+
+/* Logo glow in dark mode */
+[data-theme='dark'] .navbar__logo img {
+  filter: drop-shadow(0 0 6px rgba(47, 249, 238, 0.4));
+}
+
+/* Mobile sidebar - ensure full height on all pages */
+.navbar-sidebar {
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+
+.navbar.navbar-sidebar--show {
+  height: 100vh !important;
+  height: 100dvh !important;
+}
+
+/* Footer styling */
+.footer--dark {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+}
+
+/* Links */
+a:hover {
+  text-decoration: none;
+}
+
+/* Sidebar */
+.menu__link--active {
+  font-weight: 600;
+}

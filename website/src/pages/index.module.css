@@ -1,0 +1,62 @@
+.heroBanner {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.alphaBanner {
+  margin-bottom: 60px;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, rgba(238, 23, 130, 0.3) 0%, rgba(47, 249, 238, 0.3) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 100px;
+  backdrop-filter: blur(4px);
+}
+
+.heroBanner :global(.container) {
+  margin: auto;
+}
+
+.heroFeature {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: -0.5rem;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+.heroLogo {
+  width: 380px;
+  max-width: 85vw;
+  height: auto;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 0 60px rgba(47, 249, 238, 0.5)) drop-shadow(0 0 120px rgba(238, 23, 130, 0.4));
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+@media (max-width: 600px) {
+  .buttons {
+    flex-direction: column;
+    width: 100%;
+    padding: 0 1rem;
+  }
+
+  .buttons :global(.button) {
+    width: 100%;
+  }
+}

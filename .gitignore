@@ -82,3 +82,12 @@ Thumbs.db
 # Debug
 *.log
 *.prof
+
+# Documentation site
+website/node_modules/
+website/docs/
+website/build/
+website/.docusaurus/
+website/versioned_docs/
+website/versioned_sidebars/
+website/versions.json
