@@ -29,14 +29,21 @@ func NewInheritedElement(widget InheritedWidget, owner *BuildOwner) *InheritedEl
 }
 
 func (e *InheritedElement) Mount(parent Element, slot any) {
+	e.MountWithSelf(parent, slot, e)
+}
+
+// MountWithSelf allows a wrapper element to specify itself as the parent for children.
+func (e *InheritedElement) MountWithSelf(parent Element, slot any, self Element) {
 	e.parent = parent
 	e.slot = slot
+	e.self = self // Use provided self for parent references
 	if parent != nil {
 		e.depth = parent.Depth() + 1
 	}
+	e.renderParent = e.findRenderParent()
 	e.mounted = true
 	e.dirty = true
-	e.RebuildIfNeeded()
+	e.rebuildWithSelf(self)
 }
 
 func (e *InheritedElement) Update(newWidget Widget) {
@@ -80,13 +87,22 @@ func (e *InheritedElement) Unmount() {
 }
 
 func (e *InheritedElement) RebuildIfNeeded() {
+	e.RebuildIfNeededWithSelf(e)
+}
+
+// RebuildIfNeededWithSelf allows a wrapper element to specify itself as the parent.
+func (e *InheritedElement) RebuildIfNeededWithSelf(self Element) {
+	e.rebuildWithSelf(self)
+}
+
+func (e *InheritedElement) rebuildWithSelf(self Element) {
 	if !e.dirty || !e.mounted {
 		return
 	}
 	e.dirty = false
 	inherited := e.widget.(InheritedWidget)
 	childWidget := inherited.Child()
-	e.child = updateChild(e.child, childWidget, e, e.buildOwner)
+	e.child = updateChild(e.child, childWidget, self, e.buildOwner)
 }
 
 func (e *InheritedElement) VisitChildren(visitor func(Element) bool) {

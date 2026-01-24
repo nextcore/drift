@@ -105,6 +105,25 @@ func SetBackgroundColor(color rendering.Color) {
 	backgroundColor.Store(uint32(color))
 }
 
+// RestartApp unmounts the entire widget tree and re-mounts from scratch.
+// Use this for recovery from catastrophic errors. All state will be lost.
+// This is safe to call from any goroutine.
+func RestartApp() {
+	// Dispatch runs inside Paint() which already holds frameLock,
+	// so we don't need to acquire it here.
+	Dispatch(func() {
+		// Unmount existing tree
+		if app.root != nil {
+			app.root.Unmount()
+			app.root = nil
+		}
+		app.rootRender = nil
+
+		// Next frame will re-mount the userApp
+		app.pendingFrameRequest.Store(true)
+	})
+}
+
 type appRunner struct {
 	buildOwner          *core.BuildOwner
 	root                core.Element
@@ -130,6 +149,8 @@ func init() {
 	backgroundColor.Store(uint32(rendering.RGB(0, 0, 0)))
 	// Register dispatch function for platform package
 	platform.RegisterDispatch(Dispatch)
+	// Register RestartApp for error widget
+	widgets.RegisterRestartAppFn(RestartApp)
 }
 
 func newAppRunner() *appRunner {

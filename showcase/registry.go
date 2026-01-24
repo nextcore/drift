@@ -26,6 +26,7 @@ var demos = []Demo{
 	{"/webview", "WebView", "Embedded native browser view", buildWebViewPage},
 	{"/notifications", "Notifications", "Permissions and local alerts", buildNotificationsPage},
 	{"/animations", "Animations", "Implicit animations for smooth UI", buildAnimationsPage},
+	{"/error-boundaries", "Error Boundaries", "Graceful error handling in widgets", buildErrorBoundariesPage},
 }
 
 // demosWithTheming returns demos plus theming page (which needs isDark state).

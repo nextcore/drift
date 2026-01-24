@@ -44,3 +44,14 @@ func (h *LogHandler) HandlePanic(err *PanicError) {
 		fmt.Fprintf(os.Stderr, "Stack trace:\n%s\n", err.StackTrace)
 	}
 }
+
+// HandleBuildError logs a BuildError to stderr.
+func (h *LogHandler) HandleBuildError(err *BuildError) {
+	if err == nil {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[drift build error] %s\n", err.Error())
+	if h.Verbose && err.StackTrace != "" {
+		fmt.Fprintf(os.Stderr, "Stack trace:\n%s\n", err.StackTrace)
+	}
+}

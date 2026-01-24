@@ -46,6 +46,7 @@ func TestErrorKindString(t *testing.T) {
 		{KindInit, "init"},
 		{KindRender, "render"},
 		{KindPanic, "panic"},
+		{KindBuild, "build"},
 	}
 	for _, tt := range tests {
 		if got := tt.kind.String(); got != tt.want {
@@ -194,9 +195,77 @@ func TestSetHandlerNil(t *testing.T) {
 	}
 }
 
+func TestBuildErrorString(t *testing.T) {
+	// Test with panic value
+	err := &BuildError{
+		Widget:    "*widgets.Counter",
+		Element:   "*core.StatefulElement",
+		Recovered: "nil pointer dereference",
+		Timestamp: time.Now(),
+	}
+	got := err.Error()
+	want := "panic in *widgets.Counter.Build(): nil pointer dereference"
+	if got != want {
+		t.Errorf("BuildError.Error() = %q, want %q", got, want)
+	}
+
+	// Test with error
+	err2 := &BuildError{
+		Widget:    "*widgets.Counter",
+		Element:   "*core.StatefulElement",
+		Err:       &ParseError{Channel: "test", DataType: "Test", Got: nil},
+		Timestamp: time.Now(),
+	}
+	got2 := err2.Error()
+	if !contains(got2, "error in *widgets.Counter.Build()") {
+		t.Errorf("BuildError.Error() = %q, should contain 'error in'", got2)
+	}
+
+	// Test unknown error
+	err3 := &BuildError{
+		Widget:  "*widgets.Counter",
+		Element: "*core.StatefulElement",
+	}
+	got3 := err3.Error()
+	want3 := "unknown error in *widgets.Counter.Build()"
+	if got3 != want3 {
+		t.Errorf("BuildError.Error() = %q, want %q", got3, want3)
+	}
+}
+
+func TestReportBuildError(t *testing.T) {
+	var capturedErr *BuildError
+	handler := &testHandler{
+		onBuildError: func(err *BuildError) {
+			capturedErr = err
+		},
+	}
+
+	oldHandler := DefaultHandler
+	SetHandler(handler)
+	defer SetHandler(oldHandler)
+
+	ReportBuildError(&BuildError{
+		Widget:    "*widgets.Test",
+		Element:   "*core.StatelessElement",
+		Recovered: "test panic",
+	})
+
+	if capturedErr == nil {
+		t.Error("expected build error to be captured")
+	}
+	if capturedErr.Widget != "*widgets.Test" {
+		t.Errorf("Widget = %q, want %q", capturedErr.Widget, "*widgets.Test")
+	}
+	if capturedErr.Timestamp.IsZero() {
+		t.Error("expected Timestamp to be set")
+	}
+}
+
 type testHandler struct {
-	onError func(*DriftError)
-	onPanic func(*PanicError)
+	onError      func(*DriftError)
+	onPanic      func(*PanicError)
+	onBuildError func(*BuildError)
 }
 
 func (h *testHandler) HandleError(err *DriftError) {
@@ -208,6 +277,12 @@ func (h *testHandler) HandleError(err *DriftError) {
 func (h *testHandler) HandlePanic(err *PanicError) {
 	if h.onPanic != nil {
 		h.onPanic(err)
+	}
+}
+
+func (h *testHandler) HandleBuildError(err *BuildError) {
+	if h.onBuildError != nil {
+		h.onBuildError(err)
 	}
 }
 

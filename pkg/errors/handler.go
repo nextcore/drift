@@ -58,6 +58,19 @@ func ReportPanic(err *PanicError) {
 	}
 }
 
+// ReportBuildError sends a build error to the global handler.
+func ReportBuildError(err *BuildError) {
+	if err == nil {
+		return
+	}
+	if err.Timestamp.IsZero() {
+		err.Timestamp = time.Now()
+	}
+	if h := getHandler(); h != nil {
+		h.HandleBuildError(err)
+	}
+}
+
 // Recover is a helper for deferred panic recovery.
 // Usage: defer errors.Recover("operation.name")
 func Recover(op string) {

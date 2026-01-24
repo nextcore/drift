@@ -22,6 +22,8 @@ const (
 	KindRender
 	// KindPanic indicates a recovered panic.
 	KindPanic
+	// KindBuild indicates a build-time widget error.
+	KindBuild
 )
 
 func (k ErrorKind) String() string {
@@ -36,6 +38,8 @@ func (k ErrorKind) String() string {
 		return "render"
 	case KindPanic:
 		return "panic"
+	case KindBuild:
+		return "build"
 	default:
 		return "unknown"
 	}
@@ -101,10 +105,42 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("failed to parse %s from channel %s: got %T", e.DataType, e.Channel, e.Got)
 }
 
+// BuildError represents a failure during widget build.
+type BuildError struct {
+	// Widget is the type name of the widget that failed.
+	Widget string
+	// Element is the element type (StatelessElement, StatefulElement, etc.).
+	Element string
+	// Recovered is the panic value (nil for regular errors).
+	Recovered any
+	// Err is the underlying error (nil for panics).
+	Err error
+	// StackTrace contains the call stack at the time of the error.
+	StackTrace string
+	// Timestamp is when the error occurred.
+	Timestamp time.Time
+}
+
+func (e *BuildError) Error() string {
+	if e.Recovered != nil {
+		return fmt.Sprintf("panic in %s.Build(): %v", e.Widget, e.Recovered)
+	}
+	if e.Err != nil {
+		return fmt.Sprintf("error in %s.Build(): %v", e.Widget, e.Err)
+	}
+	return fmt.Sprintf("unknown error in %s.Build()", e.Widget)
+}
+
+func (e *BuildError) Unwrap() error {
+	return e.Err
+}
+
 // ErrorHandler receives errors reported by the Drift framework.
 type ErrorHandler interface {
 	// HandleError is called when an error occurs.
 	HandleError(err *DriftError)
 	// HandlePanic is called when a panic is recovered.
 	HandlePanic(err *PanicError)
+	// HandleBuildError is called when a widget build fails.
+	HandleBuildError(err *BuildError)
 }
