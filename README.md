@@ -163,8 +163,9 @@ drift run xtool
 #### Core Framework
 - [x] Widget architecture - StatelessWidget, StatefulWidget, InheritedWidget patterns
 - [x] Element tree - Efficient build/rebuild system with dirty tracking
+- [x] Error boundaries - Scoped build error recovery with fallback widgets
 - [x] Dependency tracking - Granular aspect-based tracking for inherited widgets
-- [x] Render tree - Constraint-based layout with RenderObjects
+- [x] Render tree - Constraint-based layout with RenderObjects and slot-based reconciliation
 - [x] Build context - Tree traversal and dependency injection
 
 #### Widgets
@@ -262,7 +263,7 @@ drift run xtool
 - [ ] API stability - Finalize public API surface and deprecation policy
 - [ ] Comprehensive documentation - API reference, tutorials, migration guides
 - [ ] Testing framework - Widget testing utilities and golden tests
-- [ ] Error boundaries - Graceful error handling in widget tree
+- [x] Error boundaries - Graceful error handling in widget tree
 - [ ] Hot reload - Development-time code reloading
 
 #### Should Have
