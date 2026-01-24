@@ -40,3 +40,29 @@ func (p *PaintContext) PaintChild(child RenderBox, offset rendering.Offset) {
 	child.Paint(p)
 	p.Canvas.Restore()
 }
+
+// PaintChildWithLayer paints a child, using its cached layer if available.
+func (p *PaintContext) PaintChildWithLayer(child RenderBox, offset rendering.Offset) {
+	if child == nil {
+		return
+	}
+
+	p.Canvas.Save()
+	p.Canvas.Translate(offset.X, offset.Y)
+
+	// Use cached layer if child is a repaint boundary with valid cache
+	if boundary, ok := child.(interface {
+		IsRepaintBoundary() bool
+		Layer() *rendering.DisplayList
+		NeedsPaint() bool
+	}); ok && boundary.IsRepaintBoundary() {
+		if layer := boundary.Layer(); layer != nil && !boundary.NeedsPaint() {
+			layer.Paint(p.Canvas)
+			p.Canvas.Restore()
+			return
+		}
+	}
+
+	child.Paint(p)
+	p.Canvas.Restore()
+}

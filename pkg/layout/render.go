@@ -16,6 +16,7 @@ type RenderObject interface {
 	MarkNeedsLayout()
 	MarkNeedsPaint()
 	SetOwner(owner *PipelineOwner)
+	IsRepaintBoundary() bool
 }
 
 // SemanticsDescriber is implemented by render objects that provide semantic information.
@@ -60,11 +61,14 @@ type RenderBoxBase struct {
 	parentData       any
 	owner            *PipelineOwner
 	self             RenderObject
-	parent           RenderObject // parent reference for tree walking
-	depth            int          // tree depth (root = 0)
-	relayoutBoundary RenderObject // cached nearest relayout boundary
-	needsLayout      bool         // local dirty flag
-	constraints      Constraints  // last received constraints
+	parent           RenderObject           // parent reference for tree walking
+	depth            int                    // tree depth (root = 0)
+	relayoutBoundary RenderObject           // cached nearest relayout boundary
+	needsLayout      bool                   // local dirty flag
+	constraints      Constraints            // last received constraints
+	repaintBoundary  RenderObject           // cached nearest repaint boundary
+	needsPaint       bool                   // local dirty flag for paint
+	layer            *rendering.DisplayList // cached paint output for boundaries
 }
 
 // Size returns the current size of the render box.
@@ -126,11 +130,40 @@ func (r *RenderBoxBase) MarkNeedsLayout() {
 	r.owner.ScheduleLayout(r.self)
 }
 
-// MarkNeedsPaint schedules this render box for painting.
+// MarkNeedsPaint marks this render box as needing paint.
+//
+// This follows Flutter's repaint boundary pattern: when a node needs paint,
+// we walk up the tree until we reach a repaint boundary.
+// The boundary then gets scheduled for paint.
+//
+// Note: Unlike MarkNeedsLayout, we don't early-return when needsPaint is true.
+// This is because SetSelf() pre-sets needsPaint=true without scheduling, and
+// SchedulePaint() already handles deduplication internally.
 func (r *RenderBoxBase) MarkNeedsPaint() {
-	if r.owner != nil && r.self != nil {
-		r.owner.SchedulePaint(r.self)
+	r.layer = nil // Always invalidate cached layer
+
+	if r.owner == nil || r.self == nil {
+		r.needsPaint = true
+		return
 	}
+
+	// If we are a repaint boundary, schedule ourselves
+	if r.repaintBoundary == r.self {
+		r.needsPaint = true
+		r.owner.SchedulePaint(r.self) // SchedulePaint handles deduplication
+		return
+	}
+
+	// Walk up to parent. This continues until hitting a boundary.
+	if r.parent != nil {
+		r.needsPaint = true
+		r.parent.MarkNeedsPaint()
+		return
+	}
+
+	// No parent and not a boundary - schedule self
+	r.needsPaint = true
+	r.owner.SchedulePaint(r.self)
 }
 
 // SetOwner assigns the pipeline owner for scheduling layout and paint.
@@ -142,6 +175,7 @@ func (r *RenderBoxBase) SetOwner(owner *PipelineOwner) {
 func (r *RenderBoxBase) SetSelf(self RenderObject) {
 	r.self = self
 	r.needsLayout = true // New render objects always need initial layout
+	r.needsPaint = true  // New render objects always need initial paint
 }
 
 // Parent returns the parent render object.
@@ -168,6 +202,9 @@ func (r *RenderBoxBase) SetParent(parent RenderObject) {
 	r.relayoutBoundary = nil
 	r.constraints = Constraints{}
 	r.needsLayout = true
+	r.repaintBoundary = nil
+	r.needsPaint = true
+	r.layer = nil
 }
 
 // Depth returns the tree depth (root = 0).
@@ -188,6 +225,37 @@ func (r *RenderBoxBase) NeedsLayout() bool {
 // Constraints returns the last received constraints.
 func (r *RenderBoxBase) Constraints() Constraints {
 	return r.constraints
+}
+
+// IsRepaintBoundary returns whether this render object repaints separately.
+// Override this in render objects that should isolate their paint.
+func (r *RenderBoxBase) IsRepaintBoundary() bool {
+	return false
+}
+
+// RepaintBoundary returns the cached nearest repaint boundary.
+func (r *RenderBoxBase) RepaintBoundary() RenderObject {
+	return r.repaintBoundary
+}
+
+// NeedsPaint returns true if this render box needs painting.
+func (r *RenderBoxBase) NeedsPaint() bool {
+	return r.needsPaint
+}
+
+// Layer returns the cached display list for repaint boundaries.
+func (r *RenderBoxBase) Layer() *rendering.DisplayList {
+	return r.layer
+}
+
+// SetLayer stores the cached display list.
+func (r *RenderBoxBase) SetLayer(list *rendering.DisplayList) {
+	r.layer = list
+}
+
+// ClearNeedsPaint marks this render object as painted.
+func (r *RenderBoxBase) ClearNeedsPaint() {
+	r.needsPaint = false
 }
 
 // Layout handles boundary determination and delegates to PerformLayout.
@@ -217,6 +285,15 @@ func (r *RenderBoxBase) Layout(constraints Constraints, parentUsesSize bool) {
 		// Inherit boundary from parent
 		if getter, ok := r.parent.(interface{ RelayoutBoundary() RenderObject }); ok {
 			r.relayoutBoundary = getter.RelayoutBoundary()
+		}
+	}
+
+	// Determine repaint boundary (inherited unless explicit)
+	if r.self != nil && r.self.IsRepaintBoundary() {
+		r.repaintBoundary = r.self
+	} else if r.parent != nil {
+		if getter, ok := r.parent.(interface{ RepaintBoundary() RenderObject }); ok {
+			r.repaintBoundary = getter.RepaintBoundary()
 		}
 	}
 

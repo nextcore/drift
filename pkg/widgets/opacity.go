@@ -55,6 +55,11 @@ type renderOpacity struct {
 	opacity float64
 }
 
+// IsRepaintBoundary returns true when opacity uses SaveLayerAlpha.
+func (r *renderOpacity) IsRepaintBoundary() bool {
+	return r.opacity > 0 && r.opacity < 1
+}
+
 func (r *renderOpacity) SetChild(child layout.RenderObject) {
 	setParentOnChild(r.child, nil)
 	r.child = setChildFromRenderObject(child)

@@ -10,8 +10,8 @@ import "slices"
 // propagates from the root (or scheduled boundaries) down through all marked
 // nodes.
 type PipelineOwner struct {
-	dirtyLayout    []RenderObject          // boundaries needing layout, processed depth-first
-	dirtyLayoutSet map[RenderObject]bool   // O(1) dedup check
+	dirtyLayout    []RenderObject        // boundaries needing layout, processed depth-first
+	dirtyLayoutSet map[RenderObject]bool // O(1) dedup check
 	dirtyPaint     map[RenderObject]struct{}
 	needsLayout    bool
 	needsPaint     bool
@@ -143,10 +143,36 @@ func getDepth(obj RenderObject) int {
 	return 0
 }
 
-// FlushPaint clears the dirty paint list.
-func (p *PipelineOwner) FlushPaint() {
+// FlushPaint processes dirty repaint boundaries in depth order.
+// Returns boundaries that need repainting (parents first).
+func (p *PipelineOwner) FlushPaint() []RenderObject {
+	if !p.needsPaint || len(p.dirtyPaint) == 0 {
+		p.dirtyPaint = nil
+		p.needsPaint = false
+		return nil
+	}
+
+	dirty := make([]RenderObject, 0, len(p.dirtyPaint))
+	for obj := range p.dirtyPaint {
+		dirty = append(dirty, obj)
+	}
+
+	// Sort by depth - parents first (same as flushDirtyBoundaries)
+	slices.SortFunc(dirty, func(a, b RenderObject) int {
+		return getDepth(a) - getDepth(b)
+	})
+
+	// Filter to boundaries that still need paint
+	result := make([]RenderObject, 0, len(dirty))
+	for _, node := range dirty {
+		if np, ok := node.(interface{ NeedsPaint() bool }); ok && np.NeedsPaint() {
+			result = append(result, node)
+		}
+	}
+
 	p.dirtyPaint = nil
 	p.needsPaint = false
+	return result
 }
 
 // FlushLayout clears the dirty layout list without performing layout.

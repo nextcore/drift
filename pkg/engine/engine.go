@@ -266,14 +266,18 @@ func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err err
 		// Flush semantics after layout so positions are accurate
 		flushSemanticsWithScale(a.rootRender, scale)
 
-		// Always clear and paint - with triple buffering, each drawable may contain
-		// stale content from previous frames. Skipping paint causes flicker.
+		// Process dirty repaint boundaries
+		dirtyBoundaries := pipeline.FlushPaint()
+		for _, boundary := range dirtyBoundaries {
+			paintBoundaryToLayer(boundary)
+		}
+
+		// Clear and composite tree using cached layers
 		canvas.Clear(rendering.Color(backgroundColor.Load()))
 		canvas.Save()
 		canvas.Scale(scale, scale)
-		a.rootRender.Paint(&layout.PaintContext{Canvas: canvas})
+		paintTreeWithLayers(&layout.PaintContext{Canvas: canvas}, a.rootRender, rendering.Offset{})
 		canvas.Restore()
-		pipeline.FlushPaint()
 	}
 	return nil
 }
@@ -511,4 +515,45 @@ func itoa(value int) string {
 		buf[i] = '-'
 	}
 	return string(buf[i:])
+}
+
+func paintBoundaryToLayer(boundary layout.RenderObject) {
+	size := boundary.Size()
+	recorder := &rendering.PictureRecorder{}
+	recordCanvas := recorder.BeginRecording(size)
+
+	// Paint boundary's content to recorded canvas
+	paintTreeWithLayers(&layout.PaintContext{Canvas: recordCanvas}, boundary, rendering.Offset{})
+
+	layer := recorder.EndRecording()
+
+	if setter, ok := boundary.(interface {
+		SetLayer(*rendering.DisplayList)
+		ClearNeedsPaint()
+	}); ok {
+		setter.SetLayer(layer)
+		setter.ClearNeedsPaint()
+	}
+}
+
+func paintTreeWithLayers(ctx *layout.PaintContext, node layout.RenderObject, offset rendering.Offset) {
+	ctx.Canvas.Save()
+	ctx.Canvas.Translate(offset.X, offset.Y)
+
+	// If this is a boundary with valid layer, use it
+	if boundary, ok := node.(interface {
+		IsRepaintBoundary() bool
+		Layer() *rendering.DisplayList
+		NeedsPaint() bool
+	}); ok && boundary.IsRepaintBoundary() {
+		if layer := boundary.Layer(); layer != nil && !boundary.NeedsPaint() {
+			layer.Paint(ctx.Canvas)
+			ctx.Canvas.Restore()
+			return
+		}
+	}
+
+	// Otherwise paint normally
+	node.Paint(ctx)
+	ctx.Canvas.Restore()
 }

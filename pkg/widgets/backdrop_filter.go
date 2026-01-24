@@ -60,6 +60,11 @@ type renderBackdropFilter struct {
 	sigmaY float64
 }
 
+// IsRepaintBoundary returns true - backdrop filter always uses blur layer.
+func (r *renderBackdropFilter) IsRepaintBoundary() bool {
+	return true
+}
+
 func (r *renderBackdropFilter) SetChild(child layout.RenderObject) {
 	setParentOnChild(r.child, nil)
 	r.child = setChildFromRenderObject(child)

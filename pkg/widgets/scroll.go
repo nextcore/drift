@@ -117,6 +117,11 @@ type renderScrollView struct {
 	verticalDrag   *gestures.VerticalDragGestureRecognizer
 }
 
+// IsRepaintBoundary returns true - scrolling content benefits from isolation.
+func (r *renderScrollView) IsRepaintBoundary() bool {
+	return true
+}
+
 func (r *renderScrollView) SetChild(child layout.RenderObject) {
 	setParentOnChild(r.child, nil)
 	if child == nil {
