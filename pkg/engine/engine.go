@@ -105,7 +105,6 @@ type appRunner struct {
 	root                core.Element
 	rootRender          layout.RenderObject
 	deviceScale         float64
-	safeAreaInsets      layout.EdgeInsets
 	userApp             core.Widget
 	pointerHandlers     map[int64][]layout.PointerHandler
 	pointerPositions    map[int64]rendering.Offset
@@ -120,40 +119,16 @@ type appRunner struct {
 func init() {
 	// Default background color to black
 	backgroundColor.Store(uint32(rendering.RGB(0, 0, 0)))
+	// Register dispatch function for platform package
+	platform.RegisterDispatch(Dispatch)
 }
 
 func newAppRunner() *appRunner {
-	a := &appRunner{
+	return &appRunner{
 		buildOwner:       core.NewBuildOwner(),
 		deviceScale:      1,
 		pointerHandlers:  make(map[int64][]layout.PointerHandler),
 		pointerPositions: make(map[int64]rendering.Offset),
-	}
-	a.safeAreaInsets = toLayoutEdgeInsets(platform.SafeArea.Insets())
-	platform.SafeArea.AddHandler(func(insets platform.EdgeInsets) {
-		a.setSafeAreaInsets(toLayoutEdgeInsets(insets))
-	})
-	return a
-}
-
-func toLayoutEdgeInsets(insets platform.EdgeInsets) layout.EdgeInsets {
-	return layout.EdgeInsets{
-		Top:    insets.Top,
-		Bottom: insets.Bottom,
-		Left:   insets.Left,
-		Right:  insets.Right,
-	}
-}
-
-func (a *appRunner) setSafeAreaInsets(insets layout.EdgeInsets) {
-	frameLock.Lock()
-	defer frameLock.Unlock()
-	if a.safeAreaInsets == insets {
-		return
-	}
-	a.safeAreaInsets = insets
-	if a.root != nil {
-		a.root.MarkNeedsBuild()
 	}
 }
 
@@ -435,11 +410,9 @@ func (e engineApp) Key() any {
 
 func (e engineApp) Build(ctx core.BuildContext) core.Widget {
 	scale := 1.0
-	safeAreaInsets := layout.EdgeInsets{}
 	var child core.Widget
 	if e.runner != nil {
 		scale = e.runner.deviceScale
-		safeAreaInsets = e.runner.safeAreaInsets
 		child = e.runner.userApp
 	}
 	if child == nil {
@@ -447,8 +420,7 @@ func (e engineApp) Build(ctx core.BuildContext) core.Widget {
 	}
 	return widgets.DeviceScale{
 		Scale: scale,
-		ChildWidget: widgets.SafeAreaData{
-			Insets:      safeAreaInsets,
+		ChildWidget: widgets.SafeAreaProvider{
 			ChildWidget: child,
 		},
 	}

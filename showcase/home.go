@@ -39,7 +39,7 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 	}
 
 	// ScrollView with SafeAreaPadding: content scrolls behind the status bar
-	// but starts with safe area padding plus 24px on all sides.
+	// but starts with safe area padding plus 20px on all sides.
 	return widgets.Expanded{
 		ChildWidget: widgets.NewContainer(
 			widgets.ScrollView{

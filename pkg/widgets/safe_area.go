@@ -2,9 +2,11 @@ package widgets
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/layout"
+	"github.com/go-drift/drift/pkg/platform"
 )
 
 // SafeAreaData provides safe area insets to descendants via InheritedWidget.
@@ -30,6 +32,98 @@ func (s SafeAreaData) UpdateShouldNotify(oldWidget core.InheritedWidget) bool {
 		return s.Insets != old.Insets
 	}
 	return true
+}
+
+// SafeAreaProvider is a StatefulWidget that subscribes to platform safe area changes
+// and provides SafeAreaData to descendants. This scopes rebuilds to only the provider
+// and widgets that depend on safe area data, instead of rebuilding the entire tree.
+type SafeAreaProvider struct {
+	ChildWidget core.Widget
+}
+
+func (s SafeAreaProvider) CreateElement() core.Element {
+	return core.NewStatefulElement(s, nil)
+}
+
+func (s SafeAreaProvider) Key() any {
+	return nil
+}
+
+func (s SafeAreaProvider) CreateState() core.State {
+	return &safeAreaProviderState{}
+}
+
+type safeAreaProviderState struct {
+	core.StateBase
+	insets      layout.EdgeInsets
+	unsubscribe func()
+	mu          sync.Mutex
+	pending     layout.EdgeInsets
+	hasPending  bool
+}
+
+func (s *safeAreaProviderState) InitState() {
+	// Read initial insets
+	platformInsets := platform.SafeArea.Insets()
+	s.insets = layout.EdgeInsets{
+		Top:    platformInsets.Top,
+		Bottom: platformInsets.Bottom,
+		Left:   platformInsets.Left,
+		Right:  platformInsets.Right,
+	}
+
+	// Subscribe to changes
+	s.unsubscribe = platform.SafeArea.AddHandler(s.onPlatformInsetsChanged)
+	s.OnDispose(func() {
+		if s.unsubscribe != nil {
+			s.unsubscribe()
+		}
+	})
+}
+
+func (s *safeAreaProviderState) onPlatformInsetsChanged(insets platform.EdgeInsets) {
+	newInsets := layout.EdgeInsets{
+		Top:    insets.Top,
+		Bottom: insets.Bottom,
+		Left:   insets.Left,
+		Right:  insets.Right,
+	}
+
+	// Batch rapid updates
+	s.mu.Lock()
+	s.pending = newInsets
+	shouldSchedule := !s.hasPending
+	s.hasPending = true
+	s.mu.Unlock()
+
+	if shouldSchedule {
+		if !platform.Dispatch(s.applyPendingInsets) {
+			// Dispatch not available - clear hasPending so future updates can retry
+			s.mu.Lock()
+			s.hasPending = false
+			s.mu.Unlock()
+		}
+	}
+}
+
+func (s *safeAreaProviderState) applyPendingInsets() {
+	s.mu.Lock()
+	newInsets := s.pending
+	s.hasPending = false
+	s.mu.Unlock()
+
+	if s.insets == newInsets {
+		return
+	}
+	s.SetState(func() { s.insets = newInsets })
+}
+
+func (s *safeAreaProviderState) Build(ctx core.BuildContext) core.Widget {
+	w := s.Element().Widget().(SafeAreaProvider)
+	return SafeAreaData{
+		Insets:      s.insets,
+		ChildWidget: w.ChildWidget,
+	}
 }
 
 var safeAreaDataType = reflect.TypeOf(SafeAreaData{})
