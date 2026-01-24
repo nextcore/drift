@@ -20,14 +20,15 @@ func initializeAccessibility() {
 
 // flushSemanticsWithScale rebuilds and sends the semantics tree.
 // deviceScale is used to convert logical pixels to screen pixels.
-func flushSemanticsWithScale(rootRender layout.RenderObject, deviceScale float64) {
+// dirtyBoundaries contains semantics boundaries that need update (nil means full rebuild).
+func flushSemanticsWithScale(rootRender layout.RenderObject, deviceScale float64, dirtyBoundaries []layout.RenderObject) {
 	accessibilityService.SetDeviceScale(deviceScale)
-	accessibilityService.FlushSemantics(rootRender)
+	accessibilityService.FlushSemantics(rootRender, dirtyBoundaries)
 }
 
 // flushSemantics is called from engine.go - uses default scale of 1.0
 func flushSemantics(rootRender layout.RenderObject) {
-	flushSemanticsWithScale(rootRender, 1.0)
+	flushSemanticsWithScale(rootRender, 1.0, nil)
 }
 
 // GetAccessibilityService returns the engine's accessibility service.

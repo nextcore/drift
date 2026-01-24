@@ -15,6 +15,7 @@ type RenderObject interface {
 	SetParentData(data any)
 	MarkNeedsLayout()
 	MarkNeedsPaint()
+	MarkNeedsSemanticsUpdate()
 	SetOwner(owner *PipelineOwner)
 	IsRepaintBoundary() bool
 }
@@ -24,11 +25,6 @@ type SemanticsDescriber interface {
 	// DescribeSemanticsConfiguration populates the semantic configuration for this render object.
 	// Returns true if this render object contributes semantic information.
 	DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool
-
-	// MarkNeedsSemanticsUpdate is called when semantic properties change.
-	// Note: The semantics tree is rebuilt each frame, so this is currently a no-op.
-	// It's kept for API compatibility and potential future incremental updates.
-	MarkNeedsSemanticsUpdate()
 }
 
 // RenderBox is a RenderObject with box layout.
@@ -57,18 +53,20 @@ type BoxParentData struct {
 
 // RenderBoxBase provides base behavior for render boxes.
 type RenderBoxBase struct {
-	size             rendering.Size
-	parentData       any
-	owner            *PipelineOwner
-	self             RenderObject
-	parent           RenderObject           // parent reference for tree walking
-	depth            int                    // tree depth (root = 0)
-	relayoutBoundary RenderObject           // cached nearest relayout boundary
-	needsLayout      bool                   // local dirty flag
-	constraints      Constraints            // last received constraints
-	repaintBoundary  RenderObject           // cached nearest repaint boundary
-	needsPaint       bool                   // local dirty flag for paint
-	layer            *rendering.DisplayList // cached paint output for boundaries
+	size                 rendering.Size
+	parentData           any
+	owner                *PipelineOwner
+	self                 RenderObject
+	parent               RenderObject           // parent reference for tree walking
+	depth                int                    // tree depth (root = 0)
+	relayoutBoundary     RenderObject           // cached nearest relayout boundary
+	needsLayout          bool                   // local dirty flag
+	constraints          Constraints            // last received constraints
+	repaintBoundary      RenderObject           // cached nearest repaint boundary
+	needsPaint           bool                   // local dirty flag for paint
+	layer                *rendering.DisplayList // cached paint output for boundaries
+	semanticsBoundary    RenderObject           // cached nearest semantics boundary
+	needsSemanticsUpdate bool                   // local dirty flag for semantics
 }
 
 // Size returns the current size of the render box.
@@ -174,8 +172,9 @@ func (r *RenderBoxBase) SetOwner(owner *PipelineOwner) {
 // SetSelf registers the concrete render object for scheduling.
 func (r *RenderBoxBase) SetSelf(self RenderObject) {
 	r.self = self
-	r.needsLayout = true // New render objects always need initial layout
-	r.needsPaint = true  // New render objects always need initial paint
+	r.needsLayout = true          // New render objects always need initial layout
+	r.needsPaint = true           // New render objects always need initial paint
+	r.needsSemanticsUpdate = true // New render objects always need initial semantics
 }
 
 // Parent returns the parent render object.
@@ -205,6 +204,8 @@ func (r *RenderBoxBase) SetParent(parent RenderObject) {
 	r.repaintBoundary = nil
 	r.needsPaint = true
 	r.layer = nil
+	r.semanticsBoundary = nil
+	r.needsSemanticsUpdate = true
 }
 
 // Depth returns the tree depth (root = 0).
@@ -258,6 +259,21 @@ func (r *RenderBoxBase) ClearNeedsPaint() {
 	r.needsPaint = false
 }
 
+// SemanticsBoundary returns the cached nearest semantics boundary.
+func (r *RenderBoxBase) SemanticsBoundary() RenderObject {
+	return r.semanticsBoundary
+}
+
+// NeedsSemanticsUpdate returns true if this render box needs semantics update.
+func (r *RenderBoxBase) NeedsSemanticsUpdate() bool {
+	return r.needsSemanticsUpdate
+}
+
+// ClearNeedsSemanticsUpdate marks this render object's semantics as updated.
+func (r *RenderBoxBase) ClearNeedsSemanticsUpdate() {
+	r.needsSemanticsUpdate = false
+}
+
 // Layout handles boundary determination and delegates to PerformLayout.
 //
 // This implements Flutter's relayout boundary optimization. A node becomes a
@@ -297,11 +313,41 @@ func (r *RenderBoxBase) Layout(constraints Constraints, parentUsesSize bool) {
 		}
 	}
 
+	// Determine semantics boundary
+	// A node is a semantics boundary if it creates a discrete semantic node
+	// (has IsSemanticBoundary or IsMergingSemanticsOfDescendants set, or contributes non-empty semantics)
+	//
+	// NOTE: semanticsBoundary is computed only during Layout(). If semantic properties
+	// change without triggering layout (e.g., label becomes empty), MarkNeedsSemanticsUpdate()
+	// will use stale boundary info. This is safe with the current full-rebuild approach
+	// in FlushSemantics, but would need revisiting for true incremental updates.
+	if r.self != nil {
+		isBoundary := false
+		if describer, ok := r.self.(SemanticsDescriber); ok {
+			var config semantics.SemanticsConfiguration
+			contributes := describer.DescribeSemanticsConfiguration(&config)
+			isBoundary = config.IsSemanticBoundary || config.IsMergingSemanticsOfDescendants ||
+				(contributes && !config.IsEmpty())
+		}
+		if isBoundary {
+			r.semanticsBoundary = r.self
+		} else if r.parent != nil {
+			if getter, ok := r.parent.(interface{ SemanticsBoundary() RenderObject }); ok {
+				r.semanticsBoundary = getter.SemanticsBoundary()
+			}
+		}
+	}
+
 	// Skip layout if we're clean and constraints haven't changed.
 	// This is the key optimization - unchanged subtrees don't re-layout.
 	if !r.needsLayout && r.constraints == constraints {
 		return
 	}
+
+	// Layout is happening - mark semantics dirty since positions may change.
+	// This ensures semantic rects stay in sync with visual positions after layout.
+	// ScheduleSemantics handles deduplication, so this is safe to call frequently.
+	r.MarkNeedsSemanticsUpdate()
 
 	// Store constraints and clear dirty flag before performing layout.
 	// This order matters: if PerformLayout causes a child to mark us dirty
@@ -315,11 +361,44 @@ func (r *RenderBoxBase) Layout(constraints Constraints, parentUsesSize bool) {
 	}
 }
 
-// MarkNeedsSemanticsUpdate is called when semantic properties change.
-// Note: The semantics tree is rebuilt each frame, so this is currently a no-op.
-// It's kept for API compatibility and potential future incremental updates.
+// MarkNeedsSemanticsUpdate marks this render box as needing semantics update.
+//
+// This follows Flutter's semantics boundary pattern: when a node needs semantics
+// update, we walk up the tree until we reach a semantics boundary.
+// The boundary then gets scheduled for semantics update.
+//
+// Note: Unlike MarkNeedsLayout, we don't early-return when needsSemanticsUpdate is true.
+// This is because SetSelf() and SetParent() pre-set needsSemanticsUpdate=true without
+// scheduling, and ScheduleSemantics() already handles deduplication internally.
+//
+// NOTE: This method marks needsSemanticsUpdate=true on all nodes along the path to
+// the boundary, but only the boundary is added to dirtySemantics. When FlushSemantics
+// clears flags, only boundary flags are cleared - intermediate nodes remain dirty.
+// This is harmless with the current full-rebuild approach but would need addressing
+// for true incremental updates (either clear all affected nodes, or only mark boundaries).
 func (r *RenderBoxBase) MarkNeedsSemanticsUpdate() {
-	// No-op: semantics are rebuilt every frame
+	if r.owner == nil || r.self == nil {
+		r.needsSemanticsUpdate = true
+		return
+	}
+
+	// If we are a semantics boundary, schedule ourselves
+	if r.semanticsBoundary == r.self {
+		r.needsSemanticsUpdate = true
+		r.owner.ScheduleSemantics(r.self)
+		return
+	}
+
+	// Walk up to parent
+	if r.parent != nil {
+		r.needsSemanticsUpdate = true
+		r.parent.MarkNeedsSemanticsUpdate()
+		return
+	}
+
+	// Root - schedule self
+	r.needsSemanticsUpdate = true
+	r.owner.ScheduleSemantics(r.self)
 }
 
 // DescribeSemanticsConfiguration is the default implementation that reports no semantic content.

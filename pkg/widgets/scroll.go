@@ -90,6 +90,7 @@ func (s scrollViewCore) CreateRenderObject(ctx core.BuildContext) layout.RenderO
 	scroll.SetSelf(scroll)
 	scroll.position = NewScrollPosition(controller, physics, func() {
 		scroll.MarkNeedsPaint()
+		scroll.MarkNeedsSemanticsUpdate()
 	})
 	scroll.configurePan()
 	return scroll

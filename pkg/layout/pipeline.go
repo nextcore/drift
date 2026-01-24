@@ -10,11 +10,14 @@ import "slices"
 // propagates from the root (or scheduled boundaries) down through all marked
 // nodes.
 type PipelineOwner struct {
-	dirtyLayout    []RenderObject        // boundaries needing layout, processed depth-first
-	dirtyLayoutSet map[RenderObject]bool // O(1) dedup check
-	dirtyPaint     map[RenderObject]struct{}
-	needsLayout    bool
-	needsPaint     bool
+	dirtyLayout       []RenderObject        // boundaries needing layout, processed depth-first
+	dirtyLayoutSet    map[RenderObject]bool // O(1) dedup check
+	dirtyPaint        map[RenderObject]struct{}
+	needsLayout       bool
+	needsPaint        bool
+	dirtySemantics    []RenderObject        // semantics boundaries needing update
+	dirtySemanticsSet map[RenderObject]bool // O(1) dedup check for semantics
+	needsSemantics    bool
 }
 
 // ScheduleLayout marks a relayout boundary as needing layout.
@@ -179,4 +182,50 @@ func (p *PipelineOwner) FlushPaint() []RenderObject {
 func (p *PipelineOwner) FlushLayout() {
 	p.dirtyLayout = nil
 	p.needsLayout = false
+}
+
+// ScheduleSemantics marks a semantics boundary as needing update.
+func (p *PipelineOwner) ScheduleSemantics(object RenderObject) {
+	if p.dirtySemanticsSet == nil {
+		p.dirtySemanticsSet = make(map[RenderObject]bool)
+	}
+	if p.dirtySemanticsSet[object] {
+		return
+	}
+	p.dirtySemanticsSet[object] = true
+	p.dirtySemantics = append(p.dirtySemantics, object)
+	p.needsSemantics = true
+}
+
+// NeedsSemantics reports if any render objects need semantics update.
+func (p *PipelineOwner) NeedsSemantics() bool {
+	return p.needsSemantics
+}
+
+// FlushSemantics returns dirty semantics boundaries sorted by depth.
+func (p *PipelineOwner) FlushSemantics() []RenderObject {
+	if !p.needsSemantics || len(p.dirtySemantics) == 0 {
+		p.dirtySemantics = nil
+		p.dirtySemanticsSet = nil
+		p.needsSemantics = false
+		return nil
+	}
+
+	// Sort by depth - parents first
+	slices.SortFunc(p.dirtySemantics, func(a, b RenderObject) int {
+		return getDepth(a) - getDepth(b)
+	})
+
+	// Filter to boundaries that still need update
+	result := make([]RenderObject, 0, len(p.dirtySemantics))
+	for _, node := range p.dirtySemantics {
+		if ns, ok := node.(interface{ NeedsSemanticsUpdate() bool }); ok && ns.NeedsSemanticsUpdate() {
+			result = append(result, node)
+		}
+	}
+
+	p.dirtySemantics = nil
+	p.dirtySemanticsSet = nil
+	p.needsSemantics = false
+	return result
 }

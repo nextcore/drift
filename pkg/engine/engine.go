@@ -264,7 +264,8 @@ func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err err
 		pipeline.FlushLayoutForRoot(a.rootRender, layout.Tight(logicalSize))
 
 		// Flush semantics after layout so positions are accurate
-		flushSemanticsWithScale(a.rootRender, scale)
+		dirtySemantics := pipeline.FlushSemantics()
+		flushSemanticsWithScale(a.rootRender, scale, dirtySemantics)
 
 		// Process dirty repaint boundaries
 		dirtyBoundaries := pipeline.FlushPaint()

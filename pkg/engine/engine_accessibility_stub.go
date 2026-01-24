@@ -15,7 +15,7 @@ func initializeAccessibility() {}
 func flushSemantics(rootRender layout.RenderObject) {}
 
 // flushSemanticsWithScale is a no-op on non-mobile platforms.
-func flushSemanticsWithScale(rootRender layout.RenderObject, deviceScale float64) {}
+func flushSemanticsWithScale(rootRender layout.RenderObject, deviceScale float64, dirtyBoundaries []layout.RenderObject) {}
 
 // GetAccessibilityService returns nil on non-mobile platforms.
 func GetAccessibilityService() *accessibility.Service {

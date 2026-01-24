@@ -85,7 +85,9 @@ func (s *Service) SetEnabled(enabled bool) {
 }
 
 // FlushSemantics rebuilds and sends the semantics tree.
-func (s *Service) FlushSemantics(rootRender layout.RenderObject) {
+// If dirtyBoundaries is nil or empty on first frame, does a full rebuild.
+// Otherwise, only rebuilds the dirty portions.
+func (s *Service) FlushSemantics(rootRender layout.RenderObject, dirtyBoundaries []layout.RenderObject) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,6 +99,23 @@ func (s *Service) FlushSemantics(rootRender layout.RenderObject) {
 		return
 	}
 
+	// First frame: full rebuild
+	if s.lastRoot == nil {
+		s.fullRebuild(rootRender)
+		return
+	}
+
+	// No dirty boundaries: skip entirely (nothing changed)
+	if len(dirtyBoundaries) == 0 {
+		return
+	}
+
+	// Incremental update: rebuild and clear dirty flags
+	s.incrementalUpdate(rootRender, dirtyBoundaries)
+}
+
+// fullRebuild rebuilds the entire semantics tree from scratch.
+func (s *Service) fullRebuild(rootRender layout.RenderObject) {
 	// Create synthetic root node (ID 0)
 	size := rootRender.Size()
 	syntheticRoot := semantics.NewSemanticsNodeWithID(0)
@@ -121,6 +140,22 @@ func (s *Service) FlushSemantics(rootRender layout.RenderObject) {
 	}
 
 	s.lastRoot = syntheticRoot
+}
+
+// incrementalUpdate rebuilds only the dirty portions of the semantics tree.
+func (s *Service) incrementalUpdate(rootRender layout.RenderObject, dirtyBoundaries []layout.RenderObject) {
+	// For now, fall back to full rebuild when there are dirty boundaries.
+	// This still provides the optimization of skipping entirely when nothing changed.
+	// Full incremental updates can be optimized further in the future by only
+	// rebuilding subtrees rooted at each dirty boundary.
+	s.fullRebuild(rootRender)
+
+	// Clear dirty flags on processed boundaries
+	for _, boundary := range dirtyBoundaries {
+		if clearer, ok := boundary.(interface{ ClearNeedsSemanticsUpdate() }); ok {
+			clearer.ClearNeedsSemanticsUpdate()
+		}
+	}
 }
 
 // buildFromRender recursively builds semantics nodes from render objects.
