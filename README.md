@@ -163,6 +163,7 @@ drift run xtool
 #### Core Framework
 - [x] Widget architecture - StatelessWidget, StatefulWidget, InheritedWidget patterns
 - [x] Element tree - Efficient build/rebuild system with dirty tracking
+- [x] Dependency tracking - Granular aspect-based tracking for inherited widgets
 - [x] Render tree - Constraint-based layout with RenderObjects
 - [x] Build context - Tree traversal and dependency injection
 
@@ -180,12 +181,14 @@ drift run xtool
 - [x] Alignment - EdgeInsets, Alignment, BoxParentData
 - [x] Constraints - BoxConstraints with min/max width/height
 - [x] Positioned stacking - Absolute positioning within Stack
+- [x] Relayout boundaries - Optimized layout propagation
 
 #### Rendering (Skia)
 - [x] Canvas API - DrawRect, DrawRRect, DrawOval, DrawPath, DrawText, DrawImage
 - [x] Styling - Colors, gradients, paint styles, text styling
 - [x] Geometry - Size, Offset, Rect, RRect, Path
 - [x] Canvas state - Save/Restore, clipping, transforms
+- [x] Repaint boundaries - Optimized paint propagation
 
 #### State Management
 - [x] Core patterns - StatelessWidget, StatefulWidget, InheritedWidget
@@ -241,6 +244,7 @@ drift run xtool
 - [x] Storage - File system and preferences
 - [x] System UI - Status bar and navigation bar customization
 - [x] Accessibility - TalkBack (Android) and VoiceOver (iOS) support with semantic labels
+- [x] Semantics updates - Dirty tracking for accessibility trees
 
 #### Build System
 - [x] CLI - drift build/run/clean commands
