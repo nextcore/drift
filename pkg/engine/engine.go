@@ -22,6 +22,11 @@ import (
 // backgroundColor uses atomic access to avoid deadlock when called from InitState/Build.
 var backgroundColor atomic.Uint32
 
+// semanticsDeferralTimeout is the maximum time we defer semantics flushes during animations.
+// After this timeout, we force a flush even if animations are still active to ensure
+// screen readers receive updates for accessibility compliance.
+const semanticsDeferralTimeout = 500 * time.Millisecond
+
 // frameLock protects access to shared UI state across the engine package.
 var frameLock sync.Mutex
 
@@ -114,6 +119,10 @@ type appRunner struct {
 	dispatchMu          sync.Mutex
 	dispatchQueue       []func()
 	pendingFrameRequest atomic.Bool
+
+	// Semantics deferral state for animation optimization
+	semanticsDeferred   bool      // true if we skipped a semantics flush
+	semanticsDeferredAt time.Time // when we first started deferring
 }
 
 func init() {
@@ -184,6 +193,39 @@ func (a *appRunner) requestFrameLocked() {
 	}
 }
 
+// flushSemanticsIfNeeded defers semantics updates during animations to avoid
+// expensive O(n) to O(n^2) rebuilds every frame. Screen readers don't benefit
+// from 60 updates/second mid-animation, so we defer until animations settle
+// or a 500ms timeout for accessibility compliance.
+func (a *appRunner) flushSemanticsIfNeeded(pipeline *layout.PipelineOwner, scale float64) {
+	animationActive := animation.HasActiveTickers() || widgets.HasActiveBallistics()
+
+	// Quick exit if nothing needs updating and nothing deferred
+	if !pipeline.NeedsSemantics() && !a.semanticsDeferred {
+		return
+	}
+
+	// Determine if we should flush
+	shouldFlush := !animationActive
+	if !shouldFlush && a.semanticsDeferred {
+		// Check timeout only when actively deferring during animation
+		if time.Now().Sub(a.semanticsDeferredAt) >= semanticsDeferralTimeout {
+			shouldFlush = true
+		}
+	}
+
+	if shouldFlush {
+		dirtySemantics := pipeline.FlushSemantics()
+		flushSemanticsWithScale(a.rootRender, scale, dirtySemantics)
+		a.semanticsDeferred = false
+		a.semanticsDeferredAt = time.Time{}
+	} else if !a.semanticsDeferred {
+		// Start deferring
+		a.semanticsDeferred = true
+		a.semanticsDeferredAt = time.Now()
+	}
+}
+
 func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -238,9 +280,8 @@ func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err err
 		pipeline := a.buildOwner.Pipeline()
 		pipeline.FlushLayoutForRoot(a.rootRender, layout.Tight(logicalSize))
 
-		// Flush semantics after layout so positions are accurate
-		dirtySemantics := pipeline.FlushSemantics()
-		flushSemanticsWithScale(a.rootRender, scale, dirtySemantics)
+		// Flush semantics after layout, with deferral during animations
+		a.flushSemanticsIfNeeded(pipeline, scale)
 
 		// Process dirty repaint boundaries
 		dirtyBoundaries := pipeline.FlushPaint()
