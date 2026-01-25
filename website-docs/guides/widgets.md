@@ -336,11 +336,8 @@ widgets.ScrollView{
 ### Scroll Direction
 
 ```go
-// Helper to get pointer to Axis
-horizontal := widgets.AxisHorizontal
-
 widgets.ListView{
-    ScrollDirection: &horizontal, // Pointer to Axis (nil defaults to vertical)
+    ScrollDirection: widgets.AxisHorizontal, // Defaults to vertical
     ChildrenWidgets: items,
 }
 ```

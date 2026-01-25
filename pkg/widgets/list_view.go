@@ -12,7 +12,7 @@ type ListView struct {
 	// ChildrenWidgets are the widgets to display in the list.
 	ChildrenWidgets []core.Widget
 	// ScrollDirection is the axis along which the list scrolls. Defaults to vertical.
-	ScrollDirection *Axis
+	ScrollDirection Axis
 	// Controller manages scroll position and provides scroll notifications.
 	Controller *ScrollController
 	// Physics determines how the scroll view responds to user input.
@@ -36,7 +36,7 @@ type ListViewBuilder struct {
 	// CacheExtent is the number of pixels to render beyond the visible area.
 	CacheExtent float64
 	// ScrollDirection is the axis along which the list scrolls. Defaults to vertical.
-	ScrollDirection *Axis
+	ScrollDirection Axis
 	// Controller manages scroll position and provides scroll notifications.
 	Controller *ScrollController
 	// Physics determines how the scroll view responds to user input.
@@ -58,15 +58,14 @@ func (l ListView) Key() any {
 }
 
 func (l ListView) Build(ctx core.BuildContext) core.Widget {
-	direction := l.effectiveDirection()
-	content := l.buildContent(direction)
+	content := l.buildContent()
 	if l.Padding != (layout.EdgeInsets{}) {
 		content = Padding{Padding: l.Padding, ChildWidget: content}
 	}
 
 	return ScrollView{
 		ChildWidget:     content,
-		ScrollDirection: direction,
+		ScrollDirection: l.ScrollDirection,
 		Controller:      l.Controller,
 		Physics:         l.Physics,
 	}
@@ -84,22 +83,8 @@ func (l ListViewBuilder) CreateState() core.State {
 	return &listViewBuilderState{}
 }
 
-func (l ListView) effectiveDirection() Axis {
-	if l.ScrollDirection != nil {
-		return *l.ScrollDirection
-	}
-	return AxisVertical
-}
-
-func (l ListViewBuilder) effectiveDirection() Axis {
-	if l.ScrollDirection != nil {
-		return *l.ScrollDirection
-	}
-	return AxisVertical
-}
-
-func (l ListView) buildContent(direction Axis) core.Widget {
-	if direction == AxisHorizontal {
+func (l ListView) buildContent() core.Widget {
+	if l.ScrollDirection == AxisHorizontal {
 		return Row{
 			ChildrenWidgets:   l.ChildrenWidgets,
 			MainAxisAlignment: l.MainAxisAlignment,
@@ -281,7 +266,7 @@ func (l ListViewBuilder) wrapItem(child core.Widget) core.Widget {
 	if child == nil {
 		return l.buildSpacer(l.ItemExtent)
 	}
-	if l.effectiveDirection() == AxisHorizontal {
+	if l.ScrollDirection == AxisHorizontal {
 		return SizedBox{Width: l.ItemExtent, ChildWidget: child}
 	}
 	return SizedBox{Height: l.ItemExtent, ChildWidget: child}
@@ -291,7 +276,7 @@ func (l ListViewBuilder) buildSpacer(extent float64) core.Widget {
 	if extent <= 0 {
 		return nil
 	}
-	if l.effectiveDirection() == AxisHorizontal {
+	if l.ScrollDirection == AxisHorizontal {
 		return SizedBox{Width: extent}
 	}
 	return SizedBox{Height: extent}
@@ -328,7 +313,7 @@ func (l ListViewBuilder) visibleRange(controller *ScrollController) (int, int) {
 }
 
 func (l ListViewBuilder) paddingLeading() float64 {
-	if l.effectiveDirection() == AxisHorizontal {
+	if l.ScrollDirection == AxisHorizontal {
 		return l.Padding.Left
 	}
 	return l.Padding.Top

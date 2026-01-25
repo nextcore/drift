@@ -21,7 +21,9 @@ import (
 //	    ChildWidget: ...,
 //	}
 type ScrollView struct {
-	ChildWidget     core.Widget
+	ChildWidget core.Widget
+	// ScrollDirection is the axis along which the view scrolls.
+	// Defaults to AxisVertical (the zero value).
 	ScrollDirection Axis
 	Controller      *ScrollController
 	Physics         ScrollPhysics

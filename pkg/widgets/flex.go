@@ -9,11 +9,12 @@ import (
 )
 
 // Axis represents the layout direction.
+// AxisVertical is the zero value, making it the default for ScrollDirection fields.
 type Axis int
 
 const (
-	AxisHorizontal Axis = iota
-	AxisVertical
+	AxisVertical Axis = iota
+	AxisHorizontal
 )
 
 // MainAxisAlignment controls spacing along the main axis.
