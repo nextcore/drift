@@ -240,6 +240,11 @@ object PlatformChannelManager {
         register("drift/accessibility") { method, args ->
             AccessibilityHandler.handle(context, method, args)
         }
+
+        // Secure Storage channel
+        register("drift/secure_storage") { method, args ->
+            SecureStorageHandler.handle(context, method, args)
+        }
     }
 
     private fun setupLifecycleObserver() {

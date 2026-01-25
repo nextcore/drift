@@ -307,6 +307,11 @@ final class PlatformChannelManager {
         register(channel: "drift/accessibility") { method, args in
             return AccessibilityHandler.handle(method: method, args: args)
         }
+
+        // Secure Storage channel
+        register(channel: "drift/secure_storage") { method, args in
+            return SecureStorageHandler.handle(method: method, args: args)
+        }
     }
 }
 

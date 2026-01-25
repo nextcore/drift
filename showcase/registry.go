@@ -25,6 +25,7 @@ var demos = []Demo{
 	{"/gestures", "Gestures", "Drag gestures with axis locking", buildGesturesPage},
 	{"/webview", "WebView", "Embedded native browser view", buildWebViewPage},
 	{"/notifications", "Notifications", "Permissions and local alerts", buildNotificationsPage},
+	{"/secure-storage", "Secure Storage", "Keychain and encrypted storage", buildSecureStoragePage},
 	{"/animations", "Animations", "Implicit animations for smooth UI", buildAnimationsPage},
 	{"/error-boundaries", "Error Boundaries", "Graceful error handling in widgets", buildErrorBoundariesPage},
 }
