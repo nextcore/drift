@@ -138,6 +138,7 @@ func printHelp(cmd *Command) {
 	fmt.Println()
 	fmt.Println("Environment:")
 	fmt.Println("  DRIFT_CACHE_DIR      Cache directory override (lower priority than --cache-dir)")
+	fmt.Println("  DRIFT_SKIA_DIR       Skia library base directory override (expects {platform}/{arch} structure)")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  drift build android       Build for Android")

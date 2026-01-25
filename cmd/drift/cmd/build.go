@@ -35,6 +35,9 @@ Flags:
 Skia libraries are automatically downloaded when missing. Use --no-fetch to
 disable this behavior and fail with an error instead.
 
+Set DRIFT_SKIA_DIR to use a custom Skia library location. The directory must
+contain the standard {platform}/{arch}/libdrift_skia.a structure.
+
 For xtool builds:
   drift build xtool                Build debug for device
   drift build xtool --release      Build release for device
@@ -486,6 +489,17 @@ func androidSkiaLinkerFlags(skiaDir string) string {
 }
 
 func findSkiaLib(projectRoot, platform, arch string, noFetch bool) (string, string, error) {
+	// Check DRIFT_SKIA_DIR override first (highest priority)
+	if skiaBase := os.Getenv("DRIFT_SKIA_DIR"); skiaBase != "" {
+		dir := filepath.Join(skiaBase, platform, arch)
+		lib := filepath.Join(dir, "libdrift_skia.a")
+		if _, err := os.Stat(lib); err == nil {
+			return lib, dir, nil
+		}
+		// If env var is set but path doesn't exist, give clear error
+		return "", "", fmt.Errorf("DRIFT_SKIA_DIR set to %q but library not found at %s\n\nExpected structure: %s/{platform}/{arch}/libdrift_skia.a", skiaBase, lib, skiaBase)
+	}
+
 	// Find drift module root from this source file's location
 	// build.go is at cmd/drift/cmd/build.go, so go up 3 levels
 	_, thisFile, _, _ := runtime.Caller(0)
