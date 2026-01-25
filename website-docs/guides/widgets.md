@@ -8,6 +8,42 @@ sidebar_position: 2
 
 Widgets are the building blocks of Drift applications. Everything you see on screen is a widget.
 
+## How Widgets Work
+
+Drift uses a layered architecture:
+
+- **Widgets** are immutable configuration objects. They describe what the UI should look like but don't hold state or do rendering. Widgets are cheap to create and are rebuilt frequently.
+
+- **Elements** are the mutable objects that manage the widget lifecycle. When you call `CreateElement()`, Drift creates an Element that persists across rebuilds. Elements hold references to State (for StatefulWidgets) and handle the work of updating the tree.
+
+- **RenderObjects** handle layout and painting. Most of the time you won't interact with these directly.
+
+When a rebuild happens, Drift compares the new widget tree with the existing elements to determine what changed. This is called *reconciliation*.
+
+### Keys
+
+The `Key()` method helps Drift identify widgets during reconciliation. Drift can reuse an existing element when the new widget has the same type and key as the old one.
+
+By default, widgets return `nil` for their key, and widgets of the same type are matched in order among their siblings. Provide a key when you have a dynamic collection of stateful widgets—in a `Column`, `Row`, `ListView`, or any parent with multiple children. Without keys, if you remove the first child, Drift thinks the second child became the first, the third became the second, and so on. This causes state to be associated with the wrong widgets.
+
+```go
+// A todo item with its own state (e.g., expanded/collapsed, text field content)
+type TodoItem struct {
+    ID   string
+    Text string
+}
+
+func (t TodoItem) Key() any { return t.ID }  // Track by ID, not position
+```
+
+When to use keys:
+- Dynamic children that can be added, removed, or reordered
+- Stateful widgets whose position among siblings may change
+
+When `nil` is fine:
+- Static children that never change
+- Stateless widgets (no state to preserve)
+
 ## Widget Types
 
 Drift has three types of widgets:
