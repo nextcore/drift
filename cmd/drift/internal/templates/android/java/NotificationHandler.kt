@@ -14,7 +14,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -24,7 +23,6 @@ object NotificationHandler {
     private const val defaultChannelName = "Drift Notifications"
     private const val prefsName = "drift_notifications"
     private const val scheduledKey = "scheduled_ids"
-    private const val permissionRequestCode = 45192
 
     private const val extraId = "drift_notification_id"
     private const val extraTitle = "drift_notification_title"
@@ -35,7 +33,6 @@ object NotificationHandler {
 
     fun handle(context: Context, method: String, args: Any?): Pair<Any?, Exception?> {
         return when (method) {
-            "requestPermissions" -> Pair(requestPermissions(context), null)
             "getSettings" -> Pair(getSettings(context), null)
             "schedule" -> scheduleLocal(context, args)
             "cancel" -> cancelLocal(context, args)
@@ -82,34 +79,6 @@ object NotificationHandler {
             "isRefresh" to isRefresh
         )
         PlatformChannelManager.sendEvent("drift/notifications/token", payload)
-    }
-
-    private fun requestPermissions(context: Context): Map<String, Any> {
-        val status = permissionStatus(context)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && status != "granted") {
-            val activity = PlatformChannelManager.currentActivity()
-            if (activity != null) {
-                activity.runOnUiThread {
-                    ActivityCompat.requestPermissions(
-                        activity,
-                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                        permissionRequestCode
-                    )
-                }
-                return mapOf(
-                    "status" to "not_determined",
-                    "alertsEnabled" to notificationsEnabled(context),
-                    "soundsEnabled" to notificationsEnabled(context),
-                    "badgesEnabled" to notificationsEnabled(context)
-                )
-            }
-        }
-        return mapOf(
-            "status" to status,
-            "alertsEnabled" to notificationsEnabled(context),
-            "soundsEnabled" to notificationsEnabled(context),
-            "badgesEnabled" to notificationsEnabled(context)
-        )
     }
 
     private fun getSettings(context: Context): Map<String, Any> {
@@ -284,15 +253,6 @@ object NotificationHandler {
             return if (granted) "granted" else "denied"
         }
         return if (notificationsEnabled(context)) "granted" else "denied"
-    }
-
-    fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
-        if (requestCode != permissionRequestCode) {
-            return
-        }
-        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-        val status = if (granted) "granted" else "denied"
-        PlatformChannelManager.sendEvent("drift/notifications/permission", mapOf("status" to status))
     }
 
     private fun notificationsEnabled(context: Context): Boolean {

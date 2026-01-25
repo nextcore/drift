@@ -9,25 +9,6 @@ import (
 
 var notificationService = newNotificationService()
 
-// PermissionStatus represents notification permission state.
-type PermissionStatus string
-
-const (
-	PermissionStatusGranted       PermissionStatus = "granted"
-	PermissionStatusDenied        PermissionStatus = "denied"
-	PermissionStatusProvisional   PermissionStatus = "provisional"
-	PermissionStatusNotDetermined PermissionStatus = "not_determined"
-	PermissionStatusUnknown       PermissionStatus = "unknown"
-)
-
-// PermissionOptions defines the permission capabilities to request.
-type PermissionOptions struct {
-	Alert       bool
-	Sound       bool
-	Badge       bool
-	Provisional bool
-}
-
 // NotificationRequest describes a local notification schedule request.
 type NotificationRequest struct {
 	ID              string
@@ -44,7 +25,7 @@ type NotificationRequest struct {
 
 // NotificationSettings describes the current notification settings.
 type NotificationSettings struct {
-	Status        PermissionStatus
+	Status        PermissionResult
 	AlertsEnabled bool
 	SoundsEnabled bool
 	BadgesEnabled bool
@@ -83,11 +64,6 @@ type NotificationError struct {
 	Code     string
 	Message  string
 	Platform string
-}
-
-// RequestNotificationPermissions requests notification permissions.
-func RequestNotificationPermissions(options PermissionOptions) (PermissionStatus, error) {
-	return notificationService.requestPermissions(options)
 }
 
 // GetNotificationSettings returns the current notification settings.
@@ -135,39 +111,30 @@ func NotificationErrors() <-chan NotificationError {
 	return notificationService.errorChannel()
 }
 
-// NotificationPermissionUpdates streams permission updates after a request.
-func NotificationPermissionUpdates() <-chan PermissionStatus {
-	return notificationService.permissionChannel()
-}
-
 type notificationServiceState struct {
-	channel     *MethodChannel
-	received    *EventChannel
-	opened      *EventChannel
-	permissions *EventChannel
-	tokens      *EventChannel
-	errors      *EventChannel
+	channel  *MethodChannel
+	received *EventChannel
+	opened   *EventChannel
+	tokens   *EventChannel
+	errors   *EventChannel
 
-	receivedCh    chan NotificationEvent
-	openedCh      chan NotificationOpen
-	permissionsCh chan PermissionStatus
-	tokensCh      chan DeviceToken
-	errorsCh      chan NotificationError
+	receivedCh chan NotificationEvent
+	openedCh   chan NotificationOpen
+	tokensCh   chan DeviceToken
+	errorsCh   chan NotificationError
 }
 
 func newNotificationService() *notificationServiceState {
 	service := &notificationServiceState{
-		channel:       NewMethodChannel("drift/notifications"),
-		received:      NewEventChannel("drift/notifications/received"),
-		opened:        NewEventChannel("drift/notifications/opened"),
-		permissions:   NewEventChannel("drift/notifications/permission"),
-		tokens:        NewEventChannel("drift/notifications/token"),
-		errors:        NewEventChannel("drift/notifications/error"),
-		receivedCh:    make(chan NotificationEvent, 4),
-		openedCh:      make(chan NotificationOpen, 4),
-		permissionsCh: make(chan PermissionStatus, 4),
-		tokensCh:      make(chan DeviceToken, 4),
-		errorsCh:      make(chan NotificationError, 4),
+		channel:    NewMethodChannel("drift/notifications"),
+		received:   NewEventChannel("drift/notifications/received"),
+		opened:     NewEventChannel("drift/notifications/opened"),
+		tokens:     NewEventChannel("drift/notifications/token"),
+		errors:     NewEventChannel("drift/notifications/error"),
+		receivedCh: make(chan NotificationEvent, 4),
+		openedCh:   make(chan NotificationOpen, 4),
+		tokensCh:   make(chan DeviceToken, 4),
+		errorsCh:   make(chan NotificationError, 4),
 	}
 
 	service.received.Listen(EventHandler{
@@ -220,33 +187,6 @@ func newNotificationService() *notificationServiceState {
 				Op:      "notifications.streamError",
 				Kind:    errors.KindPlatform,
 				Channel: "drift/notifications/opened",
-				Err:     err,
-			})
-		},
-	})
-	service.permissions.Listen(EventHandler{
-		OnEvent: func(data any) {
-			status, ok := parsePermissionStatusEvent(data)
-			if !ok {
-				errors.Report(&errors.DriftError{
-					Op:      "notifications.parsePermission",
-					Kind:    errors.KindParsing,
-					Channel: "drift/notifications/permission",
-					Err: &errors.ParseError{
-						Channel:  "drift/notifications/permission",
-						DataType: "PermissionStatus",
-						Got:      data,
-					},
-				})
-				return
-			}
-			service.permissionsCh <- status
-		},
-		OnError: func(err error) {
-			errors.Report(&errors.DriftError{
-				Op:      "notifications.streamError",
-				Kind:    errors.KindPlatform,
-				Channel: "drift/notifications/permission",
 				Err:     err,
 			})
 		},
@@ -309,28 +249,14 @@ func newNotificationService() *notificationServiceState {
 	return service
 }
 
-func (s *notificationServiceState) requestPermissions(options PermissionOptions) (PermissionStatus, error) {
-	result, err := s.channel.Invoke("requestPermissions", map[string]any{
-		"alert":       options.Alert,
-		"sound":       options.Sound,
-		"badge":       options.Badge,
-		"provisional": options.Provisional,
-	})
-	if err != nil {
-		return PermissionStatusUnknown, err
-	}
-	status := parsePermissionStatus(result)
-	return status, nil
-}
-
 func (s *notificationServiceState) getSettings() (NotificationSettings, error) {
 	result, err := s.channel.Invoke("getSettings", nil)
 	if err != nil {
-		return NotificationSettings{Status: PermissionStatusUnknown}, err
+		return NotificationSettings{Status: PermissionResultUnknown}, err
 	}
-	settings := NotificationSettings{Status: PermissionStatusUnknown}
+	settings := NotificationSettings{Status: PermissionResultUnknown}
 	if m, ok := result.(map[string]any); ok {
-		settings.Status = PermissionStatus(parseString(m["status"]))
+		settings.Status = PermissionResult(parseString(m["status"]))
 		settings.AlertsEnabled = parseBool(m["alertsEnabled"])
 		settings.SoundsEnabled = parseBool(m["soundsEnabled"])
 		settings.BadgesEnabled = parseBool(m["badgesEnabled"])
@@ -390,19 +316,6 @@ func (s *notificationServiceState) errorChannel() <-chan NotificationError {
 	return s.errorsCh
 }
 
-func (s *notificationServiceState) permissionChannel() <-chan PermissionStatus {
-	return s.permissionsCh
-}
-
-func parsePermissionStatus(result any) PermissionStatus {
-	if m, ok := result.(map[string]any); ok {
-		if status := parseString(m["status"]); status != "" {
-			return PermissionStatus(status)
-		}
-	}
-	return PermissionStatusUnknown
-}
-
 func parseNotificationEvent(data any) (NotificationEvent, bool) {
 	m, ok := data.(map[string]any)
 	if !ok {
@@ -431,18 +344,6 @@ func parseNotificationOpen(data any) (NotificationOpen, bool) {
 		Data:      parseMap(m["data"]),
 		Timestamp: parseTime(m["timestamp"]),
 	}, true
-}
-
-func parsePermissionStatusEvent(data any) (PermissionStatus, bool) {
-	m, ok := data.(map[string]any)
-	if !ok {
-		return PermissionStatusUnknown, false
-	}
-	status := PermissionStatus(parseString(m["status"]))
-	if status == "" {
-		return PermissionStatusUnknown, false
-	}
-	return status, true
 }
 
 func parseDeviceToken(data any) (DeviceToken, bool) {

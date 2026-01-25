@@ -582,8 +582,6 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
 
     static func handle(method: String, args: Any?) -> (Any?, Error?) {
         switch method {
-        case "requestPermissions":
-            return requestPermissions(args: args)
         case "getSettings":
             return getSettings()
         case "schedule":
@@ -597,56 +595,6 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         default:
             return (nil, NSError(domain: "Notifications", code: 404, userInfo: [NSLocalizedDescriptionKey: "Unknown method: \(method)"]))
         }
-    }
-
-    private static func requestPermissions(args: Any?) -> (Any?, Error?) {
-        let options = args as? [String: Any]
-        var authOptions: UNAuthorizationOptions = []
-        if options?["alert"] as? Bool ?? true {
-            authOptions.insert(.alert)
-        }
-        if options?["sound"] as? Bool ?? true {
-            authOptions.insert(.sound)
-        }
-        if options?["badge"] as? Bool ?? true {
-            authOptions.insert(.badge)
-        }
-        if options?["provisional"] as? Bool ?? false {
-            authOptions.insert(.provisional)
-        }
-
-        let currentStatus = authorizationStatusSync()
-        center.requestAuthorization(options: authOptions) { _, error in
-            if let error = error {
-                PlatformChannelManager.shared.sendEvent(channel: "drift/notifications/error", data: [
-                    "code": "permission_error",
-                    "message": error.localizedDescription,
-                    "platform": "ios"
-                ])
-                return
-            }
-            center.getNotificationSettings { settings in
-                let status = authorizationStatus(settings)
-                PlatformChannelManager.shared.sendEvent(channel: "drift/notifications/permission", data: [
-                    "status": status,
-                    "alertsEnabled": settings.alertSetting == .enabled,
-                    "soundsEnabled": settings.soundSetting == .enabled,
-                    "badgesEnabled": settings.badgeSetting == .enabled
-                ])
-                if status == "granted" || status == "provisional" {
-                    DispatchQueue.main.async {
-                        UIApplication.shared.registerForRemoteNotifications()
-                    }
-                }
-            }
-        }
-
-        return ([
-            "status": currentStatus,
-            "alertsEnabled": notificationsEnabledSync(),
-            "soundsEnabled": notificationsEnabledSync(),
-            "badgesEnabled": notificationsEnabledSync()
-        ], nil)
     }
 
     private static func getSettings() -> (Any?, Error?) {

@@ -74,6 +74,11 @@ object PermissionHandler {
         val activity = PlatformChannelManager.currentActivity()
             ?: return Pair(mapOf("status" to "denied"), null)
 
+        // Handle notification permission with options
+        if (permission == "notifications") {
+            return requestNotificationPermission(context, argsMap)
+        }
+
         val androidPermission = permissionMap[permission]
         if (androidPermission == null) {
             // Permission not required on this Android version
@@ -85,12 +90,47 @@ object PermissionHandler {
             return Pair(mapOf("status" to "granted"), null)
         }
 
-        // Request permission synchronously by returning current state
+        // Don't request if permanently denied - user must go to settings
+        if (currentStatus == "permanently_denied") {
+            return Pair(mapOf("status" to "permanently_denied"), null)
+        }
+
+        // Request permission on the UI thread
         // The actual permission request happens asynchronously
-        ActivityCompat.requestPermissions(activity, arrayOf(androidPermission), PERMISSION_REQUEST_CODE)
+        activity.runOnUiThread {
+            ActivityCompat.requestPermissions(activity, arrayOf(androidPermission), PERMISSION_REQUEST_CODE)
+        }
 
         // Return current status - the result will come through onRequestPermissionsResult
         return Pair(mapOf("status" to currentStatus), null)
+    }
+
+    private fun requestNotificationPermission(context: Context, args: Map<*, *>): Pair<Any?, Exception?> {
+        // On Android, notification options (alert, sound, badge) are handled at the
+        // notification channel level, not at permission request time.
+        // The provisional option is iOS-specific and ignored on Android.
+        val status = checkPermissionStatus(context, "notifications")
+
+        // Don't request if already granted or permanently denied
+        if (status == "granted" || status == "permanently_denied") {
+            return Pair(mapOf("status" to status), null)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val activity = PlatformChannelManager.currentActivity()
+            if (activity != null) {
+                activity.runOnUiThread {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        PERMISSION_REQUEST_CODE
+                    )
+                }
+                return Pair(mapOf("status" to "not_determined"), null)
+            }
+        }
+
+        return Pair(mapOf("status" to status), null)
     }
 
     private fun requestMultiple(context: Context, args: Any?): Pair<Any?, Exception?> {
@@ -117,7 +157,9 @@ object PermissionHandler {
         }
 
         if (notGranted.isNotEmpty()) {
-            ActivityCompat.requestPermissions(activity, notGranted.toTypedArray(), PERMISSION_REQUEST_CODE)
+            activity.runOnUiThread {
+                ActivityCompat.requestPermissions(activity, notGranted.toTypedArray(), PERMISSION_REQUEST_CODE)
+            }
         }
 
         return Pair(mapOf("results" to results), null)
@@ -172,11 +214,10 @@ object PermissionHandler {
         }
     }
 
-    fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    fun onRequestPermissionsResult(activity: Activity, requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (requestCode != PERMISSION_REQUEST_CODE) return
 
-        val context = PlatformChannelManager.currentActivity() ?: return
-        val prefs = context.getSharedPreferences("drift_permissions", Context.MODE_PRIVATE)
+        val prefs = activity.getSharedPreferences("drift_permissions", Context.MODE_PRIVATE)
         val editor = prefs.edit()
 
         permissions.forEachIndexed { index, androidPermission ->
@@ -187,7 +228,7 @@ object PermissionHandler {
 
                 val status = if (grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED) {
                     "granted"
-                } else if (!ActivityCompat.shouldShowRequestPermissionRationale(context, androidPermission)) {
+                } else if (!ActivityCompat.shouldShowRequestPermissionRationale(activity, androidPermission)) {
                     "permanently_denied"
                 } else {
                     "denied"

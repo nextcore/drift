@@ -10,8 +10,28 @@ import EventKit
 import UserNotifications
 
 enum PermissionHandler {
-    private static let locationManager = CLLocationManager()
+    private static var locationManager: CLLocationManager?
     private static var locationDelegate: LocationPermissionDelegate?
+
+    private static func getLocationManager() -> CLLocationManager {
+        if let manager = locationManager {
+            return manager
+        }
+
+        if Thread.isMainThread {
+            let manager = CLLocationManager()
+            locationManager = manager
+            return manager
+        }
+
+        var manager: CLLocationManager?
+        DispatchQueue.main.sync {
+            let created = CLLocationManager()
+            locationManager = created
+            manager = created
+        }
+        return manager ?? CLLocationManager()
+    }
 
     static func handle(method: String, args: Any?) -> (Any?, Error?) {
         switch method {
@@ -48,7 +68,7 @@ enum PermissionHandler {
         }
 
         let currentStatus = checkPermissionStatus(permission)
-        requestPermission(permission)
+        requestPermission(permission, args: dict)
         return (["status": currentStatus], nil)
     }
 
@@ -99,7 +119,7 @@ enum PermissionHandler {
         }
     }
 
-    private static func requestPermission(_ permission: String) {
+    private static func requestPermission(_ permission: String, args: [String: Any]? = nil) {
         switch permission {
         case "camera":
             requestCamera()
@@ -116,7 +136,7 @@ enum PermissionHandler {
         case "calendar":
             requestCalendar()
         case "notifications":
-            requestNotifications()
+            requestNotifications(args: args)
         default:
             break
         }
@@ -141,7 +161,8 @@ enum PermissionHandler {
 
     private static func requestCamera() {
         AVCaptureDevice.requestAccess(for: .video) { granted in
-            let status = granted ? "granted" : "denied"
+            // Use permanently_denied for consistency with cameraStatus()
+            let status = granted ? "granted" : "permanently_denied"
             sendPermissionChange("camera", status: status)
         }
     }
@@ -165,7 +186,8 @@ enum PermissionHandler {
 
     private static func requestMicrophone() {
         AVCaptureDevice.requestAccess(for: .audio) { granted in
-            let status = granted ? "granted" : "denied"
+            // Use permanently_denied for consistency with microphoneStatus()
+            let status = granted ? "granted" : "permanently_denied"
             sendPermissionChange("microphone", status: status)
         }
     }
@@ -205,14 +227,18 @@ enum PermissionHandler {
                     statusStr = "granted"
                 case .limited:
                     statusStr = "limited"
+                case .restricted:
+                    statusStr = "restricted"
                 default:
-                    statusStr = "denied"
+                    // Use permanently_denied for consistency with photosStatus()
+                    statusStr = "permanently_denied"
                 }
                 sendPermissionChange("photos", status: statusStr)
             }
         } else {
             PHPhotoLibrary.requestAuthorization { status in
-                let statusStr = status == .authorized ? "granted" : "denied"
+                // Use permanently_denied for consistency with photosStatus()
+                let statusStr = status == .authorized ? "granted" : "permanently_denied"
                 sendPermissionChange("photos", status: statusStr)
             }
         }
@@ -221,7 +247,7 @@ enum PermissionHandler {
     // MARK: - Location
 
     private static func locationStatus(always: Bool) -> String {
-        let status = locationManager.authorizationStatus
+        let status = getLocationManager().authorizationStatus
 
         switch status {
         case .authorizedAlways:
@@ -240,13 +266,14 @@ enum PermissionHandler {
     }
 
     private static func requestLocation(always: Bool) {
+        let manager = getLocationManager()
         locationDelegate = LocationPermissionDelegate(always: always)
-        locationManager.delegate = locationDelegate
+        manager.delegate = locationDelegate
 
         if always {
-            locationManager.requestAlwaysAuthorization()
+            manager.requestAlwaysAuthorization()
         } else {
-            locationManager.requestWhenInUseAuthorization()
+            manager.requestWhenInUseAuthorization()
         }
     }
 
@@ -271,7 +298,8 @@ enum PermissionHandler {
 
     private static func requestContacts() {
         CNContactStore().requestAccess(for: .contacts) { granted, _ in
-            let status = granted ? "granted" : "denied"
+            // Use permanently_denied for consistency with contactsStatus()
+            let status = granted ? "granted" : "permanently_denied"
             sendPermissionChange("contacts", status: status)
         }
     }
@@ -300,12 +328,14 @@ enum PermissionHandler {
     private static func requestCalendar() {
         if #available(iOS 17.0, *) {
             EKEventStore().requestFullAccessToEvents { granted, _ in
-                let status = granted ? "granted" : "denied"
+                // Use permanently_denied for consistency with calendarStatus()
+                let status = granted ? "granted" : "permanently_denied"
                 sendPermissionChange("calendar", status: status)
             }
         } else {
             EKEventStore().requestAccess(to: .event) { granted, _ in
-                let status = granted ? "granted" : "denied"
+                // Use permanently_denied for consistency with calendarStatus()
+                let status = granted ? "granted" : "permanently_denied"
                 sendPermissionChange("calendar", status: status)
             }
         }
@@ -339,20 +369,57 @@ enum PermissionHandler {
         return status
     }
 
-    private static func requestNotifications() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            let status = granted ? "granted" : "denied"
-            sendPermissionChange("notifications", status: status)
+    private static func requestNotifications(args: [String: Any]? = nil) {
+        var authOptions: UNAuthorizationOptions = []
+
+        // Parse notification options from args
+        let alertEnabled = args?["alert"] as? Bool ?? true
+        let soundEnabled = args?["sound"] as? Bool ?? true
+        let badgeEnabled = args?["badge"] as? Bool ?? true
+        let provisionalEnabled = args?["provisional"] as? Bool ?? false
+
+        if alertEnabled {
+            authOptions.insert(.alert)
+        }
+        if soundEnabled {
+            authOptions.insert(.sound)
+        }
+        if badgeEnabled {
+            authOptions.insert(.badge)
+        }
+        if provisionalEnabled {
+            authOptions.insert(.provisional)
+        }
+
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, _ in
+            // Get the actual status after authorization
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                let status: String
+                switch settings.authorizationStatus {
+                case .authorized:
+                    status = "granted"
+                case .provisional:
+                    status = "provisional"
+                case .denied:
+                    // Use permanently_denied for consistency with notificationsStatus()
+                    status = "permanently_denied"
+                default:
+                    status = granted ? "granted" : "permanently_denied"
+                }
+                sendPermissionChange("notifications", status: status)
+            }
         }
     }
 
     // MARK: - Helpers
 
     private static func sendPermissionChange(_ permission: String, status: String) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/permissions/changes", data: [
-            "permission": permission,
-            "status": status
-        ])
+        DispatchQueue.main.async {
+            PlatformChannelManager.shared.sendEvent(channel: "drift/permissions/changes", data: [
+                "permission": permission,
+                "status": status
+            ])
+        }
     }
 }
 
@@ -366,27 +433,37 @@ private class LocationPermissionDelegate: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let permission = always ? "location_always" : "location"
-        let status: String
+        handleAuthorizationStatus(manager.authorizationStatus)
+    }
 
-        switch manager.authorizationStatus {
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        handleAuthorizationStatus(status)
+    }
+
+    private func handleAuthorizationStatus(_ status: CLAuthorizationStatus) {
+        let permission = always ? "location_always" : "location"
+        let statusText: String
+
+        switch status {
         case .authorizedAlways:
-            status = "granted"
+            statusText = "granted"
         case .authorizedWhenInUse:
-            status = always ? "denied" : "granted"
+            statusText = always ? "denied" : "granted"
         case .denied:
-            status = "permanently_denied"
+            statusText = "permanently_denied"
         case .restricted:
-            status = "restricted"
+            statusText = "restricted"
         case .notDetermined:
-            return // Still waiting
+            return
         @unknown default:
-            status = "unknown"
+            statusText = "unknown"
         }
 
-        PlatformChannelManager.shared.sendEvent(channel: "drift/permissions/changes", data: [
-            "permission": permission,
-            "status": status
-        ])
+        DispatchQueue.main.async {
+            PlatformChannelManager.shared.sendEvent(channel: "drift/permissions/changes", data: [
+                "permission": permission,
+                "status": statusText
+            ])
+        }
     }
 }

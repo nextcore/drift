@@ -23,17 +23,43 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 		platformLabel = "Switch to Material"
 	}
 
-	// Build navigation items from registry
-	navItems := make([]core.Widget, 0, len(demos)*2+10)
-	for i, demo := range demos {
+	// Separate demos by category
+	var widgetDemos, platformDemos []Demo
+	for _, demo := range demos {
+		switch demo.Category {
+		case CategoryWidgets:
+			widgetDemos = append(widgetDemos, demo)
+		case CategoryPlatform:
+			platformDemos = append(platformDemos, demo)
+		}
+	}
+
+	// Build navigation items grouped by category
+	navItems := make([]core.Widget, 0, len(demos)*2+20)
+
+	// Widgets & UI section
+	navItems = append(navItems, sectionHeader("Widgets & UI", colors))
+	navItems = append(navItems, widgets.VSpace(12))
+	for i, demo := range widgetDemos {
 		navItems = append(navItems, navButton(ctx, demo.Title, demo.Subtitle, demo.Route, colors))
-		// Insert theming after scroll (index 6)
-		if i == 6 {
+		// Insert theming after gestures
+		if demo.Route == "/gestures" {
 			navItems = append(navItems, widgets.VSpace(12))
 			td := themingDemo()
 			navItems = append(navItems, navButton(ctx, td.Title, td.Subtitle, td.Route, colors))
 		}
-		if i < len(demos)-1 {
+		if i < len(widgetDemos)-1 {
+			navItems = append(navItems, widgets.VSpace(12))
+		}
+	}
+
+	// Platform Services section
+	navItems = append(navItems, widgets.VSpace(24))
+	navItems = append(navItems, sectionHeader("Platform Services", colors))
+	navItems = append(navItems, widgets.VSpace(12))
+	for i, demo := range platformDemos {
+		navItems = append(navItems, navButton(ctx, demo.Title, demo.Subtitle, demo.Route, colors))
+		if i < len(platformDemos)-1 {
 			navItems = append(navItems, widgets.VSpace(12))
 		}
 	}
@@ -65,10 +91,6 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 							FontSize: 14,
 						}),
 						widgets.VSpace(40),
-
-						// Demo sections
-						widgets.TextOf("Explore Features", textTheme.TitleLarge),
-						widgets.VSpace(16),
 					}, append(navItems,
 						widgets.VSpace(32),
 
@@ -85,6 +107,15 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 			},
 		).WithColor(colors.Background).Build(),
 	}
+}
+
+// sectionHeader creates a styled section header for the home page.
+func sectionHeader(text string, colors theme.ColorScheme) core.Widget {
+	return widgets.TextOf(text, rendering.TextStyle{
+		Color:      colors.OnSurface,
+		FontSize:   20,
+		FontWeight: rendering.FontWeightBold,
+	})
 }
 
 // navButton creates a navigation button for the home page.

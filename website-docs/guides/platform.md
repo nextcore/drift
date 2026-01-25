@@ -136,41 +136,98 @@ platform.SetSystemUI(platform.SystemUIStyle{
 
 ## Permissions
 
-Request runtime permissions:
+Request runtime permissions using the `Permissions` service:
 
 ```go
-// Request a single permission
-result, err := platform.RequestPermission(platform.PermissionCamera)
+// Request a permission
+result, err := platform.Permissions.Camera.Request()
 if result == platform.PermissionGranted {
     openCamera()
 }
 
 // Check current permission status
-status, err := platform.CheckPermission(platform.PermissionLocation)
+status, err := platform.Permissions.Camera.Status()
 
-// Request multiple permissions
-results, err := platform.RequestPermissions([]platform.Permission{
-    platform.PermissionCamera,
-    platform.PermissionMicrophone,
-})
+// Convenience checks
+if platform.Permissions.Camera.IsGranted() {
+    // Camera is available
+}
+
+// Listen for permission changes
+go func() {
+    for result := range platform.Permissions.Camera.Changes() {
+        drift.Dispatch(func() {
+            updateUI(result)
+        })
+    }
+}()
 
 // Open app settings for manual permission management
 platform.OpenAppSettings()
+```
+
+### Location Permissions
+
+Location has two levels - when in use and always (background). Each level has its own
+status, request, and change notification methods:
+
+```go
+// When-in-use location
+result, err := platform.Permissions.Location.RequestWhenInUse()
+status, err := platform.Permissions.Location.Status()
+
+// Background (always) location
+result, err := platform.Permissions.Location.RequestAlways()
+status, err := platform.Permissions.Location.StatusAlways()
+if platform.Permissions.Location.IsAlwaysGranted() {
+    // Background location available
+}
+
+// Listen for permission changes
+// IMPORTANT: Use Changes() for when-in-use, ChangesAlways() for background.
+// These are separate event streams from the platform.
+go func() {
+    for result := range platform.Permissions.Location.Changes() {
+        drift.Dispatch(func() { updateWhenInUseUI(result) })
+    }
+}()
+
+go func() {
+    for result := range platform.Permissions.Location.ChangesAlways() {
+        drift.Dispatch(func() { updateAlwaysUI(result) })
+    }
+}()
+```
+
+### Notification Permissions
+
+Notifications support iOS-specific options:
+
+```go
+// Request with default options (Alert, Sound, Badge)
+result, err := platform.Permissions.Notification.Request()
+
+// Request with specific options
+result, err := platform.Permissions.Notification.Request(platform.NotificationOptions{
+    Alert:       true,
+    Sound:       true,
+    Badge:       true,
+    Provisional: false, // iOS provisional notifications
+})
 ```
 
 ### Available Permissions
 
 | Permission | Use |
 |------------|-----|
-| `PermissionCamera` | Camera access |
-| `PermissionMicrophone` | Microphone access |
-| `PermissionLocation` | Location services |
-| `PermissionLocationAlways` | Background location |
-| `PermissionStorage` | File storage |
-| `PermissionContacts` | Contacts access |
-| `PermissionPhotos` | Photo library |
-| `PermissionCalendar` | Calendar access |
-| `PermissionNotifications` | Push notifications |
+| `Permissions.Camera` | Camera access |
+| `Permissions.Microphone` | Microphone access |
+| `Permissions.Location` | Location services |
+| `Permissions.Storage` | File storage |
+| `Permissions.Contacts` | Contacts access |
+| `Permissions.Photos` | Photo library |
+| `Permissions.Calendar` | Calendar access |
+| `Permissions.Notification` | Push notifications |
 
 ### Permission Results
 
@@ -181,6 +238,7 @@ platform.OpenAppSettings()
 | `PermissionPermanentlyDenied` | User selected "Don't ask again" |
 | `PermissionRestricted` | Restricted by device policy |
 | `PermissionLimited` | Limited access granted (iOS photos) |
+| `PermissionProvisional` | Provisional access (iOS notifications) |
 
 ## Notifications
 

@@ -48,12 +48,28 @@ var DefaultCodec MessageCodec = JsonCodec{}
 
 // Standard errors for platform channel operations.
 var (
-	ErrChannelNotFound     = errors.New("platform channel not found")
-	ErrMethodNotFound      = errors.New("method not implemented")
-	ErrInvalidArguments    = errors.New("invalid arguments")
+	// ErrChannelNotFound indicates the requested platform channel does not exist.
+	ErrChannelNotFound = errors.New("platform channel not found")
+
+	// ErrMethodNotFound indicates the method is not implemented on the native side.
+	ErrMethodNotFound = errors.New("method not implemented")
+
+	// ErrInvalidArguments indicates the arguments passed to the method were invalid.
+	ErrInvalidArguments = errors.New("invalid arguments")
+
+	// ErrPlatformUnavailable indicates the platform feature is not available
+	// (e.g., hardware not present, OS version too old).
 	ErrPlatformUnavailable = errors.New("platform feature unavailable")
-	ErrTimeout             = errors.New("operation timed out")
-	ErrViewTypeNotFound    = errors.New("platform view type not registered")
+
+	// ErrTimeout indicates the operation exceeded its deadline. For permission requests,
+	// this means the user did not respond to the dialog within the timeout period.
+	ErrTimeout = errors.New("operation timed out")
+
+	// ErrCanceled indicates the operation was canceled via context cancellation.
+	ErrCanceled = errors.New("operation was canceled")
+
+	// ErrViewTypeNotFound indicates the platform view type is not registered.
+	ErrViewTypeNotFound = errors.New("platform view type not registered")
 )
 
 // ChannelError represents an error returned from native code.

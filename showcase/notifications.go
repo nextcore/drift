@@ -61,8 +61,9 @@ func (s *notificationsState) InitState() {
 		}
 	}()
 
+	// Listen for notification permission changes
 	go func() {
-		for status := range platform.NotificationPermissionUpdates() {
+		for status := range platform.Permissions.Notification.Changes() {
 			message := "Permission status: " + string(status)
 			drift.Dispatch(func() {
 				s.statusText.Set(message)
@@ -101,7 +102,7 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *notificationsState) requestPermissions() {
-	status, err := platform.RequestNotificationPermissions(platform.PermissionOptions{
+	status, err := platform.Permissions.Notification.Request(platform.NotificationOptions{
 		Alert: true,
 		Sound: true,
 		Badge: true,
@@ -113,7 +114,7 @@ func (s *notificationsState) requestPermissions() {
 	}
 
 	message := "Permission status: " + string(status)
-	if status == platform.PermissionStatusNotDetermined {
+	if status == platform.PermissionNotDetermined {
 		message = "Waiting for permission…"
 	}
 	s.statusText.Set(message)
