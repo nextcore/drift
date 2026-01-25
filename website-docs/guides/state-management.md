@@ -236,18 +236,30 @@ func (u UserProvider) Key() any { return nil }
 
 func (u UserProvider) Child() core.Widget { return u.ChildWidget }
 
+// UpdateShouldNotify is called when this widget updates. Return true to
+// rebuild all dependents, false to skip rebuilding entirely.
 func (u UserProvider) UpdateShouldNotify(old core.InheritedWidget) bool {
-    oldProvider := old.(UserProvider)
-    return u.User != oldProvider.User
+    if prev, ok := old.(UserProvider); ok {
+        return u.User != prev.User
+    }
+    return true
+}
+
+// UpdateShouldNotifyDependent enables fine-grained control per dependent.
+// The aspects map contains the aspects each dependent registered interest in.
+// For simple cases, just delegate to UpdateShouldNotify.
+func (u UserProvider) UpdateShouldNotifyDependent(old core.InheritedWidget, _ map[any]struct{}) bool {
+    return u.UpdateShouldNotify(old)
 }
 
 // Access from anywhere in the subtree
+var userProviderType = reflect.TypeOf(UserProvider{})
+
 func UserOf(ctx core.BuildContext) *User {
-    provider := ctx.DependOnInherited(reflect.TypeOf(UserProvider{}), nil)
-    if provider == nil {
-        return nil
+    if p, ok := ctx.DependOnInherited(userProviderType, nil).(UserProvider); ok {
+        return p.User
     }
-    return provider.(UserProvider).User
+    return nil
 }
 ```
 
