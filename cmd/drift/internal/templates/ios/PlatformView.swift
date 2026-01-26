@@ -29,6 +29,8 @@ enum PlatformViewHandler {
             return setGeometry(args: dict)
         case "setVisible":
             return setVisible(args: dict)
+        case "setEnabled":
+            return setEnabled(args: dict)
         case "invokeViewMethod":
             return invokeViewMethod(args: dict)
         default:
@@ -51,6 +53,10 @@ enum PlatformViewHandler {
         let supportedMethods: Set<String>
         if container is NativeWebViewContainer {
             supportedMethods = ["loadUrl", "goBack", "goForward", "reload"]
+        } else if container is NativeTextInputContainer {
+            supportedMethods = ["setText", "setSelection", "setValue", "focus", "blur", "updateConfig"]
+        } else if container is NativeSwitchContainer {
+            supportedMethods = ["setValue", "updateConfig"]
         } else {
             supportedMethods = []
         }
@@ -77,6 +83,45 @@ enum PlatformViewHandler {
                     break
                 }
             }
+        } else if let textInputContainer = container as? NativeTextInputContainer {
+            DispatchQueue.main.async {
+                switch method {
+                case "setText":
+                    if let text = args["text"] as? String {
+                        textInputContainer.setText(text)
+                    }
+                case "setSelection":
+                    let base = args["selectionBase"] as? Int ?? 0
+                    let extent = args["selectionExtent"] as? Int ?? 0
+                    textInputContainer.setSelection(base: base, extent: extent)
+                case "setValue":
+                    let text = args["text"] as? String ?? ""
+                    let base = args["selectionBase"] as? Int ?? text.count
+                    let extent = args["selectionExtent"] as? Int ?? text.count
+                    textInputContainer.setValue(text: text, selectionBase: base, selectionExtent: extent)
+                case "focus":
+                    textInputContainer.focus()
+                case "blur":
+                    textInputContainer.blur()
+                case "updateConfig":
+                    textInputContainer.updateConfig(args)
+                default:
+                    break
+                }
+            }
+        } else if let switchContainer = container as? NativeSwitchContainer {
+            DispatchQueue.main.async {
+                switch method {
+                case "setValue":
+                    if let value = args["value"] as? Bool {
+                        switchContainer.setValue(value)
+                    }
+                case "updateConfig":
+                    switchContainer.updateConfig(args)
+                default:
+                    break
+                }
+            }
         }
 
         return (nil, nil)
@@ -96,6 +141,10 @@ enum PlatformViewHandler {
         switch viewType {
         case "native_webview":
             container = createNativeWebView(viewId: viewId, params: params)
+        case "textinput":
+            container = NativeTextInputContainer(viewId: viewId, params: params)
+        case "switch":
+            container = NativeSwitchContainer(viewId: viewId, params: params)
         default:
             return (nil, NSError(domain: "PlatformView", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unknown view type: \(viewType)"]))
         }
@@ -169,6 +218,21 @@ enum PlatformViewHandler {
 
         DispatchQueue.main.async {
             container.view.isHidden = !visible
+        }
+
+        return (nil, nil)
+    }
+
+    private static func setEnabled(args: [String: Any]) -> (Any?, Error?) {
+        guard let viewId = args["viewId"] as? Int,
+              let enabled = args["enabled"] as? Bool,
+              let container = views[viewId] else {
+            return (nil, nil)
+        }
+
+        DispatchQueue.main.async {
+            container.view.isUserInteractionEnabled = enabled
+            container.view.alpha = enabled ? 1.0 : 0.5
         }
 
         return (nil, nil)

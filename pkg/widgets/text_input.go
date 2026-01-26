@@ -1,9 +1,6 @@
 package widgets
 
 import (
-	"strings"
-	"unicode/utf8"
-
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/focus"
 	"github.com/go-drift/drift/pkg/gestures"
@@ -13,7 +10,7 @@ import (
 	"github.com/go-drift/drift/pkg/semantics"
 )
 
-// TextInput embeds a native text input field.
+// TextInput embeds a native text input field with Skia chrome.
 type TextInput struct {
 	// Controller manages the text content and selection.
 	Controller *platform.TextEditingController
@@ -30,11 +27,21 @@ type TextInput struct {
 	// InputAction specifies the keyboard action button.
 	InputAction platform.TextInputAction
 
+	// Capitalization specifies text capitalization behavior.
+	// Defaults to None. Set to TextCapitalizationSentences for standard text input.
+	Capitalization platform.TextCapitalization
+
 	// Obscure hides the text (for passwords).
 	Obscure bool
 
 	// Autocorrect enables auto-correction.
 	Autocorrect bool
+
+	// Multiline enables multiline text input.
+	Multiline bool
+
+	// MaxLines limits the number of lines (multiline only).
+	MaxLines int
 
 	// OnChanged is called when the text changes.
 	OnChanged func(string)
@@ -44,6 +51,9 @@ type TextInput struct {
 
 	// OnEditingComplete is called when editing is complete.
 	OnEditingComplete func()
+
+	// OnFocusChange is called when focus changes.
+	OnFocusChange func(bool)
 
 	// Disabled controls whether the field rejects input.
 	Disabled bool
@@ -69,6 +79,9 @@ type TextInput struct {
 	// BorderRadius for rounded corners.
 	BorderRadius float64
 
+	// BorderWidth for the border stroke.
+	BorderWidth float64
+
 	// PlaceholderColor is the color for placeholder text.
 	PlaceholderColor rendering.Color
 }
@@ -89,11 +102,11 @@ func (n TextInput) CreateState() core.State {
 }
 
 type textInputState struct {
-	element    *core.StatefulElement
-	connection *platform.TextInputConnection
-	focused    bool
-	viewID     int64
-	focusNode  *focus.FocusNode
+	element            *core.StatefulElement
+	platformView       *platform.TextInputView
+	focused            bool
+	focusNode          *focus.FocusNode
+	updatingController bool // suppress echo during programmatic updates
 }
 
 func (s *textInputState) SetElement(e *core.StatefulElement) {
@@ -108,13 +121,9 @@ func (s *textInputState) InitState() {
 		Rect:            s, // s implements RectProvider
 		OnFocusChange: func(hasFocus bool) {
 			if hasFocus && !s.focused {
-				// Focus node gained focus, activate the text field
-				// Pass render object as target for tap-outside-to-unfocus detection
-				var target any
-				if s.element != nil {
-					target = s.element.RenderObject()
-				}
-				s.focus(target)
+				s.focus()
+			} else if !hasFocus && s.focused {
+				s.unfocus()
 			}
 		},
 	}
@@ -125,10 +134,12 @@ func (s *textInputState) InitState() {
 }
 
 func (s *textInputState) Dispose() {
-	if s.connection != nil {
-		s.connection.Close()
-		s.connection = nil
+	// Dispose platform view
+	if s.platformView != nil {
+		platform.GetPlatformViewRegistry().Dispose(s.platformView.ViewID())
+		s.platformView = nil
 	}
+
 	// Remove focus node from scope
 	if s.focusNode != nil {
 		manager := focus.GetFocusManager()
@@ -152,7 +163,20 @@ func (s *textInputState) Dispose() {
 
 func (s *textInputState) DidChangeDependencies() {}
 
-func (s *textInputState) DidUpdateWidget(oldWidget core.StatefulWidget) {}
+func (s *textInputState) DidUpdateWidget(oldWidget core.StatefulWidget) {
+	// Update platform view config if needed
+	if s.platformView != nil {
+		w := s.element.Widget().(TextInput)
+		s.updatePlatformViewConfig(w)
+
+		// Sync controller value if it changed programmatically
+		if w.Controller != nil {
+			s.updatingController = true
+			s.platformView.SetValue(w.Controller.Value())
+			s.updatingController = false
+		}
+	}
+}
 
 // FocusRect implements focus.RectProvider for directional navigation.
 func (s *textInputState) FocusRect() focus.FocusRect {
@@ -160,7 +184,6 @@ func (s *textInputState) FocusRect() focus.FocusRect {
 		return focus.FocusRect{}
 	}
 	offset := core.GlobalOffsetOf(s.element)
-	// Get size from the render object if available
 	if ro := s.element.RenderObject(); ro != nil {
 		if sizer, ok := ro.(interface{ Size() rendering.Size }); ok {
 			size := sizer.Size()
@@ -188,7 +211,7 @@ func (s *textInputState) Build(ctx core.BuildContext) core.Widget {
 	// Default values
 	height := w.Height
 	if height == 0 {
-		height = 44 // Standard iOS text field height
+		height = 44 // Standard text field height
 	}
 
 	padding := w.Padding
@@ -211,36 +234,12 @@ func (s *textInputState) Build(ctx core.BuildContext) core.Widget {
 		focusColor = rendering.Color(0xFF007AFF)
 	}
 
-	// Get current text from controller or empty string
-	text := ""
-	if w.Controller != nil {
-		text = w.Controller.Text()
+	borderWidth := w.BorderWidth
+	if borderWidth == 0 {
+		borderWidth = 1
 	}
 
-	// Show placeholder if empty
-	displayText := text
-	textStyle := w.Style
-	// Ensure text has a visible color (default to black if not set)
-	if textStyle.Color == 0 {
-		textStyle.Color = rendering.Color(0xFF000000)
-	}
-	if displayText == "" && w.Placeholder != "" {
-		displayText = w.Placeholder
-		placeholderColor := w.PlaceholderColor
-		if placeholderColor == 0 {
-			placeholderColor = rendering.Color(0xFF999999) // Default placeholder color
-		}
-		textStyle.Color = placeholderColor
-	}
-	if w.Obscure && text != "" {
-		runeCount := utf8.RuneCountInString(text)
-		displayText = strings.Repeat("•", runeCount)
-	}
-
-	// Build the visual representation
 	return textInputRender{
-		text:         displayText,
-		style:        textStyle,
 		width:        w.Width,
 		height:       height,
 		padding:      padding,
@@ -248,36 +247,166 @@ func (s *textInputState) Build(ctx core.BuildContext) core.Widget {
 		borderColor:  borderColor,
 		focusColor:   focusColor,
 		borderRadius: w.BorderRadius,
+		borderWidth:  borderWidth,
 		state:        s,
 		config:       w,
 	}
 }
 
-// UpdateEditingValue implements platform.TextInputClient.
-func (s *textInputState) UpdateEditingValue(value platform.TextEditingValue) {
+// ensurePlatformView creates the native text input view if not already created.
+func (s *textInputState) ensurePlatformView() {
+	if s.platformView != nil {
+		return
+	}
+
+	w := s.element.Widget().(TextInput)
+	config := s.buildPlatformViewConfig(w)
+
+	params := map[string]any{
+		"fontFamily":       config.FontFamily,
+		"fontSize":         config.FontSize,
+		"fontWeight":       config.FontWeight,
+		"textColor":        config.TextColor,
+		"placeholderColor": config.PlaceholderColor,
+		"textAlignment":    config.TextAlignment,
+		"multiline":        config.Multiline,
+		"maxLines":         config.MaxLines,
+		"obscure":          config.Obscure,
+		"autocorrect":      config.Autocorrect,
+		"keyboardType":     int(config.KeyboardType),
+		"inputAction":      int(config.InputAction),
+		"capitalization":   int(config.Capitalization),
+		"paddingLeft":      config.PaddingLeft,
+		"paddingTop":       config.PaddingTop,
+		"paddingRight":     config.PaddingRight,
+		"paddingBottom":    config.PaddingBottom,
+		"placeholder":      config.Placeholder,
+	}
+
+	// Include initial text if controller is set
+	if w.Controller != nil {
+		params["text"] = w.Controller.Text()
+	}
+
+	view, err := platform.GetPlatformViewRegistry().Create("textinput", params)
+	if err != nil {
+		return
+	}
+
+	textInputView, ok := view.(*platform.TextInputView)
+	if !ok {
+		return
+	}
+
+	s.platformView = textInputView
+
+	// Register as client (this is done via a custom method since factory creates without client)
+	// We need to set the client after creation
+	s.registerAsClient()
+}
+
+// registerAsClient sets up this state as the callback receiver for the platform view.
+func (s *textInputState) registerAsClient() {
+	if s.platformView == nil {
+		return
+	}
+
+	// Set this state as the client for callbacks
+	s.platformView.SetClient(s)
+}
+
+func (s *textInputState) buildPlatformViewConfig(w TextInput) platform.TextInputViewConfig {
+	// Apply default padding to match Skia chrome
+	padding := w.Padding
+	if padding == (layout.EdgeInsets{}) {
+		padding = layout.EdgeInsetsSymmetric(12, 8)
+	}
+
+	config := platform.TextInputViewConfig{
+		FontFamily:     w.Style.FontFamily,
+		FontSize:       w.Style.FontSize,
+		FontWeight:     int(w.Style.FontWeight),
+		Multiline:      w.Multiline,
+		MaxLines:       w.MaxLines,
+		Obscure:        w.Obscure,
+		Autocorrect:    w.Autocorrect,
+		KeyboardType:   w.KeyboardType,
+		InputAction:    w.InputAction,
+		Capitalization: w.Capitalization,
+		PaddingLeft:    padding.Left,
+		PaddingTop:     padding.Top,
+		PaddingRight:   padding.Right,
+		PaddingBottom:  padding.Bottom,
+		Placeholder:    w.Placeholder,
+	}
+
+	if config.FontSize == 0 {
+		config.FontSize = 16
+	}
+
+	// Convert colors to ARGB uint32
+	textColor := w.Style.Color
+	if textColor == 0 {
+		textColor = rendering.Color(0xFF000000) // black
+	}
+	config.TextColor = uint32(textColor)
+
+	placeholderColor := w.PlaceholderColor
+	if placeholderColor == 0 {
+		placeholderColor = rendering.Color(0xFF999999)
+	}
+	config.PlaceholderColor = uint32(placeholderColor)
+
+	return config
+}
+
+func (s *textInputState) updatePlatformViewConfig(w TextInput) {
+	if s.platformView == nil {
+		return
+	}
+	config := s.buildPlatformViewConfig(w)
+	s.platformView.UpdateConfig(config)
+}
+
+// OnTextChanged implements TextInputViewClient.
+func (s *textInputState) OnTextChanged(text string, selectionBase, selectionExtent int) {
 	w := s.element.Widget().(TextInput)
 	if w.Controller == nil {
 		return
 	}
 
+	// Don't echo back during programmatic updates
+	if s.updatingController {
+		return
+	}
+
 	oldText := w.Controller.Text()
 
-	// Always update controller (for selection/composing changes)
-	w.Controller.SetValue(value)
+	// Update controller
+	w.Controller.SetValue(platform.TextEditingValue{
+		Text: text,
+		Selection: platform.TextSelection{
+			BaseOffset:   selectionBase,
+			ExtentOffset: selectionExtent,
+		},
+		ComposingRange: platform.TextRangeEmpty,
+	})
 
 	// Only trigger OnChanged if text actually changed
-	if w.OnChanged != nil && value.Text != oldText {
-		w.OnChanged(value.Text)
+	if w.OnChanged != nil && text != oldText {
+		w.OnChanged(text)
 	}
 
 	s.SetState(func() {})
 }
 
-// PerformAction implements platform.TextInputClient.
-func (s *textInputState) PerformAction(action platform.TextInputAction) {
+// OnAction implements TextInputViewClient.
+func (s *textInputState) OnAction(action platform.TextInputAction) {
 	w := s.element.Widget().(TextInput)
+
 	switch action {
-	case platform.TextInputActionDone, platform.TextInputActionGo, platform.TextInputActionSearch, platform.TextInputActionSend:
+	case platform.TextInputActionDone, platform.TextInputActionGo,
+		platform.TextInputActionSearch, platform.TextInputActionSend:
 		if w.OnSubmitted != nil && w.Controller != nil {
 			w.OnSubmitted(w.Controller.Text())
 		}
@@ -294,15 +423,42 @@ func (s *textInputState) PerformAction(action platform.TextInputAction) {
 	}
 }
 
-// ConnectionClosed implements platform.TextInputClient.
-func (s *textInputState) ConnectionClosed() {
-	s.connection = nil
+// OnFocusChanged implements TextInputViewClient.
+func (s *textInputState) OnFocusChanged(focused bool) {
+	w := s.element.Widget().(TextInput)
+
 	s.SetState(func() {
-		s.focused = false
+		s.focused = focused
 	})
+
+	if w.OnFocusChange != nil {
+		w.OnFocusChange(focused)
+	}
+
+	if focused {
+		// Sync focus node
+		if s.focusNode != nil {
+			s.focusNode.RequestFocus()
+		}
+		// Set focused target for tap-outside-to-unfocus.
+		// This handles the case when native view gains focus directly
+		// (e.g., user taps on EditText) rather than through our tap gesture.
+		if s.element != nil {
+			platform.SetFocusedTarget(s.element.RenderObject())
+		}
+		// Track focused input
+		if s.platformView != nil {
+			platform.SetFocusedInput(s.platformView.ViewID(), true)
+		}
+	} else {
+		// Clear focused input tracking
+		if s.platformView != nil {
+			platform.SetFocusedInput(s.platformView.ViewID(), false)
+		}
+	}
 }
 
-func (s *textInputState) focus(target any) {
+func (s *textInputState) focus() {
 	if s.focused {
 		return
 	}
@@ -312,39 +468,32 @@ func (s *textInputState) focus(target any) {
 		return
 	}
 
-	// Mark as focused early to prevent re-entry from OnFocusChange callback
 	s.focused = true
 
-	// Sync with focus system - mark this node as primary focus
+	// Sync with focus system
 	if s.focusNode != nil {
 		s.focusNode.RequestFocus()
 	}
 
-	// Unfocus any other active text input first
-	platform.UnfocusAll()
+	// Ensure platform view exists
+	s.ensurePlatformView()
 
-	config := platform.TextInputConfiguration{
-		KeyboardType:      w.KeyboardType,
-		InputAction:       w.InputAction,
-		Autocorrect:       w.Autocorrect,
-		EnableSuggestions: !w.Obscure,
-		Obscure:           w.Obscure,
+	// Sync controller value to native view
+	if s.platformView != nil && w.Controller != nil {
+		s.updatingController = true
+		s.platformView.SetValue(w.Controller.Value())
+		s.updatingController = false
+		s.platformView.Focus()
+
+		// Track focused input for UnfocusAll/HasFocus
+		platform.SetFocusedInput(s.platformView.ViewID(), true)
 	}
 
-	s.connection = platform.NewTextInputConnection(s, config)
-
-	// Mark this as the active connection and register the focused target
-	platform.SetActiveConnection(s.connection.ID())
-	platform.SetFocusedTarget(target)
-
-	s.connection.Show()
-
-	// Sync editing state after showing
-	if w.Controller != nil {
-		s.connection.SetEditingState(w.Controller.Value())
+	// Set this as the focused target for tap-outside-to-unfocus
+	if s.element != nil {
+		platform.SetFocusedTarget(s.element.RenderObject())
 	}
 
-	// Trigger rebuild
 	s.SetState(func() {})
 }
 
@@ -355,19 +504,17 @@ func (s *textInputState) unfocus() {
 
 	s.focused = false
 
-	if s.connection != nil {
-		s.connection.Close()
-		s.connection = nil
+	if s.platformView != nil {
+		s.platformView.Blur()
+		// Clear focused input tracking
+		platform.SetFocusedInput(s.platformView.ViewID(), false)
 	}
 
-	// Trigger rebuild
 	s.SetState(func() {})
 }
 
-// textInputRender is a render widget for visual text field display.
+// textInputRender is a render widget for the text field chrome.
 type textInputRender struct {
-	text         string
-	style        rendering.TextStyle
 	width        float64
 	height       float64
 	padding      layout.EdgeInsets
@@ -375,6 +522,7 @@ type textInputRender struct {
 	borderColor  rendering.Color
 	focusColor   rendering.Color
 	borderRadius float64
+	borderWidth  float64
 	state        *textInputState
 	config       TextInput
 }
@@ -389,8 +537,6 @@ func (n textInputRender) Key() any {
 
 func (n textInputRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	r := &renderTextInput{
-		text:         n.text,
-		style:        n.style,
 		width:        n.width,
 		height:       n.height,
 		padding:      n.padding,
@@ -398,7 +544,9 @@ func (n textInputRender) CreateRenderObject(ctx core.BuildContext) layout.Render
 		borderColor:  n.borderColor,
 		focusColor:   n.focusColor,
 		borderRadius: n.borderRadius,
+		borderWidth:  n.borderWidth,
 		state:        n.state,
+		config:       n.config,
 	}
 
 	r.SetSelf(r)
@@ -407,8 +555,6 @@ func (n textInputRender) CreateRenderObject(ctx core.BuildContext) layout.Render
 
 func (n textInputRender) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if r, ok := renderObject.(*renderTextInput); ok {
-		r.text = n.text
-		r.style = n.style
 		r.width = n.width
 		r.height = n.height
 		r.padding = n.padding
@@ -416,7 +562,9 @@ func (n textInputRender) UpdateRenderObject(ctx core.BuildContext, renderObject 
 		r.borderColor = n.borderColor
 		r.focusColor = n.focusColor
 		r.borderRadius = n.borderRadius
+		r.borderWidth = n.borderWidth
 		r.state = n.state
+		r.config = n.config
 		r.MarkNeedsLayout()
 		r.MarkNeedsPaint()
 	}
@@ -424,8 +572,6 @@ func (n textInputRender) UpdateRenderObject(ctx core.BuildContext, renderObject 
 
 type renderTextInput struct {
 	layout.RenderBoxBase
-	text         string
-	style        rendering.TextStyle
 	width        float64
 	height       float64
 	padding      layout.EdgeInsets
@@ -433,8 +579,9 @@ type renderTextInput struct {
 	borderColor  rendering.Color
 	focusColor   rendering.Color
 	borderRadius float64
+	borderWidth  float64
 	state        *textInputState
-	layout       *rendering.TextLayout
+	config       TextInput
 	tap          *gestures.TapGestureRecognizer
 }
 
@@ -450,27 +597,35 @@ func (r *renderTextInput) PerformLayout() {
 	height = min(max(height, constraints.MinHeight), constraints.MaxHeight)
 
 	r.SetSize(rendering.Size{Width: width, Height: height})
+}
 
-	// Layout text for display
-	if r.text != "" {
-		manager, _ := rendering.DefaultFontManagerErr()
-		if manager == nil {
-			// Error already reported by DefaultFontManagerErr
-			r.layout = nil
-		} else {
-			layout, err := rendering.LayoutText(r.text, r.style, manager)
-			if err == nil {
-				r.layout = layout
-			} else {
-				r.layout = nil
-			}
-		}
-	} else {
-		r.layout = nil
+func (r *renderTextInput) updatePlatformView() {
+	if r.state == nil || r.state.element == nil {
+		return
 	}
+
+	// Ensure view exists
+	r.state.ensurePlatformView()
+
+	if r.state.platformView == nil {
+		return
+	}
+
+	// Get global position
+	globalOffset := core.GlobalOffsetOf(r.state.element)
+	size := r.Size()
+
+	// Update native view geometry
+	r.state.platformView.SetOffset(globalOffset)
+	r.state.platformView.SetSize(size)
+	r.state.platformView.SetVisible(true)
+	r.state.platformView.SetEnabled(!r.config.Disabled)
 }
 
 func (r *renderTextInput) Paint(ctx *layout.PaintContext) {
+	// Update platform view position each frame to animate with page transitions
+	r.updatePlatformView()
+
 	size := r.Size()
 
 	// Draw background
@@ -489,45 +644,29 @@ func (r *renderTextInput) Paint(ctx *layout.PaintContext) {
 
 	// Draw border
 	borderPaint := rendering.DefaultPaint()
-	borderPaint.Color = r.borderColor
 	borderPaint.Style = rendering.PaintStyleStroke
-	borderPaint.StrokeWidth = 1
+	borderPaint.StrokeWidth = r.borderWidth
 
+	// Use focus color when focused, otherwise border color
+	if r.state != nil && r.state.focused {
+		borderPaint.Color = r.focusColor
+		borderPaint.StrokeWidth = 2 // Thicker border when focused
+	} else {
+		borderPaint.Color = r.borderColor
+	}
+
+	halfStroke := borderPaint.StrokeWidth / 2
 	if r.borderRadius > 0 {
 		rrect := rendering.RRectFromRectAndRadius(
-			rendering.RectFromLTWH(0.5, 0.5, size.Width-1, size.Height-1),
+			rendering.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth),
 			rendering.CircularRadius(r.borderRadius),
 		)
 		ctx.Canvas.DrawRRect(rrect, borderPaint)
 	} else {
-		ctx.Canvas.DrawRect(rendering.RectFromLTWH(0.5, 0.5, size.Width-1, size.Height-1), borderPaint)
+		ctx.Canvas.DrawRect(rendering.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth), borderPaint)
 	}
 
-	// Draw text
-	if r.layout != nil {
-		// Center text vertically
-		textY := (size.Height - r.layout.Size.Height) / 2
-		offset := rendering.Offset{X: r.padding.Left, Y: textY}
-		ctx.Canvas.DrawText(r.layout, offset)
-	}
-
-	// Draw focus indicator
-	if r.state != nil && r.state.focused {
-		focusPaint := rendering.DefaultPaint()
-		focusPaint.Color = r.focusColor
-		focusPaint.Style = rendering.PaintStyleStroke
-		focusPaint.StrokeWidth = 2
-
-		if r.borderRadius > 0 {
-			rrect := rendering.RRectFromRectAndRadius(
-				rendering.RectFromLTWH(1, 1, size.Width-2, size.Height-2),
-				rendering.CircularRadius(r.borderRadius),
-			)
-			ctx.Canvas.DrawRRect(rrect, focusPaint)
-		} else {
-			ctx.Canvas.DrawRect(rendering.RectFromLTWH(1, 1, size.Width-2, size.Height-2), focusPaint)
-		}
-	}
+	// Native view handles text rendering - no Skia text drawing needed
 }
 
 func (r *renderTextInput) HitTest(position rendering.Offset, result *layout.HitTestResult) bool {
@@ -544,7 +683,7 @@ func (r *renderTextInput) HandlePointer(event gestures.PointerEvent) {
 		r.tap = gestures.NewTapGestureRecognizer(gestures.DefaultArena)
 		r.tap.OnTap = func() {
 			if r.state != nil {
-				r.state.focus(r) // Pass self as the focused target
+				r.state.focus()
 			}
 		}
 	}
@@ -566,7 +705,6 @@ func (r *renderTextInput) DescribeSemanticsConfiguration(config *semantics.Seman
 	if r.state != nil && r.state.focused {
 		flags = flags.Set(semantics.SemanticsIsFocused)
 	}
-	// Check if enabled via the state's widget config
 	if r.state != nil && r.state.element != nil {
 		if w, ok := r.state.element.Widget().(TextInput); ok {
 			if !w.Disabled {
@@ -580,7 +718,11 @@ func (r *renderTextInput) DescribeSemanticsConfiguration(config *semantics.Seman
 	config.Properties.Flags = flags
 
 	// Set current value (text content)
-	config.Properties.Value = r.text
+	if r.state != nil && r.state.element != nil {
+		if w, ok := r.state.element.Widget().(TextInput); ok && w.Controller != nil {
+			config.Properties.Value = w.Controller.Text()
+		}
+	}
 
 	// Set hint
 	config.Properties.Hint = "Double tap to edit"
@@ -589,12 +731,12 @@ func (r *renderTextInput) DescribeSemanticsConfiguration(config *semantics.Seman
 	config.Actions = semantics.NewSemanticsActions()
 	config.Actions.SetHandler(semantics.SemanticsActionTap, func(args any) {
 		if r.state != nil {
-			r.state.focus(r)
+			r.state.focus()
 		}
 	})
 	config.Actions.SetHandler(semantics.SemanticsActionFocus, func(args any) {
 		if r.state != nil {
-			r.state.focus(r)
+			r.state.focus()
 		}
 	})
 

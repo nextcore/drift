@@ -95,13 +95,29 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.MainAxisSizeMin,
 
 			widgets.Switch{
+				OnTintColor: colors.Primary,
+				Value:       s.enableAlerts.Get(),
+				OnChanged: func(value bool) {
+					s.enableAlerts.Set(value)
+				},
+			},
+			widgets.HSpace(10),
+			widgets.TextOf("Native Switch", labelStyle(colors)),
+		),
+		widgets.VSpace(12),
+		widgets.RowOf(
+			widgets.MainAxisAlignmentStart,
+			widgets.CrossAxisAlignmentCenter,
+			widgets.MainAxisSizeMin,
+
+			widgets.Toggle{
 				Value: s.enableAlerts.Get(),
 				OnChanged: func(value bool) {
 					s.enableAlerts.Set(value)
 				},
 			},
 			widgets.HSpace(10),
-			widgets.TextOf("Enable notifications", labelStyle(colors)),
+			widgets.TextOf("Skia Toggle", labelStyle(colors)),
 		),
 		widgets.VSpace(16),
 		widgets.TextOf("Contact preference", labelStyle(colors)),

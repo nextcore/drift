@@ -4,12 +4,12 @@ import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/gestures"
 	"github.com/go-drift/drift/pkg/layout"
+	"github.com/go-drift/drift/pkg/platform"
 	"github.com/go-drift/drift/pkg/rendering"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
-// Switch toggles between on/off states.
+// Switch uses native UISwitch (iOS) / SwitchCompat (Android).
 type Switch struct {
 	// Value indicates the current on/off state.
 	Value bool
@@ -17,79 +17,135 @@ type Switch struct {
 	OnChanged func(bool)
 	// Disabled disables interaction when true.
 	Disabled bool
-	// Width controls the overall width.
-	Width float64
-	// Height controls the overall height.
-	Height float64
-	// ActiveColor is the track color when on.
-	ActiveColor rendering.Color
-	// InactiveColor is the track color when off.
-	InactiveColor rendering.Color
-	// ThumbColor is the thumb fill color.
+	// OnTintColor is the track color when on (optional).
+	OnTintColor rendering.Color
+	// ThumbColor is the thumb color (optional).
 	ThumbColor rendering.Color
 }
 
 func (s Switch) CreateElement() core.Element {
-	return core.NewStatelessElement(s, nil)
+	return core.NewStatefulElement(s, nil)
 }
 
 func (s Switch) Key() any {
 	return nil
 }
 
-func (s Switch) Build(ctx core.BuildContext) core.Widget {
-	themeData := theme.ThemeOf(ctx)
-	switchTheme := themeData.SwitchThemeOf()
+func (s Switch) CreateState() core.State {
+	return &switchState{}
+}
 
-	activeColor := s.ActiveColor
-	if activeColor == 0 {
-		activeColor = switchTheme.ActiveTrackColor
-	}
-	inactiveColor := s.InactiveColor
-	if inactiveColor == 0 {
-		inactiveColor = switchTheme.InactiveTrackColor
-	}
-	thumbColor := s.ThumbColor
-	if thumbColor == 0 {
-		thumbColor = switchTheme.ThumbColor
-	}
-	width := s.Width
-	if width == 0 {
-		width = switchTheme.Width
-	}
-	height := s.Height
-	if height == 0 {
-		height = switchTheme.Height
-	}
+type switchState struct {
+	element      *core.StatefulElement
+	platformView *platform.SwitchView
+	value        bool
+}
 
-	enabled := !s.Disabled && s.OnChanged != nil
-	if !enabled {
-		activeColor = switchTheme.DisabledActiveTrackColor
-		inactiveColor = switchTheme.DisabledInactiveTrackColor
-		thumbColor = switchTheme.DisabledThumbColor
-	}
+func (s *switchState) SetElement(e *core.StatefulElement) {
+	s.element = e
+}
 
-	return switchRender{
-		value:         s.Value,
-		onChanged:     s.OnChanged,
-		enabled:       enabled,
-		width:         width,
-		height:        height,
-		activeColor:   activeColor,
-		inactiveColor: inactiveColor,
-		thumbColor:    thumbColor,
+func (s *switchState) InitState() {
+	w := s.element.Widget().(Switch)
+	s.value = w.Value
+}
+
+func (s *switchState) Dispose() {
+	if s.platformView != nil {
+		platform.GetPlatformViewRegistry().Dispose(s.platformView.ViewID())
+		s.platformView = nil
 	}
 }
 
+func (s *switchState) DidChangeDependencies() {}
+
+func (s *switchState) DidUpdateWidget(oldWidget core.StatefulWidget) {
+	w := s.element.Widget().(Switch)
+
+	// Sync value if it changed from widget
+	if w.Value != s.value {
+		s.value = w.Value
+		if s.platformView != nil {
+			s.platformView.SetValue(w.Value)
+		}
+	}
+
+	// Update config if colors changed
+	if s.platformView != nil {
+		old := oldWidget.(Switch)
+		if w.OnTintColor != old.OnTintColor || w.ThumbColor != old.ThumbColor {
+			s.platformView.UpdateConfig(platform.SwitchViewConfig{
+				OnTintColor:    uint32(w.OnTintColor),
+				ThumbTintColor: uint32(w.ThumbColor),
+			})
+		}
+	}
+}
+
+func (s *switchState) SetState(fn func()) {
+	fn()
+	if s.element != nil {
+		s.element.MarkNeedsBuild()
+	}
+}
+
+func (s *switchState) Build(ctx core.BuildContext) core.Widget {
+	w := s.element.Widget().(Switch)
+
+	return switchRender{
+		state:    s,
+		disabled: w.Disabled,
+	}
+}
+
+// OnValueChanged implements platform.SwitchViewClient.
+func (s *switchState) OnValueChanged(value bool) {
+	w := s.element.Widget().(Switch)
+
+	s.SetState(func() {
+		s.value = value
+	})
+
+	if w.OnChanged != nil {
+		w.OnChanged(value)
+	}
+}
+
+func (s *switchState) ensurePlatformView() {
+	if s.platformView != nil {
+		return
+	}
+
+	w := s.element.Widget().(Switch)
+
+	params := map[string]any{
+		"value": s.value,
+	}
+
+	if w.OnTintColor != 0 {
+		params["onTintColor"] = uint32(w.OnTintColor)
+	}
+	if w.ThumbColor != 0 {
+		params["thumbTintColor"] = uint32(w.ThumbColor)
+	}
+
+	view, err := platform.GetPlatformViewRegistry().Create("switch", params)
+	if err != nil {
+		return
+	}
+
+	switchView, ok := view.(*platform.SwitchView)
+	if !ok {
+		return
+	}
+
+	s.platformView = switchView
+	s.platformView.SetClient(s)
+}
+
 type switchRender struct {
-	value         bool
-	onChanged     func(bool)
-	enabled       bool
-	width         float64
-	height        float64
-	activeColor   rendering.Color
-	inactiveColor rendering.Color
-	thumbColor    rendering.Color
+	state    *switchState
+	disabled bool
 }
 
 func (s switchRender) CreateElement() core.Element {
@@ -101,15 +157,18 @@ func (s switchRender) Key() any {
 }
 
 func (s switchRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
-	r := &renderSwitch{}
+	r := &renderSwitch{
+		state:    s.state,
+		disabled: s.disabled,
+	}
 	r.SetSelf(r)
-	r.update(s)
 	return r
 }
 
 func (s switchRender) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if r, ok := renderObject.(*renderSwitch); ok {
-		r.update(s)
+		r.state = s.state
+		r.disabled = s.disabled
 		r.MarkNeedsLayout()
 		r.MarkNeedsPaint()
 	}
@@ -117,64 +176,49 @@ func (s switchRender) UpdateRenderObject(ctx core.BuildContext, renderObject lay
 
 type renderSwitch struct {
 	layout.RenderBoxBase
-	value         bool
-	onChanged     func(bool)
-	enabled       bool
-	width         float64
-	height        float64
-	activeColor   rendering.Color
-	inactiveColor rendering.Color
-	thumbColor    rendering.Color
-	tap           *gestures.TapGestureRecognizer
-}
-
-func (r *renderSwitch) update(s switchRender) {
-	r.value = s.value
-	r.onChanged = s.onChanged
-	r.enabled = s.enabled
-	r.width = s.width
-	r.height = s.height
-	r.activeColor = s.activeColor
-	r.inactiveColor = s.inactiveColor
-	r.thumbColor = s.thumbColor
+	state    *switchState
+	disabled bool
+	tap      *gestures.TapGestureRecognizer
 }
 
 func (r *renderSwitch) PerformLayout() {
 	constraints := r.Constraints()
-	width := r.width
-	height := r.height
-	if width == 0 {
-		width = 44
-	}
-	if height == 0 {
-		height = 26
-	}
+	// Standard native switch dimensions (iOS: 51x31, Android: ~52x32)
+	width := 51.0
+	height := 31.0
 	width = min(max(width, constraints.MinWidth), constraints.MaxWidth)
 	height = min(max(height, constraints.MinHeight), constraints.MaxHeight)
 	r.SetSize(rendering.Size{Width: width, Height: height})
 }
 
-func (r *renderSwitch) Paint(ctx *layout.PaintContext) {
-	size := r.Size()
-	trackPaint := rendering.DefaultPaint()
-	if r.value {
-		trackPaint.Color = r.activeColor
-	} else {
-		trackPaint.Color = r.inactiveColor
+func (r *renderSwitch) updatePlatformView() {
+	if r.state == nil || r.state.element == nil {
+		return
 	}
-	trackRect := rendering.RectFromLTWH(0, 0, size.Width, size.Height)
-	trackRadius := size.Height / 2
-	trackRRect := rendering.RRectFromRectAndRadius(trackRect, rendering.CircularRadius(trackRadius))
-	ctx.Canvas.DrawRRect(trackRRect, trackPaint)
 
-	thumbRadius := (size.Height - 4) / 2
-	thumbCenter := rendering.Offset{X: 2 + thumbRadius, Y: size.Height / 2}
-	if r.value {
-		thumbCenter.X = size.Width - 2 - thumbRadius
+	// Ensure view exists
+	r.state.ensurePlatformView()
+
+	if r.state.platformView == nil {
+		return
 	}
-	thumbPaint := rendering.DefaultPaint()
-	thumbPaint.Color = r.thumbColor
-	ctx.Canvas.DrawCircle(thumbCenter, thumbRadius, thumbPaint)
+
+	// Get global position
+	globalOffset := core.GlobalOffsetOf(r.state.element)
+	size := r.Size()
+
+	// Update native view geometry
+	r.state.platformView.SetOffset(globalOffset)
+	r.state.platformView.SetSize(size)
+	r.state.platformView.SetVisible(true)
+	r.state.platformView.SetEnabled(!r.disabled)
+}
+
+func (r *renderSwitch) Paint(ctx *layout.PaintContext) {
+	// Update platform view position each frame to animate with page transitions
+	r.updatePlatformView()
+
+	// Native view handles rendering - nothing to draw in Skia
 }
 
 func (r *renderSwitch) HitTest(position rendering.Offset, result *layout.HitTestResult) bool {
@@ -186,22 +230,7 @@ func (r *renderSwitch) HitTest(position rendering.Offset, result *layout.HitTest
 }
 
 func (r *renderSwitch) HandlePointer(event gestures.PointerEvent) {
-	if !r.enabled {
-		return
-	}
-	if r.tap == nil {
-		r.tap = gestures.NewTapGestureRecognizer(gestures.DefaultArena)
-		r.tap.OnTap = func() {
-			if r.onChanged != nil {
-				r.onChanged(!r.value)
-			}
-		}
-	}
-	if event.Phase == gestures.PointerPhaseDown {
-		r.tap.AddPointer(event)
-	} else {
-		r.tap.HandleEvent(event)
-	}
+	// Native view handles touch events directly
 }
 
 // DescribeSemanticsConfiguration implements SemanticsDescriber for accessibility.
@@ -211,32 +240,35 @@ func (r *renderSwitch) DescribeSemanticsConfiguration(config *semantics.Semantic
 
 	// Set flags
 	flags := semantics.SemanticsHasToggledState | semantics.SemanticsHasEnabledState
-	if r.value {
+	if r.state != nil && r.state.value {
 		flags = flags.Set(semantics.SemanticsIsToggled)
 	}
-	if r.enabled {
+	if !r.disabled {
 		flags = flags.Set(semantics.SemanticsIsEnabled)
 	}
 	config.Properties.Flags = flags
 
 	// Set value description
-	if r.value {
+	if r.state != nil && r.state.value {
 		config.Properties.Value = "On"
 	} else {
 		config.Properties.Value = "Off"
 	}
 
 	// Set hint
-	if r.enabled {
+	if !r.disabled {
 		config.Properties.Hint = "Double tap to toggle"
 	}
 
 	// Set action
-	if r.enabled && r.onChanged != nil {
-		config.Actions = semantics.NewSemanticsActions()
-		config.Actions.SetHandler(semantics.SemanticsActionTap, func(args any) {
-			r.onChanged(!r.value)
-		})
+	if !r.disabled && r.state != nil {
+		w := r.state.element.Widget().(Switch)
+		if w.OnChanged != nil {
+			config.Actions = semantics.NewSemanticsActions()
+			config.Actions.SetHandler(semantics.SemanticsActionTap, func(args any) {
+				w.OnChanged(!r.state.value)
+			})
+		}
 	}
 
 	return true

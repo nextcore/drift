@@ -30,7 +30,6 @@ package {{.PackageName}}
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -52,8 +51,9 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Container layout that holds the surface view and platform views.
+     * Uses DriftContainer to handle touch forwarding for text inputs.
      */
-    private lateinit var container: FrameLayout
+    private lateinit var container: DriftContainer
 
     /**
      * Called when the activity is first created.
@@ -72,21 +72,22 @@ class MainActivity : AppCompatActivity() {
         NotificationHandler.handleNotificationOpen(intent)
         DeepLinkHandler.handleIntent(intent, "launch")
 
-        // Create a container for the surface view and platform views
-        container = FrameLayout(this)
+        // Create a container for the surface view and platform views.
+        // DriftContainer handles touch forwarding for unfocused text inputs.
+        container = DriftContainer(this)
 
         surfaceView = DriftSurfaceView(this)
-        container.addView(surfaceView, FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
+        container.addView(surfaceView, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
         ))
+        container.setSurfaceView(surfaceView)
 
         setContentView(container)
 
         PlatformChannelManager.setView(surfaceView)
 
-        // Initialize text input and platform view handlers with the container
-        TextInputHandler.init(this, container)
+        // Initialize platform view handler with the container
         PlatformViewHandler.init(this, container)
 
         // Initialize accessibility support

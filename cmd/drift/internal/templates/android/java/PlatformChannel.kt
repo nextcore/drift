@@ -196,11 +196,6 @@ object PlatformChannelManager {
             DeepLinkHandler.handle(method, args)
         }
 
-        // Text Input channel
-        register("drift/text_input") { method, args ->
-            TextInputHandler.handle(method, args)
-        }
-
         // Platform Views channel
         register("drift/platform_views") { method, args ->
             PlatformViewHandler.handle(method, args)

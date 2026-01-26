@@ -22,6 +22,8 @@ object PlatformViewHandler {
 
     // Supported methods for each view type
     private val webViewMethods = setOf("loadUrl", "goBack", "goForward", "reload")
+    private val textInputMethods = setOf("setText", "setSelection", "setValue", "focus", "blur", "updateConfig")
+    private val switchMethods = setOf("setValue", "updateConfig")
 
     fun init(context: Context, hostView: ViewGroup) {
         this.context = context
@@ -37,6 +39,7 @@ object PlatformViewHandler {
             "dispose" -> dispose(argsMap)
             "setGeometry" -> setGeometry(argsMap)
             "setVisible" -> setVisible(argsMap)
+            "setEnabled" -> setEnabled(argsMap)
             "invokeViewMethod" -> invokeViewMethod(argsMap)
             else -> Pair(null, IllegalArgumentException("Unknown method: $method"))
         }
@@ -55,6 +58,8 @@ object PlatformViewHandler {
         // Validate method is supported before posting
         val supported = when (container) {
             is NativeWebViewContainer -> method in webViewMethods
+            is NativeTextInputContainer -> method in textInputMethods
+            is NativeSwitchContainer -> method in switchMethods
             else -> false
         }
         if (!supported) {
@@ -74,6 +79,43 @@ object PlatformViewHandler {
                         "goBack" -> container.view.goBack()
                         "goForward" -> container.view.goForward()
                         "reload" -> container.view.reload()
+                    }
+                }
+                is NativeTextInputContainer -> {
+                    when (method) {
+                        "setText" -> {
+                            val text = args["text"] as? String ?: ""
+                            container.setText(text)
+                        }
+                        "setSelection" -> {
+                            val base = (args["selectionBase"] as? Number)?.toInt() ?: 0
+                            val extent = (args["selectionExtent"] as? Number)?.toInt() ?: 0
+                            container.setSelection(base, extent)
+                        }
+                        "setValue" -> {
+                            val text = args["text"] as? String ?: ""
+                            val base = (args["selectionBase"] as? Number)?.toInt() ?: text.length
+                            val extent = (args["selectionExtent"] as? Number)?.toInt() ?: text.length
+                            container.setValue(text, base, extent)
+                        }
+                        "focus" -> container.focus()
+                        "blur" -> container.blur()
+                        "updateConfig" -> {
+                            @Suppress("UNCHECKED_CAST")
+                            container.updateConfig(args as Map<String, Any?>)
+                        }
+                    }
+                }
+                is NativeSwitchContainer -> {
+                    when (method) {
+                        "setValue" -> {
+                            val value = args["value"] as? Boolean ?: false
+                            container.setValue(value)
+                        }
+                        "updateConfig" -> {
+                            @Suppress("UNCHECKED_CAST")
+                            container.updateConfig(args as Map<String, Any?>)
+                        }
                     }
                 }
             }
@@ -96,6 +138,8 @@ object PlatformViewHandler {
 
         val creator: (() -> PlatformViewContainer)? = when (viewType) {
             "native_webview" -> { { NativeWebViewContainer(ctx, viewId, params) } }
+            "textinput" -> { { NativeTextInputContainer(ctx, viewId, params) } }
+            "switch" -> { { NativeSwitchContainer(ctx, viewId, params) } }
             else -> null
         }
 
@@ -169,6 +213,20 @@ object PlatformViewHandler {
         host.post {
             val container = views[viewId] ?: return@post
             container.view.visibility = if (visible) View.VISIBLE else View.GONE
+        }
+
+        return Pair(null, null)
+    }
+
+    private fun setEnabled(args: Map<*, *>): Pair<Any?, Exception?> {
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: return Pair(null, null)
+        val enabled = args["enabled"] as? Boolean ?: true
+        val host = hostView ?: return Pair(null, null)
+
+        host.post {
+            val container = views[viewId] ?: return@post
+            container.view.isEnabled = enabled
+            container.view.alpha = if (enabled) 1.0f else 0.5f
         }
 
         return Pair(null, null)

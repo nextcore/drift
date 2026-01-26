@@ -69,7 +69,39 @@ func newPlatformViewRegistry() *PlatformViewRegistry {
 	// Handle incoming calls from native
 	r.channel.SetHandler(r.handleMethodCall)
 
+	// Also listen for events from native (text changes, focus, etc.)
+	eventChannel := NewEventChannel("drift/platform_views")
+	eventChannel.Listen(EventHandler{
+		OnEvent: func(data any) {
+			r.handleEvent(data)
+		},
+	})
+
 	return r
+}
+
+// handleEvent processes events from native platform views.
+func (r *PlatformViewRegistry) handleEvent(data any) {
+	dataMap, ok := data.(map[string]any)
+	if !ok {
+		return
+	}
+
+	method, _ := dataMap["method"].(string)
+	if method == "" {
+		return
+	}
+
+	switch method {
+	case "onTextChanged":
+		r.handleTextChanged(dataMap)
+	case "onAction":
+		r.handleAction(dataMap)
+	case "onFocusChanged":
+		r.handleFocusChanged(dataMap)
+	case "onSwitchChanged":
+		r.handleSwitchChanged(dataMap)
+	}
 }
 
 // RegisterFactory registers a factory for a platform view type.
@@ -163,6 +195,15 @@ func (r *PlatformViewRegistry) SetViewVisible(viewID int64, visible bool) error 
 	return err
 }
 
+// SetViewEnabled notifies native to enable or disable a view.
+func (r *PlatformViewRegistry) SetViewEnabled(viewID int64, enabled bool) error {
+	_, err := r.channel.Invoke("setEnabled", map[string]any{
+		"viewId":  viewID,
+		"enabled": enabled,
+	})
+	return err
+}
+
 // InvokeViewMethod invokes a method on a specific platform view.
 func (r *PlatformViewRegistry) InvokeViewMethod(viewID int64, method string, args map[string]any) (any, error) {
 	// Clone the args map to avoid mutating the caller's map
@@ -181,6 +222,8 @@ func (r *PlatformViewRegistry) InvokeViewMethod(viewID int64, method string, arg
 
 // handleMethodCall processes incoming method calls from native code.
 func (r *PlatformViewRegistry) handleMethodCall(method string, args any) (any, error) {
+	argsMap, _ := args.(map[string]any)
+
 	switch method {
 	case "onViewCreated":
 		// Native has finished creating the view
@@ -190,11 +233,79 @@ func (r *PlatformViewRegistry) handleMethodCall(method string, args any) (any, e
 		// Native has finished disposing the view
 		return nil, nil
 
+	case "onTextChanged":
+		return r.handleTextChanged(argsMap)
+
+	case "onAction":
+		return r.handleAction(argsMap)
+
+	case "onFocusChanged":
+		return r.handleFocusChanged(argsMap)
+
+	case "onSwitchChanged":
+		return r.handleSwitchChanged(argsMap)
+
 	default:
-		// args can be used for future method handling
-		_ = args
 		return nil, ErrMethodNotFound
 	}
+}
+
+func (r *PlatformViewRegistry) handleTextChanged(args map[string]any) (any, error) {
+	viewID, _ := toInt64(args["viewId"])
+	text, _ := args["text"].(string)
+	selBase, _ := toInt(args["selectionBase"])
+	selExt, _ := toInt(args["selectionExtent"])
+
+	r.mu.RLock()
+	view := r.views[viewID]
+	r.mu.RUnlock()
+
+	if textInput, ok := view.(*TextInputView); ok {
+		textInput.handleTextChanged(text, selBase, selExt)
+	}
+	return nil, nil
+}
+
+func (r *PlatformViewRegistry) handleAction(args map[string]any) (any, error) {
+	viewID, _ := toInt64(args["viewId"])
+	action, _ := toInt(args["action"])
+
+	r.mu.RLock()
+	view := r.views[viewID]
+	r.mu.RUnlock()
+
+	if textInput, ok := view.(*TextInputView); ok {
+		textInput.handleAction(TextInputAction(action))
+	}
+	return nil, nil
+}
+
+func (r *PlatformViewRegistry) handleFocusChanged(args map[string]any) (any, error) {
+	viewID, _ := toInt64(args["viewId"])
+	focused, _ := args["focused"].(bool)
+
+	r.mu.RLock()
+	view := r.views[viewID]
+	r.mu.RUnlock()
+
+	if textInput, ok := view.(*TextInputView); ok {
+		textInput.handleFocusChanged(focused)
+	}
+	return nil, nil
+}
+
+func (r *PlatformViewRegistry) handleSwitchChanged(args map[string]any) (any, error) {
+	viewID, _ := toInt64(args["viewId"])
+	value, _ := args["value"].(bool)
+
+	r.mu.RLock()
+	view := r.views[viewID]
+	r.mu.RUnlock()
+
+	if switchView, ok := view.(*SwitchView); ok {
+		switchView.handleValueChanged(value)
+	}
+	return nil, nil
 }
 
 // basePlatformView provides common implementation for platform views.
@@ -227,4 +338,8 @@ func (v *basePlatformView) SetOffset(offset rendering.Offset) {
 func (v *basePlatformView) SetVisible(visible bool) {
 	v.visible = visible
 	GetPlatformViewRegistry().SetViewVisible(v.viewID, visible)
+}
+
+func (v *basePlatformView) SetEnabled(enabled bool) {
+	GetPlatformViewRegistry().SetViewEnabled(v.viewID, enabled)
 }
