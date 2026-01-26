@@ -222,13 +222,82 @@ enum PlatformViewHandler {
         let y = args["y"] as? Double ?? 0
         let width = args["width"] as? Double ?? 0
         let height = args["height"] as? Double ?? 0
+        let clipLeft = args["clipLeft"] as? Double
+        let clipTop = args["clipTop"] as? Double
+        let clipRight = args["clipRight"] as? Double
+        let clipBottom = args["clipBottom"] as? Double
 
         DispatchQueue.main.async {
             container.view.frame = CGRect(x: x, y: y, width: width, height: height)
-            container.view.isHidden = false
+            applyClipBounds(
+                view: container.view,
+                viewX: CGFloat(x), viewY: CGFloat(y),
+                viewWidth: CGFloat(width), viewHeight: CGFloat(height),
+                clipLeft: clipLeft.map { CGFloat($0) },
+                clipTop: clipTop.map { CGFloat($0) },
+                clipRight: clipRight.map { CGFloat($0) },
+                clipBottom: clipBottom.map { CGFloat($0) }
+            )
         }
 
         return (nil, nil)
+    }
+
+    /// Apply clip bounds to a view using CALayer masking.
+    /// Clip bounds are in logical points (no density conversion needed on iOS).
+    private static func applyClipBounds(
+        view: UIView,
+        viewX: CGFloat, viewY: CGFloat,
+        viewWidth: CGFloat, viewHeight: CGFloat,
+        clipLeft: CGFloat?, clipTop: CGFloat?,
+        clipRight: CGFloat?, clipBottom: CGFloat?
+    ) {
+        // No clip provided - clear any existing mask, but don't change visibility
+        // (visibility is controlled by SetVisible or by full clipping below)
+        guard let clipLeft = clipLeft,
+              let clipTop = clipTop,
+              let clipRight = clipRight,
+              let clipBottom = clipBottom else {
+            view.layer.mask = nil
+            return
+        }
+
+        // Convert global clip to local view coordinates
+        let localClipLeft = clipLeft - viewX
+        let localClipTop = clipTop - viewY
+        let localClipRight = clipRight - viewX
+        let localClipBottom = clipBottom - viewY
+
+        // Clamp to view bounds
+        let left = max(0, min(localClipLeft, viewWidth))
+        let top = max(0, min(localClipTop, viewHeight))
+        let right = max(0, min(localClipRight, viewWidth))
+        let bottom = max(0, min(localClipBottom, viewHeight))
+
+        // Completely clipped - hide view
+        if left >= right || top >= bottom {
+            view.isHidden = true
+            view.layer.mask = nil
+            return
+        }
+
+        // Fully visible (clip covers entire view) - no mask needed
+        // Check local values directly to avoid sub-pixel edge exposure
+        if localClipLeft <= 0 && localClipTop <= 0 &&
+           localClipRight >= viewWidth && localClipBottom >= viewHeight {
+            view.layer.mask = nil
+            view.isHidden = false
+            return
+        }
+
+        // Partial clip - apply mask
+        // Note: Allocates a new CAShapeLayer each update. If scroll performance degrades,
+        // consider reusing a mask layer per view.
+        let maskPath = UIBezierPath(rect: CGRect(x: left, y: top, width: right - left, height: bottom - top))
+        let maskLayer = CAShapeLayer()
+        maskLayer.path = maskPath.cgPath
+        view.layer.mask = maskLayer
+        view.isHidden = false
     }
 
     /// Batch geometry update with synchronization.
@@ -260,9 +329,21 @@ enum PlatformViewHandler {
                 let y = geom["y"] as? Double ?? 0
                 let width = geom["width"] as? Double ?? 0
                 let height = geom["height"] as? Double ?? 0
+                let clipLeft = geom["clipLeft"] as? Double
+                let clipTop = geom["clipTop"] as? Double
+                let clipRight = geom["clipRight"] as? Double
+                let clipBottom = geom["clipBottom"] as? Double
 
                 container.view.frame = CGRect(x: x, y: y, width: width, height: height)
-                container.view.isHidden = false
+                applyClipBounds(
+                    view: container.view,
+                    viewX: CGFloat(x), viewY: CGFloat(y),
+                    viewWidth: CGFloat(width), viewHeight: CGFloat(height),
+                    clipLeft: clipLeft.map { CGFloat($0) },
+                    clipTop: clipTop.map { CGFloat($0) },
+                    clipRight: clipRight.map { CGFloat($0) },
+                    clipBottom: clipBottom.map { CGFloat($0) }
+                )
             }
             lastAppliedSeq = frameSeq
         }

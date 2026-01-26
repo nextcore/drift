@@ -234,12 +234,8 @@ func (r *renderNativeWebView) ensurePlatformView() {
 	r.state.ensurePlatformView(r.initialURL, r.controller)
 }
 
-func (r *renderNativeWebView) updatePlatformView() {
+func (r *renderNativeWebView) updatePlatformView(clipBounds *rendering.Rect) {
 	if r.state == nil || r.state.viewID == 0 {
-		return
-	}
-	view := platform.GetPlatformViewRegistry().GetView(r.state.viewID)
-	if view == nil {
 		return
 	}
 
@@ -250,14 +246,22 @@ func (r *renderNativeWebView) updatePlatformView() {
 		offset = parentData.Offset
 	}
 
-	view.SetOffset(offset)
-	view.SetSize(r.Size())
-	view.SetVisible(true)
+	// Update geometry with clip bounds via registry
+	// Note: applyClipBounds on native side controls visibility based on clip state
+	platform.GetPlatformViewRegistry().UpdateViewGeometry(r.state.viewID, offset, r.Size(), clipBounds)
 }
 
 func (r *renderNativeWebView) Paint(ctx *layout.PaintContext) {
 	r.ensurePlatformView()
-	r.updatePlatformView()
+
+	// Get clip bounds for platform view
+	clip, hasClip := ctx.CurrentClipBounds()
+	var clipPtr *rendering.Rect
+	if hasClip {
+		clipPtr = &clip
+	}
+
+	r.updatePlatformView(clipPtr)
 
 	size := r.Size()
 

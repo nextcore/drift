@@ -186,17 +186,30 @@ func (r *renderScrollView) Paint(ctx *layout.PaintContext) {
 		return
 	}
 	size := r.Size()
+	clipRect := rendering.RectFromLTWH(0, 0, size.Width, size.Height)
+
 	ctx.Canvas.Save()
-	ctx.Canvas.ClipRect(rendering.RectFromLTWH(0, 0, size.Width, size.Height))
+	ctx.Canvas.ClipRect(clipRect)
+
+	// Push clip BEFORE scroll translation (clip is viewport-relative)
+	ctx.PushClipRect(clipRect)
+
 	offset := r.scrollOffset()
 	if r.direction == AxisHorizontal {
 		ctx.Canvas.Translate(-offset, 0)
+		ctx.PushTranslation(-offset, 0)
 	} else {
 		ctx.Canvas.Translate(0, -offset)
+		ctx.PushTranslation(0, -offset)
 	}
+
 	if !r.paintCulled(ctx, size, offset) {
 		r.child.Paint(ctx)
 	}
+
+	// Pop in reverse order
+	ctx.PopTranslation()
+	ctx.PopClipRect()
 	ctx.Canvas.Restore()
 }
 

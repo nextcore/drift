@@ -108,3 +108,31 @@ func (r RRect) UniformRadius() float64 {
 func floatEqual(a, b float64) bool {
 	return math.Abs(a-b) <= epsilon
 }
+
+// Intersect returns the intersection of two rectangles.
+// Returns empty rect if they don't overlap.
+func (r Rect) Intersect(other Rect) Rect {
+	left := math.Max(r.Left, other.Left)
+	top := math.Max(r.Top, other.Top)
+	right := math.Min(r.Right, other.Right)
+	bottom := math.Min(r.Bottom, other.Bottom)
+	if left >= right || top >= bottom {
+		return Rect{} // Empty
+	}
+	return Rect{Left: left, Top: top, Right: right, Bottom: bottom}
+}
+
+// IsEmpty returns true if the rectangle has zero or negative area.
+func (r Rect) IsEmpty() bool {
+	return r.Right <= r.Left || r.Bottom <= r.Top
+}
+
+// Translate returns a new rect offset by (dx, dy).
+func (r Rect) Translate(dx, dy float64) Rect {
+	return Rect{
+		Left:   r.Left + dx,
+		Top:    r.Top + dy,
+		Right:  r.Right + dx,
+		Bottom: r.Bottom + dy,
+	}
+}

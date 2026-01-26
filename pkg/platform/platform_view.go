@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"math"
 	"sync"
 	"sync/atomic"
 
@@ -9,15 +10,33 @@ import (
 
 // geometryUpdate represents a pending geometry change for a platform view.
 type geometryUpdate struct {
-	viewID int64
-	offset rendering.Offset
-	size   rendering.Size
+	viewID     int64
+	offset     rendering.Offset
+	size       rendering.Size
+	clipBounds *rendering.Rect // nil = no clipping
 }
 
 // viewGeometryCache tracks the last sent geometry to avoid redundant updates.
 type viewGeometryCache struct {
-	offset rendering.Offset
-	size   rendering.Size
+	offset     rendering.Offset
+	size       rendering.Size
+	clipBounds *rendering.Rect
+}
+
+// rectsEqual compares two clip bounds with tolerance (handles nil).
+// Uses epsilon to avoid defeating dedupe due to sub-pixel drift from animation/scroll.
+func rectsEqual(a, b *rendering.Rect) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	const epsilon = 0.0001 // Same as geometry.go
+	return math.Abs(a.Left-b.Left) <= epsilon &&
+		math.Abs(a.Top-b.Top) <= epsilon &&
+		math.Abs(a.Right-b.Right) <= epsilon &&
+		math.Abs(a.Bottom-b.Bottom) <= epsilon
 }
 
 // PlatformView represents a native view embedded in Drift UI.
@@ -207,28 +226,29 @@ func (r *PlatformViewRegistry) GetView(viewID int64) PlatformView {
 	return view
 }
 
-// UpdateViewGeometry notifies native of a view's position and size change.
+// UpdateViewGeometry notifies native of a view's position, size, and clip bounds.
 // If batching is active, the update is queued; otherwise sent immediately.
-func (r *PlatformViewRegistry) UpdateViewGeometry(viewID int64, offset rendering.Offset, size rendering.Size) error {
+func (r *PlatformViewRegistry) UpdateViewGeometry(viewID int64, offset rendering.Offset, size rendering.Size, clipBounds *rendering.Rect) error {
 	r.batchMu.Lock()
 
 	// Check if geometry has actually changed (deduplication)
 	if cached, ok := r.geometryCache[viewID]; ok {
-		if cached.offset == offset && cached.size == size {
+		if cached.offset == offset && cached.size == size && rectsEqual(cached.clipBounds, clipBounds) {
 			r.batchMu.Unlock()
 			return nil // No change, skip update
 		}
 	}
 
 	// Update cache
-	r.geometryCache[viewID] = viewGeometryCache{offset: offset, size: size}
+	r.geometryCache[viewID] = viewGeometryCache{offset: offset, size: size, clipBounds: clipBounds}
 
 	if r.batchMode {
 		// Queue for batch send
 		r.batchUpdates = append(r.batchUpdates, geometryUpdate{
-			viewID: viewID,
-			offset: offset,
-			size:   size,
+			viewID:     viewID,
+			offset:     offset,
+			size:       size,
+			clipBounds: clipBounds,
 		})
 		r.batchMu.Unlock()
 		return nil
@@ -236,13 +256,20 @@ func (r *PlatformViewRegistry) UpdateViewGeometry(viewID int64, offset rendering
 	r.batchMu.Unlock()
 
 	// Not batching, send immediately (fallback for non-frame updates)
-	_, err := r.channel.Invoke("setGeometry", map[string]any{
+	args := map[string]any{
 		"viewId": viewID,
 		"x":      offset.X,
 		"y":      offset.Y,
 		"width":  size.Width,
 		"height": size.Height,
-	})
+	}
+	if clipBounds != nil {
+		args["clipLeft"] = clipBounds.Left
+		args["clipTop"] = clipBounds.Top
+		args["clipRight"] = clipBounds.Right
+		args["clipBottom"] = clipBounds.Bottom
+	}
+	_, err := r.channel.Invoke("setGeometry", args)
 	return err
 }
 
@@ -274,13 +301,20 @@ func (r *PlatformViewRegistry) FlushGeometryBatch() {
 	// Convert to format for native
 	batch := make([]map[string]any, len(updates))
 	for i, u := range updates {
-		batch[i] = map[string]any{
+		entry := map[string]any{
 			"viewId": u.viewID,
 			"x":      u.offset.X,
 			"y":      u.offset.Y,
 			"width":  u.size.Width,
 			"height": u.size.Height,
 		}
+		if u.clipBounds != nil {
+			entry["clipLeft"] = u.clipBounds.Left
+			entry["clipTop"] = u.clipBounds.Top
+			entry["clipRight"] = u.clipBounds.Right
+			entry["clipBottom"] = u.clipBounds.Bottom
+		}
+		batch[i] = entry
 	}
 
 	// Send batch to native - this call blocks until native applies all geometries
@@ -449,12 +483,19 @@ func (v *basePlatformView) ViewType() string {
 
 func (v *basePlatformView) SetSize(size rendering.Size) {
 	v.size = size
-	GetPlatformViewRegistry().UpdateViewGeometry(v.viewID, v.offset, v.size)
+	GetPlatformViewRegistry().UpdateViewGeometry(v.viewID, v.offset, v.size, nil)
 }
 
 func (v *basePlatformView) SetOffset(offset rendering.Offset) {
 	v.offset = offset
-	GetPlatformViewRegistry().UpdateViewGeometry(v.viewID, v.offset, v.size)
+	GetPlatformViewRegistry().UpdateViewGeometry(v.viewID, v.offset, v.size, nil)
+}
+
+// SetGeometry updates position, size, and clip bounds in a single call.
+func (v *basePlatformView) SetGeometry(offset rendering.Offset, size rendering.Size, clipBounds *rendering.Rect) {
+	v.offset = offset
+	v.size = size
+	GetPlatformViewRegistry().UpdateViewGeometry(v.viewID, v.offset, v.size, clipBounds)
 }
 
 func (v *basePlatformView) SetVisible(visible bool) {

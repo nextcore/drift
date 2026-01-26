@@ -6,6 +6,7 @@ package {{.PackageName}}
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Rect
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +15,8 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
+import kotlin.math.floor
 
 /**
  * Handles platform view channel methods from Go.
@@ -210,6 +213,10 @@ object PlatformViewHandler {
         val y = (args["y"] as? Number)?.toFloat() ?: 0f
         val width = (args["width"] as? Number)?.toFloat() ?: 0f
         val height = (args["height"] as? Number)?.toFloat() ?: 0f
+        val clipLeft = (args["clipLeft"] as? Number)?.toFloat()
+        val clipTop = (args["clipTop"] as? Number)?.toFloat()
+        val clipRight = (args["clipRight"] as? Number)?.toFloat()
+        val clipBottom = (args["clipBottom"] as? Number)?.toFloat()
 
         host.post {
             val container = views[viewId] ?: return@post
@@ -221,10 +228,66 @@ object PlatformViewHandler {
                 leftMargin = (x * density).toInt()
                 topMargin = (y * density).toInt()
             }
-            container.view.visibility = View.VISIBLE
+            applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
         }
 
         return Pair(null, null)
+    }
+
+    /**
+     * Apply clip bounds to a view.
+     * Clip bounds are in global logical pixels. We convert to local view coordinates.
+     * Uses floor for left/top and ceil for right/bottom to avoid over-clipping.
+     */
+    private fun applyClipBounds(
+        view: View,
+        viewX: Float, viewY: Float,
+        viewWidth: Float, viewHeight: Float,
+        clipLeft: Float?, clipTop: Float?,
+        clipRight: Float?, clipBottom: Float?,
+        density: Float
+    ) {
+        // No clip provided - clear any existing clip, but don't change visibility
+        // (visibility is controlled by SetVisible or by full clipping below)
+        if (clipLeft == null || clipTop == null || clipRight == null || clipBottom == null) {
+            view.clipBounds = null
+            return
+        }
+
+        // Convert global clip to local view coordinates
+        val localClipLeft = (clipLeft - viewX) * density
+        val localClipTop = (clipTop - viewY) * density
+        val localClipRight = (clipRight - viewX) * density
+        val localClipBottom = (clipBottom - viewY) * density
+
+        val viewWidthPx = viewWidth * density
+        val viewHeightPx = viewHeight * density
+
+        // Clamp to view bounds with floor/ceil for safe rounding
+        val left = floor(localClipLeft.coerceIn(0f, viewWidthPx)).toInt()
+        val top = floor(localClipTop.coerceIn(0f, viewHeightPx)).toInt()
+        val right = ceil(localClipRight.coerceIn(0f, viewWidthPx)).toInt()
+        val bottom = ceil(localClipBottom.coerceIn(0f, viewHeightPx)).toInt()
+
+        // Completely clipped - hide view (INVISIBLE keeps layout, GONE would not)
+        if (left >= right || top >= bottom) {
+            view.visibility = View.INVISIBLE
+            view.clipBounds = null  // Clear clip when hidden
+            return
+        }
+
+        // Fully visible (clip covers entire view) - no clip needed
+        // Compare against float values to avoid sub-pixel edge exposure
+        if (localClipLeft <= 0f && localClipTop <= 0f &&
+            localClipRight >= viewWidthPx && localClipBottom >= viewHeightPx) {
+            view.clipBounds = null
+            view.visibility = View.VISIBLE
+            return
+        }
+
+        // Partial clip
+        view.clipBounds = Rect(left, top, right, bottom)
+        view.visibility = View.VISIBLE
     }
 
     /**
@@ -256,6 +319,10 @@ object PlatformViewHandler {
                 val y = (geom["y"] as? Number)?.toFloat() ?: 0f
                 val width = (geom["width"] as? Number)?.toFloat() ?: 0f
                 val height = (geom["height"] as? Number)?.toFloat() ?: 0f
+                val clipLeft = (geom["clipLeft"] as? Number)?.toFloat()
+                val clipTop = (geom["clipTop"] as? Number)?.toFloat()
+                val clipRight = (geom["clipRight"] as? Number)?.toFloat()
+                val clipBottom = (geom["clipBottom"] as? Number)?.toFloat()
 
                 val container = views[viewId] ?: continue
                 container.view.layoutParams = FrameLayout.LayoutParams(
@@ -265,7 +332,7 @@ object PlatformViewHandler {
                     leftMargin = (x * density).toInt()
                     topMargin = (y * density).toInt()
                 }
-                container.view.visibility = View.VISIBLE
+                applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
             }
             lastAppliedSeq = frameSeq
         }

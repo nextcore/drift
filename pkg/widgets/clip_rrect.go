@@ -84,7 +84,12 @@ func (r *renderClipRRect) Paint(ctx *layout.PaintContext) {
 	rrect := rendering.RRectFromRectAndRadius(rect, rendering.CircularRadius(radius))
 	ctx.Canvas.Save()
 	ctx.Canvas.ClipRRect(rrect)
+
+	// Push bounding rect for platform views (ignores rounding for simplicity)
+	ctx.PushClipRect(rect)
 	ctx.PaintChild(r.child, getChildOffset(r.child))
+	ctx.PopClipRect()
+
 	ctx.Canvas.Restore()
 }
 

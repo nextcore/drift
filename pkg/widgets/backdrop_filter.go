@@ -97,12 +97,18 @@ func (r *renderBackdropFilter) Paint(ctx *layout.PaintContext) {
 	bounds := rendering.RectFromLTWH(0, 0, size.Width, size.Height)
 	ctx.Canvas.Save()
 	ctx.Canvas.ClipRect(bounds)
+
+	// Push clip for platform views
+	ctx.PushClipRect(bounds)
+
 	ctx.Canvas.SaveLayerBlur(bounds, r.sigmaX, r.sigmaY)
 	ctx.Canvas.Restore() // apply blur to backdrop
 	// Paint child on top (unblurred)
 	if r.child != nil {
 		ctx.PaintChild(r.child, getChildOffset(r.child))
 	}
+
+	ctx.PopClipRect()
 	ctx.Canvas.Restore() // clip
 }
 

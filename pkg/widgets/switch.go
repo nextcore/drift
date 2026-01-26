@@ -191,7 +191,7 @@ func (r *renderSwitch) PerformLayout() {
 	r.SetSize(rendering.Size{Width: width, Height: height})
 }
 
-func (r *renderSwitch) updatePlatformView() {
+func (r *renderSwitch) updatePlatformView(clipBounds *rendering.Rect) {
 	if r.state == nil || r.state.element == nil {
 		return
 	}
@@ -207,16 +207,22 @@ func (r *renderSwitch) updatePlatformView() {
 	globalOffset := core.GlobalOffsetOf(r.state.element)
 	size := r.Size()
 
-	// Update native view geometry
-	r.state.platformView.SetOffset(globalOffset)
-	r.state.platformView.SetSize(size)
-	r.state.platformView.SetVisible(true)
+	// Update native view geometry with clip bounds
+	// Note: SetGeometry/applyClipBounds controls visibility based on clip state
+	r.state.platformView.SetGeometry(globalOffset, size, clipBounds)
 	r.state.platformView.SetEnabled(!r.disabled)
 }
 
 func (r *renderSwitch) Paint(ctx *layout.PaintContext) {
+	// Get clip bounds for platform view
+	clip, hasClip := ctx.CurrentClipBounds()
+	var clipPtr *rendering.Rect
+	if hasClip {
+		clipPtr = &clip
+	}
+
 	// Update platform view position each frame to animate with page transitions
-	r.updatePlatformView()
+	r.updatePlatformView(clipPtr)
 
 	// Native view handles rendering - nothing to draw in Skia
 }
