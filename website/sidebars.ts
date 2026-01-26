@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'guides/getting-started',
         'guides/widgets',
+        'guides/forms',
         'guides/state-management',
         'guides/layout',
         'guides/animation',

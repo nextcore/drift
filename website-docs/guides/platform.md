@@ -527,5 +527,5 @@ go func() {
 
 ## Next Steps
 
-- [Accessibility](/docs/guides/accessibility) - Make your app accessible
+- [Skia](/docs/guides/skia) - Building Skia from source
 - [API Reference](/docs/api/platform) - Platform API documentation

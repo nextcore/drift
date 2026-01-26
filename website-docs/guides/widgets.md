@@ -138,18 +138,29 @@ container := widgets.NewContainer(child).
 | `SVGIcon` | SVG vector icons |
 | `Image` | Display images from assets/files |
 
+### Progress Indicators
+
+| Widget | Purpose |
+|--------|---------|
+| `ActivityIndicator` | Native platform spinner |
+| `CircularProgressIndicator` | Circular progress (determinate/indeterminate) |
+| `LinearProgressIndicator` | Linear progress bar (determinate/indeterminate) |
+
 ### Input Widgets
 
 | Widget | Purpose |
 |--------|---------|
 | `Button` | Tappable button with haptic feedback |
 | `TextInput` | Base native text input |
-| `TextField` | Decorated text input with label and helper text |
-| `TextFormField` | Text input with form validation |
+| `TextField` | Decorated native text input with label and helper text |
+| `TextFormField` | TextField with form validation |
 | `Checkbox` | Boolean toggle |
 | `Radio` | Single selection from group |
-| `Switch` | On/off toggle |
+| `Switch` | Native on/off toggle (UISwitch/SwitchCompat) |
+| `Toggle` | Drift-rendered on/off toggle |
 | `Dropdown` | Selection menu |
+| `DatePicker` | Native date picker modal |
+| `TimePicker` | Native time picker modal |
 | `Form` | Form container with validation |
 
 ### Scrolling Widgets
@@ -346,6 +357,7 @@ widgets.ListView{
 
 ## Next Steps
 
+- [Forms](/docs/guides/forms) - Form validation and input controls
 - [State Management](/docs/guides/state-management) - Managing widget state
 - [Layout](/docs/guides/layout) - Arranging widgets
 - [Animation](/docs/guides/animation) - Animating widgets
