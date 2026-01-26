@@ -10,6 +10,9 @@ enum PlatformViewHandler {
     private static var views: [Int: PlatformViewContainer] = [:]
     private static weak var hostView: UIView?
 
+    /// Frame sequence tracking for geometry batches
+    private static var lastAppliedSeq: UInt64 = 0
+
     /// Sets the host view where platform views will be added.
     static func setHostView(_ view: UIView) {
         hostView = view
@@ -27,6 +30,8 @@ enum PlatformViewHandler {
             return dispose(args: dict)
         case "setGeometry":
             return setGeometry(args: dict)
+        case "batchSetGeometry":
+            return batchSetGeometry(args: dict)
         case "setVisible":
             return setVisible(args: dict)
         case "setEnabled":
@@ -204,6 +209,67 @@ enum PlatformViewHandler {
         DispatchQueue.main.async {
             container.view.frame = CGRect(x: x, y: y, width: width, height: height)
             container.view.isHidden = false
+        }
+
+        return (nil, nil)
+    }
+
+    /// Batch geometry update with synchronization.
+    /// Blocks until all geometries are applied on the main thread.
+    /// This ensures native views are positioned before the frame is displayed.
+    private static func batchSetGeometry(args: [String: Any]) -> (Any?, Error?) {
+        guard let frameSeq = args["frameSeq"] as? UInt64,
+              let geometries = args["geometries"] as? [[String: Any]] else {
+            return (nil, nil)
+        }
+
+        if geometries.isEmpty {
+            return (nil, nil)
+        }
+
+        // Skip stale batches (older than last applied)
+        if frameSeq <= lastAppliedSeq {
+            return (nil, nil)
+        }
+
+        let applyGeometries = {
+            for geom in geometries {
+                guard let viewId = geom["viewId"] as? Int,
+                      let container = views[viewId] else {
+                    continue
+                }
+
+                let x = geom["x"] as? Double ?? 0
+                let y = geom["y"] as? Double ?? 0
+                let width = geom["width"] as? Double ?? 0
+                let height = geom["height"] as? Double ?? 0
+
+                container.view.frame = CGRect(x: x, y: y, width: width, height: height)
+                container.view.isHidden = false
+            }
+            lastAppliedSeq = frameSeq
+        }
+
+        // If already on main thread, apply directly (avoid deadlock)
+        if Thread.isMainThread {
+            applyGeometries()
+            return (nil, nil)
+        }
+
+        // Block until main thread applies all geometries
+        let semaphore = DispatchSemaphore(value: 0)
+        DispatchQueue.main.async {
+            applyGeometries()
+            semaphore.signal()
+        }
+
+        // Wait with timeout to prevent indefinite blocking
+        // 16ms is roughly one frame at 60fps
+        let result = semaphore.wait(timeout: .now() + .milliseconds(16))
+        if result == .timedOut {
+            // Timeout - main thread is busy. The geometries will still be applied
+            // asynchronously, but this frame may show slight lag.
+            return (["timeout": true], nil)
         }
 
         return (nil, nil)

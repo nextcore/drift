@@ -7,6 +7,19 @@ import (
 	"github.com/go-drift/drift/pkg/rendering"
 )
 
+// geometryUpdate represents a pending geometry change for a platform view.
+type geometryUpdate struct {
+	viewID int64
+	offset rendering.Offset
+	size   rendering.Size
+}
+
+// viewGeometryCache tracks the last sent geometry to avoid redundant updates.
+type viewGeometryCache struct {
+	offset rendering.Offset
+	size   rendering.Size
+}
+
 // PlatformView represents a native view embedded in Drift UI.
 type PlatformView interface {
 	// ViewID returns the unique identifier for this view.
@@ -47,6 +60,16 @@ type PlatformViewRegistry struct {
 	nextID    atomic.Int64
 	mu        sync.RWMutex
 	channel   *MethodChannel
+
+	// Geometry batching for synchronized updates
+	batchMu       sync.Mutex
+	batchMode     bool
+	batchUpdates  []geometryUpdate
+	frameSeq      uint64
+	geometryCache map[int64]viewGeometryCache
+
+	// Stats for monitoring
+	BatchTimeouts atomic.Uint64
 }
 
 var platformViewRegistry *PlatformViewRegistry
@@ -61,9 +84,10 @@ func GetPlatformViewRegistry() *PlatformViewRegistry {
 
 func newPlatformViewRegistry() *PlatformViewRegistry {
 	r := &PlatformViewRegistry{
-		factories: make(map[string]PlatformViewFactory),
-		views:     make(map[int64]PlatformView),
-		channel:   NewMethodChannel("drift/platform_views"),
+		factories:     make(map[string]PlatformViewFactory),
+		views:         make(map[int64]PlatformView),
+		channel:       NewMethodChannel("drift/platform_views"),
+		geometryCache: make(map[int64]viewGeometryCache),
 	}
 
 	// Handle incoming calls from native
@@ -93,6 +117,12 @@ func (r *PlatformViewRegistry) handleEvent(data any) {
 	}
 
 	switch method {
+	case "onViewCreated":
+		// Native has finished creating the view.
+		// Clear geometry cache so next frame resends position.
+		if viewID, ok := toInt64(dataMap["viewId"]); ok {
+			r.ClearGeometryCache(viewID)
+		}
 	case "onTextChanged":
 		r.handleTextChanged(dataMap)
 	case "onAction":
@@ -157,6 +187,9 @@ func (r *PlatformViewRegistry) Dispose(viewID int64) {
 	}
 	r.mu.Unlock()
 
+	// Clear geometry cache to avoid stale skips if view is recreated
+	r.ClearGeometryCache(viewID)
+
 	if ok {
 		view.Dispose()
 		// Notify native to destroy the view
@@ -175,7 +208,34 @@ func (r *PlatformViewRegistry) GetView(viewID int64) PlatformView {
 }
 
 // UpdateViewGeometry notifies native of a view's position and size change.
+// If batching is active, the update is queued; otherwise sent immediately.
 func (r *PlatformViewRegistry) UpdateViewGeometry(viewID int64, offset rendering.Offset, size rendering.Size) error {
+	r.batchMu.Lock()
+
+	// Check if geometry has actually changed (deduplication)
+	if cached, ok := r.geometryCache[viewID]; ok {
+		if cached.offset == offset && cached.size == size {
+			r.batchMu.Unlock()
+			return nil // No change, skip update
+		}
+	}
+
+	// Update cache
+	r.geometryCache[viewID] = viewGeometryCache{offset: offset, size: size}
+
+	if r.batchMode {
+		// Queue for batch send
+		r.batchUpdates = append(r.batchUpdates, geometryUpdate{
+			viewID: viewID,
+			offset: offset,
+			size:   size,
+		})
+		r.batchMu.Unlock()
+		return nil
+	}
+	r.batchMu.Unlock()
+
+	// Not batching, send immediately (fallback for non-frame updates)
 	_, err := r.channel.Invoke("setGeometry", map[string]any{
 		"viewId": viewID,
 		"x":      offset.X,
@@ -184,6 +244,62 @@ func (r *PlatformViewRegistry) UpdateViewGeometry(viewID int64, offset rendering
 		"height": size.Height,
 	})
 	return err
+}
+
+// BeginGeometryBatch starts collecting geometry updates for batch processing.
+// Call this at the start of each frame before paint.
+func (r *PlatformViewRegistry) BeginGeometryBatch() {
+	r.batchMu.Lock()
+	r.batchMode = true
+	r.batchUpdates = r.batchUpdates[:0] // Reset slice, keep capacity
+	r.frameSeq++
+	r.batchMu.Unlock()
+}
+
+// FlushGeometryBatch sends all queued geometry updates to native and waits
+// for them to be applied. This ensures native views are positioned correctly
+// before the frame is displayed.
+func (r *PlatformViewRegistry) FlushGeometryBatch() {
+	r.batchMu.Lock()
+	updates := r.batchUpdates
+	frameSeq := r.frameSeq
+	r.batchMode = false
+	r.batchUpdates = nil
+	r.batchMu.Unlock()
+
+	if len(updates) == 0 {
+		return
+	}
+
+	// Convert to format for native
+	batch := make([]map[string]any, len(updates))
+	for i, u := range updates {
+		batch[i] = map[string]any{
+			"viewId": u.viewID,
+			"x":      u.offset.X,
+			"y":      u.offset.Y,
+			"width":  u.size.Width,
+			"height": u.size.Height,
+		}
+	}
+
+	// Send batch to native - this call blocks until native applies all geometries
+	// or timeout occurs. The frameSeq allows native to skip stale batches.
+	_, err := r.channel.Invoke("batchSetGeometry", map[string]any{
+		"frameSeq":   frameSeq,
+		"geometries": batch,
+	})
+	if err != nil {
+		// Timeout or error - increment stat counter
+		r.BatchTimeouts.Add(1)
+	}
+}
+
+// ClearGeometryCache removes cached geometry for a view (call on dispose).
+func (r *PlatformViewRegistry) ClearGeometryCache(viewID int64) {
+	r.batchMu.Lock()
+	delete(r.geometryCache, viewID)
+	r.batchMu.Unlock()
 }
 
 // SetViewVisible notifies native to show or hide a view.
@@ -226,7 +342,13 @@ func (r *PlatformViewRegistry) handleMethodCall(method string, args any) (any, e
 
 	switch method {
 	case "onViewCreated":
-		// Native has finished creating the view
+		// Native has finished creating the view.
+		// Clear geometry cache so next frame resends position.
+		// This handles the race where geometry was sent before the native
+		// view was added to the views map (Android's async host.post).
+		if viewID, ok := toInt64(argsMap["viewId"]); ok {
+			r.ClearGeometryCache(viewID)
+		}
 		return nil, nil
 
 	case "onViewDisposed":

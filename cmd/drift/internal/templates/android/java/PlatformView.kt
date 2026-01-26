@@ -6,11 +6,14 @@ package {{.PackageName}}
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Handles platform view channel methods from Go.
@@ -19,6 +22,9 @@ object PlatformViewHandler {
     private val views = mutableMapOf<Int, PlatformViewContainer>()
     private var context: Context? = null
     private var hostView: ViewGroup? = null
+
+    // Frame sequence tracking for geometry batches
+    private var lastAppliedSeq: Long = 0
 
     // Supported methods for each view type
     private val webViewMethods = setOf("loadUrl", "goBack", "goForward", "reload")
@@ -38,6 +44,7 @@ object PlatformViewHandler {
             "create" -> create(argsMap)
             "dispose" -> dispose(argsMap)
             "setGeometry" -> setGeometry(argsMap)
+            "batchSetGeometry" -> batchSetGeometry(argsMap)
             "setVisible" -> setVisible(argsMap)
             "setEnabled" -> setEnabled(argsMap)
             "invokeViewMethod" -> invokeViewMethod(argsMap)
@@ -200,6 +207,74 @@ object PlatformViewHandler {
                 topMargin = (y * density).toInt()
             }
             container.view.visibility = View.VISIBLE
+        }
+
+        return Pair(null, null)
+    }
+
+    /**
+     * Batch geometry update with synchronization.
+     * Blocks until all geometries are applied on the main thread.
+     * This ensures native views are positioned before the frame is displayed.
+     */
+    private fun batchSetGeometry(args: Map<*, *>): Pair<Any?, Exception?> {
+        val frameSeq = (args["frameSeq"] as? Number)?.toLong() ?: return Pair(null, null)
+        @Suppress("UNCHECKED_CAST")
+        val geometries = args["geometries"] as? List<Map<String, Any?>> ?: return Pair(null, null)
+        val host = hostView ?: return Pair(null, null)
+
+        if (geometries.isEmpty()) {
+            return Pair(null, null)
+        }
+
+        // Skip stale batches (older than last applied)
+        if (frameSeq <= lastAppliedSeq) {
+            return Pair(null, null)
+        }
+
+        val density = context?.resources?.displayMetrics?.density ?: 1f
+
+        val applyGeometries = {
+            for (geom in geometries) {
+                val viewId = (geom["viewId"] as? Number)?.toInt() ?: continue
+                val x = (geom["x"] as? Number)?.toFloat() ?: 0f
+                val y = (geom["y"] as? Number)?.toFloat() ?: 0f
+                val width = (geom["width"] as? Number)?.toFloat() ?: 0f
+                val height = (geom["height"] as? Number)?.toFloat() ?: 0f
+
+                val container = views[viewId] ?: continue
+                container.view.layoutParams = FrameLayout.LayoutParams(
+                    (width * density).toInt(),
+                    (height * density).toInt()
+                ).apply {
+                    leftMargin = (x * density).toInt()
+                    topMargin = (y * density).toInt()
+                }
+                container.view.visibility = View.VISIBLE
+            }
+            lastAppliedSeq = frameSeq
+        }
+
+        // If already on main thread, apply directly (avoid deadlock)
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            applyGeometries()
+            return Pair(null, null)
+        }
+
+        // Block until main thread applies all geometries
+        val latch = CountDownLatch(1)
+        host.post {
+            applyGeometries()
+            latch.countDown()
+        }
+
+        // Wait with timeout to prevent indefinite blocking
+        // 16ms is roughly one frame at 60fps
+        val completed = latch.await(16, TimeUnit.MILLISECONDS)
+        if (!completed) {
+            // Timeout - main thread is busy. The geometries will still be applied
+            // asynchronously, but this frame may show slight lag.
+            return Pair(mapOf("timeout" to true), null)
         }
 
         return Pair(null, null)

@@ -369,6 +369,9 @@ func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err err
 		// Flush semantics after layout, with deferral during animations
 		a.flushSemanticsIfNeeded(pipeline, scale)
 
+		// Begin collecting platform view geometry updates for synchronized batch apply
+		platform.GetPlatformViewRegistry().BeginGeometryBatch()
+
 		// Process dirty repaint boundaries
 		dirtyBoundaries := pipeline.FlushPaint()
 		for _, boundary := range dirtyBoundaries {
@@ -381,6 +384,10 @@ func (a *appRunner) Paint(canvas rendering.Canvas, size rendering.Size) (err err
 		canvas.Scale(scale, scale)
 		paintTreeWithLayers(&layout.PaintContext{Canvas: canvas}, a.rootRender, rendering.Offset{})
 		canvas.Restore()
+
+		// Flush geometry batch - blocks until native applies all updates.
+		// This ensures native views are positioned before the frame is displayed.
+		platform.GetPlatformViewRegistry().FlushGeometryBatch()
 	}
 	return nil
 }
