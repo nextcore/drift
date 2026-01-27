@@ -141,21 +141,18 @@ func (t TextFormField) CreateState() core.State {
 
 // textFormFieldState manages form field state and implements formFieldState interface.
 type textFormFieldState struct {
-	element            *core.StatefulElement
+	formFieldStateBase
 	controller         *platform.TextEditingController // Internal controller if not provided
 	currentController  *platform.TextEditingController // The controller we're currently listening to
 	unsubscribe        func()                          // Unsubscribe from controller listener
 	initialText        string                          // Captured once in InitState (or when controller changes)
 	value              string                          // Current value
-	errorText          string                          // Validation error
-	hasInteracted      bool
-	registeredForm     *FormState
 	resetting          bool                            // True during Reset() to suppress listener
 }
 
 // SetElement stores the element for rebuilds.
 func (s *textFormFieldState) SetElement(element *core.StatefulElement) {
-	s.element = element
+	s.formFieldStateBase.setElement(element)
 }
 
 // InitState initializes the field value from the widget.
@@ -242,10 +239,7 @@ func (s *textFormFieldState) Build(ctx core.BuildContext) core.Widget {
 
 // SetState executes fn and schedules rebuild.
 func (s *textFormFieldState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
+	s.formFieldStateBase.setState(fn)
 }
 
 // Dispose unregisters the field from the form and cleans up listeners.
@@ -258,9 +252,7 @@ func (s *textFormFieldState) Dispose() {
 	s.currentController = nil
 
 	// Unregister from form
-	if s.registeredForm != nil {
-		s.registeredForm.UnregisterField(s)
-	}
+	s.formFieldStateBase.unregisterFromForm(s)
 }
 
 // DidChangeDependencies is a no-op.
@@ -323,49 +315,28 @@ func (s *textFormFieldState) HasError() bool {
 // didChange updates the value and triggers validation/notifications.
 func (s *textFormFieldState) didChange(value string) {
 	s.value = value
-	s.hasInteracted = true
 	w := s.element.Widget().(TextFormField)
-
-	if w.OnChanged != nil {
-		w.OnChanged(value)
-	}
-
-	if s.registeredForm != nil {
-		s.registeredForm.NotifyChanged()
-	}
-
-	// Validate this field if form or field autovalidate is enabled.
-	// Form.autovalidate enables per-field validation on change, not form-wide validation
-	// (which would show errors on untouched fields). Use Form.Validate() explicitly
-	// to validate all fields (e.g., on submit).
-	if (s.registeredForm != nil && s.registeredForm.autovalidate) || w.Autovalidate {
-		s.Validate()
-		return
-	}
-
-	s.SetState(func() {})
+	s.formFieldStateBase.didChange(
+		w.Autovalidate,
+		func() {
+			if w.OnChanged != nil {
+				w.OnChanged(value)
+			}
+		},
+		s.Validate,
+	)
 }
 
 // Validate implements formFieldState. Runs the field validator.
 func (s *textFormFieldState) Validate() bool {
 	w := s.element.Widget().(TextFormField)
-	if w.Disabled {
-		s.errorText = ""
-		return true
+	var validator func() string
+	if w.Validator != nil {
+		validator = func() string {
+			return w.Validator(s.value)
+		}
 	}
-	if w.Validator == nil {
-		s.errorText = ""
-		return true
-	}
-	message := w.Validator(s.value)
-	if message == "" {
-		s.errorText = ""
-		s.SetState(func() {})
-		return true
-	}
-	s.errorText = message
-	s.SetState(func() {})
-	return false
+	return s.formFieldStateBase.validate(w.Disabled, validator)
 }
 
 // Save implements formFieldState. Triggers the OnSaved callback.
@@ -387,8 +358,7 @@ func (s *textFormFieldState) Reset() {
 	s.resetting = true
 
 	s.value = s.initialText
-	s.errorText = ""
-	s.hasInteracted = false
+	s.formFieldStateBase.resetState()
 
 	// Reset controller to initial text
 	ctrl := w.Controller
@@ -410,14 +380,5 @@ func (s *textFormFieldState) Reset() {
 }
 
 func (s *textFormFieldState) registerWithForm(form *FormState) {
-	if form == s.registeredForm {
-		return
-	}
-	if s.registeredForm != nil {
-		s.registeredForm.UnregisterField(s)
-	}
-	s.registeredForm = form
-	if form != nil {
-		form.RegisterField(s)
-	}
+	s.formFieldStateBase.registerWithForm(form, s)
 }

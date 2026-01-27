@@ -232,6 +232,91 @@ type formFieldState interface {
 	Reset()
 }
 
+type formFieldStateBase struct {
+	element        *core.StatefulElement
+	errorText      string
+	hasInteracted  bool
+	registeredForm *FormState
+}
+
+func (s *formFieldStateBase) setElement(element *core.StatefulElement) {
+	s.element = element
+}
+
+func (s *formFieldStateBase) setState(fn func()) {
+	fn()
+	if s.element != nil {
+		s.element.MarkNeedsBuild()
+	}
+}
+
+func (s *formFieldStateBase) registerWithForm(form *FormState, owner formFieldState) {
+	if form == s.registeredForm {
+		return
+	}
+	if s.registeredForm != nil {
+		s.registeredForm.UnregisterField(owner)
+	}
+	s.registeredForm = form
+	if form != nil {
+		form.RegisterField(owner)
+	}
+}
+
+func (s *formFieldStateBase) unregisterFromForm(owner formFieldState) {
+	if s.registeredForm != nil {
+		s.registeredForm.UnregisterField(owner)
+	}
+}
+
+func (s *formFieldStateBase) didChange(autovalidate bool, onChanged func(), validate func() bool) {
+	s.hasInteracted = true
+	if onChanged != nil {
+		onChanged()
+	}
+	if s.registeredForm != nil {
+		s.registeredForm.NotifyChanged()
+	}
+
+	// Validate this field if form or field autovalidate is enabled.
+	// Form.autovalidate enables per-field validation on change, not form-wide validation
+	// (which would show errors on untouched fields). Use Form.Validate() explicitly
+	// to validate all fields (e.g., on submit).
+	if (s.registeredForm != nil && s.registeredForm.autovalidate) || autovalidate {
+		validate()
+		return
+	}
+
+	s.setState(func() {})
+}
+
+func (s *formFieldStateBase) validate(disabled bool, validator func() string) bool {
+	if disabled {
+		s.errorText = ""
+		s.setState(func() {})
+		return true
+	}
+	if validator == nil {
+		s.errorText = ""
+		s.setState(func() {})
+		return true
+	}
+	message := validator()
+	if message == "" {
+		s.errorText = ""
+		s.setState(func() {})
+		return true
+	}
+	s.errorText = message
+	s.setState(func() {})
+	return false
+}
+
+func (s *formFieldStateBase) resetState() {
+	s.errorText = ""
+	s.hasInteracted = false
+}
+
 type formScope struct {
 	state       *FormState
 	generation  int
@@ -343,17 +428,14 @@ func (f FormField[T]) CreateState() core.State {
 //   - Save(): Calls the OnSaved callback with the current value.
 //   - Reset(): Resets to InitialValue and clears errors.
 type FormFieldState[T any] struct {
-	element         *core.StatefulElement
+	formFieldStateBase
 	value           T
-	errorText       string
-	hasInteracted   bool
-	registeredForm  *FormState
 	initializedOnce bool
 }
 
 // SetElement stores the element for rebuilds.
 func (s *FormFieldState[T]) SetElement(element *core.StatefulElement) {
-	s.element = element
+	s.formFieldStateBase.setElement(element)
 }
 
 // InitState initializes the field value from the widget.
@@ -375,17 +457,12 @@ func (s *FormFieldState[T]) Build(ctx core.BuildContext) core.Widget {
 
 // SetState executes fn and schedules rebuild.
 func (s *FormFieldState[T]) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
+	s.formFieldStateBase.setState(fn)
 }
 
 // Dispose unregisters the field from the form.
 func (s *FormFieldState[T]) Dispose() {
-	if s.registeredForm != nil {
-		s.registeredForm.UnregisterField(s)
-	}
+	s.formFieldStateBase.unregisterFromForm(s)
 }
 
 // DidChangeDependencies is a no-op for FormFieldState.
@@ -427,46 +504,28 @@ func (s *FormFieldState[T]) HasError() bool {
 // DidChange updates the value and triggers validation/notifications.
 func (s *FormFieldState[T]) DidChange(value T) {
 	s.value = value
-	s.hasInteracted = true
 	w := s.element.Widget().(FormField[T])
-	if w.OnChanged != nil {
-		w.OnChanged(value)
-	}
-	if s.registeredForm != nil {
-		s.registeredForm.NotifyChanged()
-	}
-
-	// Validate this field if form or field autovalidate is enabled.
-	// Form.autovalidate enables per-field validation on change, not form-wide validation
-	// (which would show errors on untouched fields). Use Form.Validate() explicitly
-	// to validate all fields (e.g., on submit).
-	if (s.registeredForm != nil && s.registeredForm.autovalidate) || w.Autovalidate {
-		s.Validate()
-		return
-	}
-	s.SetState(func() {})
+	s.formFieldStateBase.didChange(
+		w.Autovalidate,
+		func() {
+			if w.OnChanged != nil {
+				w.OnChanged(value)
+			}
+		},
+		s.Validate,
+	)
 }
 
 // Validate runs the field validator.
 func (s *FormFieldState[T]) Validate() bool {
 	w := s.element.Widget().(FormField[T])
-	if w.Disabled {
-		s.errorText = ""
-		return true
+	var validator func() string
+	if w.Validator != nil {
+		validator = func() string {
+			return w.Validator(s.value)
+		}
 	}
-	if w.Validator == nil {
-		s.errorText = ""
-		return true
-	}
-	message := w.Validator(s.value)
-	if message == "" {
-		s.errorText = ""
-		s.SetState(func() {})
-		return true
-	}
-	s.errorText = message
-	s.SetState(func() {})
-	return false
+	return s.formFieldStateBase.validate(w.Disabled, validator)
 }
 
 // Save triggers the OnSaved callback.
@@ -484,8 +543,7 @@ func (s *FormFieldState[T]) Save() {
 func (s *FormFieldState[T]) Reset() {
 	w := s.element.Widget().(FormField[T])
 	s.value = w.InitialValue
-	s.errorText = ""
-	s.hasInteracted = false
+	s.formFieldStateBase.resetState()
 	if w.OnChanged != nil {
 		w.OnChanged(s.value)
 	}
@@ -493,14 +551,5 @@ func (s *FormFieldState[T]) Reset() {
 }
 
 func (s *FormFieldState[T]) registerWithForm(form *FormState) {
-	if form == s.registeredForm {
-		return
-	}
-	if s.registeredForm != nil {
-		s.registeredForm.UnregisterField(s)
-	}
-	s.registeredForm = form
-	if form != nil {
-		form.RegisterField(s)
-	}
+	s.formFieldStateBase.registerWithForm(form, s)
 }
