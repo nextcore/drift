@@ -45,6 +45,9 @@ Full documentation is available at **[driftframework.dev](https://driftframework
 
 The `showcase/` directory contains a demo app with examples of all widgets:
 
+https://github.com/user-attachments/assets/920f3243-c88a-4c2f-bed9-43376695eae6
+
+
 ```bash
 cd showcase
 drift run android

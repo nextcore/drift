@@ -16,6 +16,8 @@ Drift is a cross-platform mobile UI framework in Go. It lets you write UI and ap
 - **No bridge overhead** - Direct native compilation, no JavaScript or VM layer
 - **iOS builds on Linux** - Build iOS apps without a Mac using [xtool](https://xtool.sh)
 
+<video src="/showcase.mp4"  controls autoPlay muted playsInline width="300" />
+
 ## Prerequisites
 
 - Go 1.24
