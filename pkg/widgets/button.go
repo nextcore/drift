@@ -176,6 +176,7 @@ func (b Button) Build(ctx core.BuildContext) core.Widget {
 		box = DecoratedBox{
 			Gradient:     b.Gradient,
 			BorderRadius: borderRadius,
+			Overflow:     rendering.OverflowClip,
 			ChildWidget:  content,
 		}
 	} else {

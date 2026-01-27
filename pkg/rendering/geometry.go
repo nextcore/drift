@@ -136,3 +136,13 @@ func (r Rect) Translate(dx, dy float64) Rect {
 		Bottom: r.Bottom + dy,
 	}
 }
+
+// Union returns the smallest rect containing both r and other.
+func (r Rect) Union(other Rect) Rect {
+	return Rect{
+		Left:   math.Min(r.Left, other.Left),
+		Top:    math.Min(r.Top, other.Top),
+		Right:  math.Max(r.Right, other.Right),
+		Bottom: math.Max(r.Bottom, other.Bottom),
+	}
+}

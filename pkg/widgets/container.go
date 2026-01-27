@@ -53,7 +53,13 @@ type Container struct {
 	Color       rendering.Color
 	Gradient    *rendering.Gradient
 	Alignment   layout.Alignment
-	Shadow      *rendering.BoxShadow
+	Shadow *rendering.BoxShadow
+	// Overflow controls whether gradients extend beyond container bounds.
+	// Defaults to OverflowVisible, allowing gradient effects like glows to
+	// extend beyond the widget area. Set to OverflowClip to confine gradients
+	// strictly within bounds. Only affects gradients; shadows overflow
+	// naturally and solid colors never overflow.
+	Overflow rendering.Overflow
 }
 
 func (c Container) CreateElement() core.Element {
@@ -81,6 +87,7 @@ func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject
 		gradient:  c.Gradient,
 		alignment: c.Alignment,
 		shadow:    c.Shadow,
+		overflow:  c.Overflow,
 	}
 	box.SetSelf(box)
 	return box
@@ -99,6 +106,7 @@ func (c Container) UpdateRenderObject(ctx core.BuildContext, renderObject layout
 		box.gradient = c.Gradient
 		box.alignment = c.Alignment
 		box.shadow = c.Shadow
+		box.overflow = c.Overflow
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 	}
@@ -114,6 +122,7 @@ type renderContainer struct {
 	gradient  *rendering.Gradient
 	alignment layout.Alignment
 	shadow    *rendering.BoxShadow
+	overflow  rendering.Overflow
 }
 
 func (r *renderContainer) SetChild(child layout.RenderObject) {
@@ -177,15 +186,27 @@ func (r *renderContainer) PerformLayout() {
 }
 
 func (r *renderContainer) Paint(ctx *layout.PaintContext) {
-	rect := rendering.RectFromLTWH(0, 0, r.Size().Width, r.Size().Height)
+	widgetRect := rendering.RectFromLTWH(0, 0, r.Size().Width, r.Size().Height)
 	if r.shadow != nil {
-		ctx.Canvas.DrawRectShadow(rect, *r.shadow)
+		ctx.Canvas.DrawRectShadow(widgetRect, *r.shadow)
 	}
 	if r.color != rendering.ColorTransparent || r.gradient != nil {
 		paint := rendering.DefaultPaint()
 		paint.Color = r.color
 		paint.Gradient = r.gradient
-		ctx.Canvas.DrawRect(rect, paint)
+
+		if r.overflow == rendering.OverflowClip {
+			ctx.Canvas.Save()
+			ctx.Canvas.ClipRect(widgetRect)
+			ctx.Canvas.DrawRect(widgetRect, paint)
+			ctx.Canvas.Restore()
+		} else {
+			drawRect := widgetRect
+			if r.gradient != nil {
+				drawRect = r.gradient.Bounds(widgetRect)
+			}
+			ctx.Canvas.DrawRect(drawRect, paint)
+		}
 	}
 	if r.child != nil {
 		ctx.PaintChild(r.child, getChildOffset(r.child))

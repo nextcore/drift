@@ -1,5 +1,7 @@
 package rendering
 
+import "math"
+
 // GradientType describes the gradient variant.
 type GradientType int
 
@@ -105,4 +107,41 @@ func cloneGradientStops(stops []GradientStop) []GradientStop {
 	clone := make([]GradientStop, len(stops))
 	copy(clone, stops)
 	return clone
+}
+
+// Bounds returns the rectangle needed to fully render the gradient,
+// expanded from widgetRect as needed. The result is the union of widgetRect
+// and the gradient's natural bounds, ensuring it never shrinks widgetRect.
+//
+// For radial gradients, the natural bounds are a square centered on the
+// gradient center with sides equal to twice the radius.
+//
+// For linear gradients, the natural bounds span from the start to end points.
+//
+// This method is used by widgets with [OverflowVisible] to determine the
+// drawing area for gradient overflow effects like glows.
+func (g *Gradient) Bounds(widgetRect Rect) Rect {
+	if g == nil || !g.IsValid() {
+		return widgetRect
+	}
+	var gradientRect Rect
+	switch g.Type {
+	case GradientTypeRadial:
+		c, r := g.Radial.Center, g.Radial.Radius
+		if r <= 0 {
+			return widgetRect
+		}
+		gradientRect = RectFromLTWH(c.X-r, c.Y-r, r*2, r*2)
+	case GradientTypeLinear:
+		s, e := g.Linear.Start, g.Linear.End
+		gradientRect = Rect{
+			Left:   math.Min(s.X, e.X),
+			Top:    math.Min(s.Y, e.Y),
+			Right:  math.Max(s.X, e.X),
+			Bottom: math.Max(s.Y, e.Y),
+		}
+	default:
+		return widgetRect
+	}
+	return widgetRect.Union(gradientRect)
 }

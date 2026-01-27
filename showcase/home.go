@@ -78,11 +78,25 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 					MainAxisSize:       widgets.MainAxisSizeMin,
 					ChildrenWidgets: append([]core.Widget{
 						// Logo/Title section
-						widgets.SvgImage{
-							Source: loadSVGAsset("drift.svg"),
+						widgets.Container{
 							Width:  200,
-						},
-						widgets.VSpace(8),
+							Height: 100,
+							Color:  rendering.ColorWhite,
+							Gradient: rendering.NewRadialGradient(
+								rendering.Offset{X: 100, Y: 50}, // Center
+								100,                             // Radius
+								[]rendering.GradientStop{
+									{Position: 0, Color: rendering.RGBA(47, 249, 238, 60)},   // cyan center
+									{Position: 0.5, Color: rendering.RGBA(238, 23, 130, 20)}, // magenta mid
+									{Position: 1, Color: rendering.RGBA(238, 23, 130, 0)},    // fade out
+								},
+							),
+							Alignment: layout.AlignmentCenter,
+							ChildWidget: widgets.SvgImage{
+								Source: loadSVGAsset("drift.svg"),
+								Width:  200,
+							},
+						}, widgets.VSpace(8),
 						widgets.TextOf("Cross-platform UI for Go", textTheme.HeadlineSmall),
 						widgets.VSpace(4),
 						widgets.TextOf("Build native iOS & Android apps with idiomatic Go", rendering.TextStyle{
