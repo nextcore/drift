@@ -21,8 +21,8 @@ python3 tools/git-sync-deps
 build() {
   local out_dir="$1"
   local target_cpu="$2"
-  bin/gn gen "$out_dir" --args="target_os=\"android\" target_cpu=\"$target_cpu\" ndk=\"$ANDROID_NDK_HOME\" ndk_api=21 is_official_build=true skia_use_gl=true skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true"
-  ninja -C "$out_dir" skia
+  bin/gn gen "$out_dir" --args="target_os=\"android\" target_cpu=\"$target_cpu\" ndk=\"$ANDROID_NDK_HOME\" ndk_api=21 is_official_build=true skia_use_gl=true skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_enable_skresources=true skia_use_icu=false"
+  ninja -C "$out_dir" skia svg skresources
 }
 
 # Detect host system for NDK toolchain path (honor HOST_TAG env var if set)
@@ -58,6 +58,7 @@ compile_bridge() {
   local out_dir="out/android/$arch"
 
   echo "Compiling bridge for Android $arch..."
+  echo "Skia out dir: $SKIA_DIR/$out_dir"
 
   local clang="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/bin/clang++"
 
@@ -68,15 +69,19 @@ compile_bridge() {
     -c "$ROOT_DIR/pkg/skia/bridge/skia_gl.cc" \
     -o "$out_dir/skia_bridge.o"
 
-  # Combine: extract libskia.a, add bridge, repack
+  # Combine: extract all Skia libs, add bridge, repack
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  ar x ../libskia.a
+  # Extract all static libraries produced by the build
+  rm -f ../libdrift_skia.a
+  for lib in ../lib*.a; do
+    [ -f "$lib" ] && ar x "$lib"
+  done
   ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
   popd > /dev/null
   rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
 
-  echo "Created $out_dir/libdrift_skia.a"
+  echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }
 
 build out/android/arm64 arm64
@@ -97,6 +102,7 @@ copy_lib() {
   fi
   mkdir -p "$dst"
   cp "$src" "$dst/libdrift_skia.a"
+  echo "Copied $src -> $dst/libdrift_skia.a"
 }
 
 copy_lib arm64

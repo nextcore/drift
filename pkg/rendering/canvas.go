@@ -1,6 +1,9 @@
 package rendering
 
-import "image"
+import (
+	"image"
+	"unsafe"
+)
 
 // Canvas records or renders drawing commands.
 type Canvas interface {
@@ -63,6 +66,12 @@ type Canvas interface {
 	// Content drawn before this call will be blurred within the bounds.
 	// Call Restore() to apply the blur and pop the layer.
 	SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64)
+
+	// DrawSVG renders an SVG DOM within the given bounds.
+	// svgPtr must be the C handle from SVGDOM.Ptr(), not a Go pointer.
+	// The SVG is positioned at bounds.Left/Top and sized to bounds width/height.
+	// No-op if bounds has zero or negative dimensions.
+	DrawSVG(svgPtr unsafe.Pointer, bounds Rect)
 
 	// Size returns the size of the canvas in pixels.
 	Size() Size

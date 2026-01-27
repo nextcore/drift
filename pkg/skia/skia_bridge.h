@@ -11,6 +11,7 @@ typedef void* DriftSkiaContext;
 typedef void* DriftSkiaSurface;
 typedef void* DriftSkiaCanvas;
 typedef void* DriftSkiaPath;
+typedef void* DriftSkiaSVGDOM;
 
 DriftSkiaContext drift_skia_context_create_gl(void);
 DriftSkiaContext drift_skia_context_create_metal(void* device, void* queue);
@@ -234,6 +235,17 @@ void drift_skia_canvas_save_layer_blur(
     float l, float t, float r, float b,
     float sigma_x, float sigma_y
 );
+
+DriftSkiaSVGDOM drift_skia_svg_dom_create(const uint8_t* data, int length);
+DriftSkiaSVGDOM drift_skia_svg_dom_create_with_base(const uint8_t* data, int length, const char* base_path);
+void drift_skia_svg_dom_destroy(DriftSkiaSVGDOM svg);
+void drift_skia_svg_dom_render(DriftSkiaSVGDOM svg, DriftSkiaCanvas canvas, float width, float height);
+int drift_skia_svg_dom_get_size(DriftSkiaSVGDOM svg, float* width, float* height);
+// align: 0=xMidYMid(default), 1=xMinYMin, 2=xMidYMin, 3=xMaxYMin, 4=xMinYMid,
+//        5=xMaxYMid, 6=xMinYMax, 7=xMidYMax, 8=xMaxYMax, 9=none
+// scale: 0=meet(contain), 1=slice(cover)
+void drift_skia_svg_dom_set_preserve_aspect_ratio(DriftSkiaSVGDOM svg, int align, int scale);
+void drift_skia_svg_dom_set_size_to_container(DriftSkiaSVGDOM svg);
 
 #ifdef __cplusplus
 }

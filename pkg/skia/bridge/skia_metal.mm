@@ -46,6 +46,7 @@ extern "C" {
 #include "gpu/ganesh/mtl/GrMtlDirectContext.h"
 #include "ports/SkFontMgr_mac_ct.h"
 #include "skia_path_impl.h"
+#include "skia_svg_impl.h"
 
 namespace {
 
@@ -951,6 +952,34 @@ void drift_skia_canvas_save_layer_blur(
     rec.fBounds = &bounds;
     rec.fBackdrop = blur.get();
     sk_canvas->saveLayer(rec);
+}
+
+DriftSkiaSVGDOM drift_skia_svg_dom_create(const uint8_t* data, int length) {
+    return drift_skia_svg_dom_create_impl(data, length);
+}
+
+DriftSkiaSVGDOM drift_skia_svg_dom_create_with_base(const uint8_t* data, int length, const char* base_path) {
+    return drift_skia_svg_dom_create_with_base_impl(data, length, base_path);
+}
+
+void drift_skia_svg_dom_destroy(DriftSkiaSVGDOM svg) {
+    drift_skia_svg_dom_destroy_impl(svg);
+}
+
+void drift_skia_svg_dom_render(DriftSkiaSVGDOM svg, DriftSkiaCanvas canvas, float width, float height) {
+    drift_skia_svg_dom_render_impl(svg, canvas, width, height);
+}
+
+int drift_skia_svg_dom_get_size(DriftSkiaSVGDOM svg, float* width, float* height) {
+    return drift_skia_svg_dom_get_size_impl(svg, width, height);
+}
+
+void drift_skia_svg_dom_set_preserve_aspect_ratio(DriftSkiaSVGDOM svg, int align, int scale) {
+    drift_skia_svg_dom_set_preserve_aspect_ratio_impl(svg, align, scale);
+}
+
+void drift_skia_svg_dom_set_size_to_container(DriftSkiaSVGDOM svg) {
+    drift_skia_svg_dom_set_size_to_container_impl(svg);
 }
 
 }  // extern "C"

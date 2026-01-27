@@ -306,3 +306,38 @@ func CanvasDrawRRectShadow(
 // CanvasSaveLayerBlur saves a layer with a backdrop blur effect.
 func CanvasSaveLayerBlur(canvas unsafe.Pointer, left, top, right, bottom, sigmaX, sigmaY float32) {
 }
+
+// SVGDOM wraps a Skia SVG DOM for rendering vector graphics.
+type SVGDOM struct{}
+
+// NewSVGDOM creates an SVGDOM from SVG data.
+func NewSVGDOM(data []byte) *SVGDOM {
+	return nil
+}
+
+// NewSVGDOMWithBase creates an SVGDOM with a base path for resolving relative resources.
+func NewSVGDOMWithBase(data []byte, basePath string) *SVGDOM {
+	return nil
+}
+
+// Destroy releases the SVG DOM resources.
+func (s *SVGDOM) Destroy() {}
+
+// Ptr returns the underlying C handle for use in DrawSVG.
+func (s *SVGDOM) Ptr() unsafe.Pointer {
+	return nil
+}
+
+// RenderToCanvas renders the SVG directly to a Skia canvas.
+func (s *SVGDOM) RenderToCanvas(canvas unsafe.Pointer, width, height float32) {}
+
+// Size returns the intrinsic size of the SVG.
+func (s *SVGDOM) Size() (width, height float64) {
+	return 0, 0
+}
+
+// SVGDOMRender renders an SVG DOM (by C pointer) to a Skia canvas.
+func SVGDOMRender(svgPtr, canvasPtr unsafe.Pointer, width, height float32) {}
+
+// SetPreserveAspectRatio sets the preserveAspectRatio attribute on the root SVG element.
+func (s *SVGDOM) SetPreserveAspectRatio(align, scale int) {}

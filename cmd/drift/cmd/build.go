@@ -494,6 +494,7 @@ func findSkiaLib(projectRoot, platform, arch string, noFetch bool) (string, stri
 		dir := filepath.Join(skiaBase, platform, arch)
 		lib := filepath.Join(dir, "libdrift_skia.a")
 		if _, err := os.Stat(lib); err == nil {
+			fmt.Printf("Using Skia lib (DRIFT_SKIA_DIR): %s\n", lib)
 			return lib, dir, nil
 		}
 		// If env var is set but path doesn't exist, give clear error
@@ -520,6 +521,7 @@ func findSkiaLib(projectRoot, platform, arch string, noFetch bool) (string, stri
 	for _, dir := range candidates {
 		lib := filepath.Join(dir, "libdrift_skia.a")
 		if _, err := os.Stat(lib); err == nil {
+			fmt.Printf("Using Skia lib: %s\n", lib)
 			return lib, dir, nil
 		}
 	}

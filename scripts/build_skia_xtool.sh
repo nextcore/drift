@@ -171,7 +171,7 @@ cd "$SKIA_DIR"
 python3 tools/git-sync-deps
 
 # Common Skia build args
-COMMON_ARGS='is_official_build=true skia_use_metal=true skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true'
+COMMON_ARGS='is_official_build=true skia_use_metal=true skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_enable_skresources=true skia_use_icu=false'
 
 # For cross-compilation, we need to tell GN where the toolchain is
 # Use wrapper scripts that translate -arch to --target
@@ -183,7 +183,7 @@ build_device() {
   local target_cpu="$2"
   echo "Building iOS device ($target_cpu)..."
   bin/gn gen "$out_dir" --args="target_os=\"ios\" target_cpu=\"$target_cpu\" $COMMON_ARGS $XTOOL_ARGS"
-  ninja -C "$out_dir" skia
+  ninja -C "$out_dir" skia svg skresources
 }
 
 build_simulator() {
@@ -195,7 +195,7 @@ build_simulator() {
   fi
   echo "Building iOS simulator ($target_cpu)..."
   bin/gn gen "$out_dir" --args="target_os=\"ios\" target_cpu=\"$target_cpu\" ios_use_simulator=true $COMMON_ARGS $XTOOL_SIM_ARGS"
-  ninja -C "$out_dir" skia
+  ninja -C "$out_dir" skia svg skresources
 }
 
 # Compile bridge code and combine with Skia into libdrift_skia.a (device)
@@ -204,6 +204,7 @@ compile_bridge_device() {
   local out_dir="out/ios/$arch"
 
   echo "Compiling bridge for iOS device $arch..."
+  echo "Skia out dir: $SKIA_DIR/$out_dir"
 
   "$CLANGXX" -target "${arch}-apple-ios14.0" \
     -isysroot "$IPHONEOS_SDK" \
@@ -215,12 +216,16 @@ compile_bridge_device() {
   # Combine using llvm-ar (required for Mach-O archives on Linux)
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  llvm-ar x ../libskia.a
+  # Extract all static libraries produced by the build
+  rm -f ../libdrift_skia.a
+  for lib in ../lib*.a; do
+    [ -f "$lib" ] && llvm-ar x "$lib"
+  done
   llvm-ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
   popd > /dev/null
   rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
 
-  echo "Created $out_dir/libdrift_skia.a"
+  echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }
 
 # Compile bridge code and combine with Skia into libdrift_skia.a (simulator)
@@ -234,6 +239,7 @@ compile_bridge_simulator() {
   fi
 
   echo "Compiling bridge for iOS simulator $arch..."
+  echo "Skia out dir: $SKIA_DIR/$out_dir"
 
   "$CLANGXX" -target "${arch}-apple-ios14.0-simulator" \
     -isysroot "$IPHONESIMULATOR_SDK" \
@@ -245,12 +251,16 @@ compile_bridge_simulator() {
   # Combine using llvm-ar (required for Mach-O archives on Linux)
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  llvm-ar x ../libskia.a
+  # Extract all static libraries produced by the build
+  rm -f ../libdrift_skia.a
+  for lib in ../lib*.a; do
+    [ -f "$lib" ] && llvm-ar x "$lib"
+  done
   llvm-ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
   popd > /dev/null
   rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
 
-  echo "Created $out_dir/libdrift_skia.a"
+  echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }
 
 # Build for physical iOS devices
@@ -277,6 +287,7 @@ copy_lib() {
   fi
   mkdir -p "$dst"
   cp "$src" "$dst/libdrift_skia.a"
+  echo "Copied $src -> $dst/libdrift_skia.a"
 }
 
 copy_lib ios arm64

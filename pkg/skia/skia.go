@@ -630,3 +630,125 @@ func CanvasSaveLayerBlur(canvas unsafe.Pointer, left, top, right, bottom, sigmaX
 		C.float(sigmaX), C.float(sigmaY),
 	)
 }
+
+// SVGDOM wraps a Skia SVG DOM for rendering vector graphics.
+type SVGDOM struct {
+	ptr C.DriftSkiaSVGDOM
+}
+
+// NewSVGDOM creates an SVGDOM from SVG data.
+func NewSVGDOM(data []byte) *SVGDOM {
+	if len(data) == 0 {
+		return nil
+	}
+	ptr := C.drift_skia_svg_dom_create(
+		(*C.uint8_t)(unsafe.Pointer(&data[0])),
+		C.int(len(data)),
+	)
+	if ptr == nil {
+		return nil
+	}
+	return &SVGDOM{ptr: ptr}
+}
+
+// NewSVGDOMWithBase creates an SVGDOM with a base path for resolving relative resources.
+// If basePath is empty, this is equivalent to NewSVGDOM.
+func NewSVGDOMWithBase(data []byte, basePath string) *SVGDOM {
+	if basePath == "" {
+		return NewSVGDOM(data)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	cBasePath := C.CString(basePath)
+	defer C.free(unsafe.Pointer(cBasePath))
+	ptr := C.drift_skia_svg_dom_create_with_base(
+		(*C.uint8_t)(unsafe.Pointer(&data[0])),
+		C.int(len(data)),
+		cBasePath,
+	)
+	if ptr == nil {
+		return nil
+	}
+	return &SVGDOM{ptr: ptr}
+}
+
+// Destroy releases the SVG DOM resources.
+//
+// Note: Prefer using svg.Icon.Destroy() instead, which includes debug tracking
+// to detect use-after-free in svgdebug builds. Direct SVGDOM.Destroy() bypasses
+// those checks.
+func (s *SVGDOM) Destroy() {
+	if s == nil || s.ptr == nil {
+		return
+	}
+	C.drift_skia_svg_dom_destroy(s.ptr)
+	s.ptr = nil
+}
+
+// Ptr returns the underlying C handle for use in DrawSVG.
+// The returned pointer is stable (not subject to Go GC).
+// Returns nil if the SVGDOM is nil or has been destroyed.
+func (s *SVGDOM) Ptr() unsafe.Pointer {
+	if s == nil || s.ptr == nil {
+		return nil
+	}
+	return unsafe.Pointer(s.ptr)
+}
+
+// RenderToCanvas renders the SVG directly to a Skia canvas.
+// For most use cases, prefer canvas.DrawSVG() instead.
+func (s *SVGDOM) RenderToCanvas(canvas unsafe.Pointer, width, height float32) {
+	if s == nil || s.ptr == nil || canvas == nil {
+		return
+	}
+	C.drift_skia_svg_dom_render(s.ptr, C.DriftSkiaCanvas(canvas), C.float(width), C.float(height))
+}
+
+// Size returns the intrinsic size of the SVG.
+func (s *SVGDOM) Size() (width, height float64) {
+	if s == nil || s.ptr == nil {
+		return 0, 0
+	}
+	var w, h C.float
+	if C.drift_skia_svg_dom_get_size(s.ptr, &w, &h) == 0 {
+		return 0, 0
+	}
+	return float64(w), float64(h)
+}
+
+// SVGDOMRender renders an SVG DOM (by C pointer) to a Skia canvas.
+// Used internally by display list playback. The svgPtr must be a valid DriftSkiaSVGDOM handle.
+func SVGDOMRender(svgPtr, canvasPtr unsafe.Pointer, width, height float32) {
+	if svgPtr == nil || canvasPtr == nil {
+		return
+	}
+	C.drift_skia_svg_dom_render(
+		C.DriftSkiaSVGDOM(svgPtr),
+		C.DriftSkiaCanvas(canvasPtr),
+		C.float(width),
+		C.float(height),
+	)
+}
+
+// SetPreserveAspectRatio sets the preserveAspectRatio attribute on the root SVG element.
+// align: 0=xMidYMid(default), 1=xMinYMin, 2=xMidYMin, 3=xMaxYMin, 4=xMinYMid,
+//
+//	5=xMaxYMid, 6=xMinYMax, 7=xMidYMax, 8=xMaxYMax, 9=none
+//
+// scale: 0=meet(contain), 1=slice(cover)
+func (s *SVGDOM) SetPreserveAspectRatio(align, scale int) {
+	if s == nil || s.ptr == nil {
+		return
+	}
+	C.drift_skia_svg_dom_set_preserve_aspect_ratio(s.ptr, C.int(align), C.int(scale))
+}
+
+// SetSizeToContainer sets the SVG's root width/height to 100%,
+// making it scale to fill the container size set via render calls.
+func (s *SVGDOM) SetSizeToContainer() {
+	if s == nil || s.ptr == nil {
+		return
+	}
+	C.drift_skia_svg_dom_set_size_to_container(s.ptr)
+}

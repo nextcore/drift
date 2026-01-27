@@ -1,6 +1,9 @@
 package rendering
 
-import "image"
+import (
+	"image"
+	"unsafe"
+)
 
 // DisplayList is an immutable list of drawing operations.
 // It can be replayed onto any Canvas implementation.
@@ -19,6 +22,18 @@ func (d *DisplayList) Paint(canvas Canvas) {
 // Size returns the size recorded when the display list was created.
 func (d *DisplayList) Size() Size {
 	return d.size
+}
+
+// Dispose releases debug tracking for SVG pointers in this display list.
+// In release builds this is a no-op. In debug builds (-tags svgdebug) it
+// decrements the refcount for tracked SVG pointers.
+// Call this when a cached display list is being replaced or discarded.
+func (d *DisplayList) Dispose() {
+	for _, op := range d.ops {
+		if svg, ok := op.(opSVG); ok {
+			svgDebugUntrack(svg.svgPtr)
+		}
+	}
 }
 
 // PictureRecorder records drawing commands into a display list.
@@ -140,6 +155,13 @@ func (c *recordingCanvas) DrawRRectShadow(rrect RRect, shadow BoxShadow) {
 
 func (c *recordingCanvas) SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64) {
 	c.recorder.append(opSaveLayerBlur{bounds: bounds, sigmaX: sigmaX, sigmaY: sigmaY})
+}
+
+func (c *recordingCanvas) DrawSVG(svgPtr unsafe.Pointer, bounds Rect) {
+	if svgPtr != nil {
+		svgDebugTrack(svgPtr) // no-op in release builds
+	}
+	c.recorder.append(opSVG{svgPtr: svgPtr, bounds: bounds})
 }
 
 func (c *recordingCanvas) Size() Size {
@@ -305,4 +327,13 @@ type opSaveLayerBlur struct {
 
 func (op opSaveLayerBlur) execute(canvas Canvas) {
 	canvas.SaveLayerBlur(op.bounds, op.sigmaX, op.sigmaY)
+}
+
+type opSVG struct {
+	svgPtr unsafe.Pointer // C handle from SVGDOM.Ptr() - stable, not Go heap
+	bounds Rect
+}
+
+func (op opSVG) execute(canvas Canvas) {
+	canvas.DrawSVG(op.svgPtr, op.bounds)
 }

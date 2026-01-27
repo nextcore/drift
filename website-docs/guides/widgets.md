@@ -135,7 +135,8 @@ container := widgets.NewContainer(child).
 |--------|---------|
 | `Text` | Display text with styling |
 | `Icon` | Material icons |
-| `SVGIcon` | SVG vector icons |
+| `SvgImage` | SVG rendering with flexible sizing |
+| `SvgIcon` | Square SVG icons (convenience wrapper) |
 | `Image` | Display images from assets/files |
 
 ### Progress Indicators

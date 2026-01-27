@@ -470,6 +470,23 @@ func (c *SkiaCanvas) SaveLayerBlur(bounds Rect, sigmaX, sigmaY float64) {
 	)
 }
 
+func (c *SkiaCanvas) DrawSVG(svgPtr unsafe.Pointer, bounds Rect) {
+	if svgPtr == nil {
+		return
+	}
+	w, h := bounds.Width(), bounds.Height()
+	if w <= 0 || h <= 0 {
+		return
+	}
+	skia.CanvasSave(c.canvas)
+	skia.CanvasClipRect(c.canvas, float32(bounds.Left), float32(bounds.Top), float32(bounds.Right), float32(bounds.Bottom))
+	if bounds.Left != 0 || bounds.Top != 0 {
+		skia.CanvasTranslate(c.canvas, float32(bounds.Left), float32(bounds.Top))
+	}
+	skia.SVGDOMRender(svgPtr, c.canvas, float32(w), float32(h))
+	skia.CanvasRestore(c.canvas)
+}
+
 func (c *SkiaCanvas) Size() Size {
 	return c.size
 }

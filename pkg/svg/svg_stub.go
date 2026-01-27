@@ -1,16 +1,16 @@
-//go:build android || ios
+//go:build !android && !ios
 
 // Package svg provides SVG loading and rendering using Skia's native SVG DOM.
+//
+// This is a stub implementation for unsupported platforms. All loading functions
+// return an error indicating SVG is not supported.
 package svg
 
 import (
 	"errors"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/go-drift/drift/pkg/rendering"
-	"github.com/go-drift/drift/pkg/skia"
 )
 
 // PreserveAspectRatio controls how an SVG scales to fit its container.
@@ -75,67 +75,29 @@ const (
 // goroutines. Rendering the same Icon at two different sizes in the same frame
 // will result in last-write-wins for the container size.
 type Icon struct {
-	dom     *skia.SVGDOM
 	viewBox rendering.Rect
 }
 
 // Load parses an SVG from the provided reader.
 func Load(r io.Reader) (*Icon, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	return LoadBytes(data)
+	return nil, errors.New("svg: not supported on this platform")
 }
 
 // LoadBytes parses an SVG from byte data.
 func LoadBytes(data []byte) (*Icon, error) {
-	dom := skia.NewSVGDOM(data)
-	if dom == nil {
-		return nil, errors.New("svg: failed to parse SVG data")
-	}
-	w, h := dom.Size()
-	if w == 0 || h == 0 {
-		w, h = 24, 24 // default size
-	}
-	return &Icon{
-		dom:     dom,
-		viewBox: rendering.Rect{Right: w, Bottom: h},
-	}, nil
+	return nil, errors.New("svg: not supported on this platform")
 }
 
 // LoadFile parses an SVG from a file path.
 // Relative resource references (e.g., <image href="./foo.png">) will be resolved
 // relative to the file's directory.
 func LoadFile(path string) (*Icon, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Use file's directory as base path for relative resource resolution
-	basePath := filepath.Dir(path)
-	dom := skia.NewSVGDOMWithBase(data, basePath)
-	if dom == nil {
-		return nil, errors.New("svg: failed to parse SVG data")
-	}
-
-	w, h := dom.Size()
-	if w == 0 || h == 0 {
-		w, h = 24, 24
-	}
-	return &Icon{
-		dom:     dom,
-		viewBox: rendering.Rect{Right: w, Bottom: h},
-	}, nil
+	return nil, errors.New("svg: not supported on this platform")
 }
 
 // ViewBox returns the viewBox of the SVG.
 func (i *Icon) ViewBox() rendering.Rect {
-	if i == nil {
-		return rendering.Rect{}
-	}
-	return i.viewBox
+	return rendering.Rect{}
 }
 
 // Draw renders the SVG onto a canvas within the specified bounds.
@@ -144,21 +106,7 @@ func (i *Icon) ViewBox() rendering.Rect {
 // Content is clipped to the provided bounds.
 //
 // Note: tintColor is currently ignored (known regression from oksvg implementation).
-func (i *Icon) Draw(canvas rendering.Canvas, bounds rendering.Rect, tintColor rendering.Color) {
-	if i == nil || i.dom == nil {
-		return
-	}
-	if bounds.Width() <= 0 || bounds.Height() <= 0 {
-		return
-	}
-
-	// Set root width/height to 100% so SVG scales to container bounds.
-	// This is needed for SVGs with explicit pixel dimensions.
-	i.dom.SetSizeToContainer()
-
-	// DrawSVG handles clipping and positioning internally
-	canvas.DrawSVG(i.dom.Ptr(), bounds)
-}
+func (i *Icon) Draw(canvas rendering.Canvas, bounds rendering.Rect, tintColor rendering.Color) {}
 
 // SetPreserveAspectRatio overrides the SVG's preserveAspectRatio attribute.
 // This controls how the viewBox scales and aligns within the render bounds.
@@ -166,12 +114,7 @@ func (i *Icon) Draw(canvas rendering.Canvas, bounds rendering.Rect, tintColor re
 //
 // Note: This mutates the Icon. If the same Icon is used by multiple widgets
 // with different settings, last write wins.
-func (i *Icon) SetPreserveAspectRatio(par PreserveAspectRatio) {
-	if i == nil || i.dom == nil {
-		return
-	}
-	i.dom.SetPreserveAspectRatio(int(par.Align), int(par.Scale))
-}
+func (i *Icon) SetPreserveAspectRatio(par PreserveAspectRatio) {}
 
 // Destroy releases the SVG DOM resources.
 //
@@ -183,10 +126,4 @@ func (i *Icon) SetPreserveAspectRatio(par PreserveAspectRatio) {
 // don't call Destroy - the memory will be reclaimed when the process exits.
 //
 // To detect lifetime violations, build with -tags svgdebug.
-func (i *Icon) Destroy() {
-	if i != nil && i.dom != nil {
-		rendering.SVGDebugCheckDestroy(i.dom.Ptr())
-		i.dom.Destroy()
-		i.dom = nil
-	}
-}
+func (i *Icon) Destroy() {}

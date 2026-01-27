@@ -78,11 +78,10 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 					MainAxisSize:       widgets.MainAxisSizeMin,
 					ChildrenWidgets: append([]core.Widget{
 						// Logo/Title section
-						widgets.TextOf("Drift", rendering.TextStyle{
-							Color:      colors.Primary,
-							FontSize:   48,
-							FontWeight: rendering.FontWeightBold,
-						}),
+						widgets.SvgImage{
+							Source: loadSVGAsset("drift.svg"),
+							Width:  200,
+						},
 						widgets.VSpace(8),
 						widgets.TextOf("Cross-platform UI for Go", textTheme.HeadlineSmall),
 						widgets.VSpace(4),
