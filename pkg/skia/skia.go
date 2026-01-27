@@ -54,6 +54,35 @@ type Path struct {
 	ptr C.DriftSkiaPath
 }
 
+// Paragraph wraps a Skia text layout paragraph.
+type Paragraph struct {
+	ptr C.DriftSkiaParagraph
+}
+
+// ParagraphShadow describes a paragraph shadow effect.
+type ParagraphShadow struct {
+	Color   uint32
+	OffsetX float32
+	OffsetY float32
+	Sigma   float32
+}
+
+// ParagraphMetrics reports paragraph layout metrics.
+type ParagraphMetrics struct {
+	Height            float64
+	LongestLine       float64
+	MaxIntrinsicWidth float64
+	LineCount         int
+}
+
+// ParagraphLineMetrics reports per-line layout metrics.
+type ParagraphLineMetrics struct {
+	Widths   []float64
+	Ascents  []float64
+	Descents []float64
+	Heights  []float64
+}
+
 // NewGLContext creates a Skia GPU context using the current OpenGL context.
 func NewGLContext() (*Context, error) {
 	ctx := C.drift_skia_context_create_gl()
@@ -440,6 +469,157 @@ func CanvasDrawImageRGBA(canvas unsafe.Pointer, pixels []uint8, width, height, s
 		C.float(x),
 		C.float(y),
 	)
+}
+
+// NewParagraph creates a paragraph layout with shaping support.
+func NewParagraph(
+	text, family string,
+	size float32,
+	weight int,
+	style int,
+	color uint32,
+	maxLines int,
+	gradientType int32,
+	startX, startY, endX, endY float32,
+	centerX, centerY, radius float32,
+	colors []uint32,
+	positions []float32,
+	shadow *ParagraphShadow,
+) (*Paragraph, error) {
+	cstr := C.CString(text)
+	defer C.free(unsafe.Pointer(cstr))
+	var cfamily *C.char
+	if family != "" {
+		cfamily = C.CString(family)
+		defer C.free(unsafe.Pointer(cfamily))
+	}
+	var shadowEnabled C.int
+	var shadowColor C.uint
+	var shadowDx C.float
+	var shadowDy C.float
+	var shadowSigma C.float
+	if shadow != nil {
+		shadowEnabled = 1
+		shadowColor = C.uint(shadow.Color)
+		shadowDx = C.float(shadow.OffsetX)
+		shadowDy = C.float(shadow.OffsetY)
+		shadowSigma = C.float(shadow.Sigma)
+	}
+	cColors, cPositions, count := gradientData(colors, positions)
+	paragraph := C.drift_skia_paragraph_create(
+		cstr,
+		cfamily,
+		C.float(size),
+		C.int(weight),
+		C.int(style),
+		C.uint(color),
+		C.int(maxLines),
+		C.int(gradientType),
+		C.float(startX),
+		C.float(startY),
+		C.float(endX),
+		C.float(endY),
+		C.float(centerX),
+		C.float(centerY),
+		C.float(radius),
+		cColors,
+		cPositions,
+		count,
+		shadowEnabled,
+		shadowColor,
+		shadowDx,
+		shadowDy,
+		shadowSigma,
+	)
+	if paragraph == nil {
+		return nil, errors.New("skia: failed to create paragraph")
+	}
+	return &Paragraph{ptr: paragraph}, nil
+}
+
+// Layout lays out the paragraph within the given width.
+func (p *Paragraph) Layout(width float32) {
+	if p == nil || p.ptr == nil {
+		return
+	}
+	C.drift_skia_paragraph_layout(p.ptr, C.float(width))
+}
+
+// Metrics returns overall paragraph metrics.
+func (p *Paragraph) Metrics() (ParagraphMetrics, error) {
+	if p == nil || p.ptr == nil {
+		return ParagraphMetrics{}, errors.New("skia: nil paragraph")
+	}
+	var height C.float
+	var longestLine C.float
+	var maxIntrinsic C.float
+	var lineCount C.int
+	result := C.drift_skia_paragraph_get_metrics(p.ptr, &height, &longestLine, &maxIntrinsic, &lineCount)
+	if result == 0 {
+		return ParagraphMetrics{}, errors.New("skia: failed to get paragraph metrics")
+	}
+	return ParagraphMetrics{
+		Height:            float64(height),
+		LongestLine:       float64(longestLine),
+		MaxIntrinsicWidth: float64(maxIntrinsic),
+		LineCount:         int(lineCount),
+	}, nil
+}
+
+// LineMetrics returns per-line metrics for the paragraph.
+func (p *Paragraph) LineMetrics() (ParagraphLineMetrics, error) {
+	metrics, err := p.Metrics()
+	if err != nil {
+		return ParagraphLineMetrics{}, err
+	}
+	if metrics.LineCount == 0 {
+		return ParagraphLineMetrics{}, nil
+	}
+	widths := make([]float32, metrics.LineCount)
+	ascents := make([]float32, metrics.LineCount)
+	descents := make([]float32, metrics.LineCount)
+	heights := make([]float32, metrics.LineCount)
+	result := C.drift_skia_paragraph_get_line_metrics(
+		p.ptr,
+		(*C.float)(unsafe.Pointer(&widths[0])),
+		(*C.float)(unsafe.Pointer(&ascents[0])),
+		(*C.float)(unsafe.Pointer(&descents[0])),
+		(*C.float)(unsafe.Pointer(&heights[0])),
+		C.int(metrics.LineCount),
+	)
+	if result == 0 {
+		return ParagraphLineMetrics{}, errors.New("skia: failed to get paragraph line metrics")
+	}
+	out := ParagraphLineMetrics{
+		Widths:   make([]float64, metrics.LineCount),
+		Ascents:  make([]float64, metrics.LineCount),
+		Descents: make([]float64, metrics.LineCount),
+		Heights:  make([]float64, metrics.LineCount),
+	}
+	for i := 0; i < metrics.LineCount; i++ {
+		out.Widths[i] = float64(widths[i])
+		out.Ascents[i] = float64(ascents[i])
+		out.Descents[i] = float64(descents[i])
+		out.Heights[i] = float64(heights[i])
+	}
+	return out, nil
+}
+
+// Paint renders the paragraph to the canvas at the given position.
+func (p *Paragraph) Paint(canvas unsafe.Pointer, x, y float32) {
+	if p == nil || p.ptr == nil || canvas == nil {
+		return
+	}
+	C.drift_skia_paragraph_paint(p.ptr, C.DriftSkiaCanvas(canvas), C.float(x), C.float(y))
+}
+
+// Destroy releases the paragraph resources.
+func (p *Paragraph) Destroy() {
+	if p == nil || p.ptr == nil {
+		return
+	}
+	C.drift_skia_paragraph_destroy(p.ptr)
+	p.ptr = nil
 }
 
 // TextMetrics reports font metrics for a typeface.

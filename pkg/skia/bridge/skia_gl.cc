@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <limits>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -37,6 +38,12 @@
 #include "core/SkTypeface.h"
 #include "core/SkFontMgr.h"
 #include "core/SkString.h"
+#include "modules/skparagraph/include/FontCollection.h"
+#include "modules/skparagraph/include/Paragraph.h"
+#include "modules/skparagraph/include/ParagraphBuilder.h"
+#include "modules/skparagraph/include/ParagraphStyle.h"
+#include "modules/skparagraph/include/TextStyle.h"
+#include "modules/skunicode/include/SkUnicode_libgrapheme.h"
 #include "gpu/ganesh/GrBackendSurface.h"
 #include "gpu/ganesh/GrDirectContext.h"
 #include "gpu/ganesh/SkSurfaceGanesh.h"
@@ -50,6 +57,10 @@
 #include "skia_svg_impl.h"
 
 namespace {
+
+namespace textlayout_defaults {
+static const std::vector<SkString> kDefaultFontFamilies = {SkString(DEFAULT_FONT_FAMILY)};
+}
 
 SkColor to_sk_color(uint32_t argb) {
     return SkColorSetARGB(
@@ -152,11 +163,36 @@ struct FontRegistry {
     std::unordered_map<std::string, sk_sp<SkTypeface>> custom;
 };
 
+struct ParagraphRegistry {
+    std::mutex mu;
+    sk_sp<skia::textlayout::FontCollection> collection;
+};
+
 sk_sp<SkFontMgr> get_font_manager();
 
 FontRegistry& font_registry() {
     static FontRegistry registry;
     return registry;
+}
+
+ParagraphRegistry& paragraph_registry() {
+    static ParagraphRegistry registry;
+    return registry;
+}
+
+sk_sp<skia::textlayout::FontCollection> get_paragraph_collection() {
+    auto& registry = paragraph_registry();
+    std::lock_guard<std::mutex> lock(registry.mu);
+    if (!registry.collection) {
+        registry.collection = sk_make_sp<skia::textlayout::FontCollection>();
+        registry.collection->setDefaultFontManager(get_font_manager());
+    }
+    return registry.collection;
+}
+
+void register_paragraph_typeface(const char* name, const sk_sp<SkTypeface>& typeface) {
+    (void)name;
+    (void)typeface;
 }
 
 sk_sp<SkTypeface> lookup_custom_typeface(const char* family) {
@@ -279,6 +315,11 @@ SkFont make_font(const char* family, float size, int weight, int style) {
 }
 
 }  // namespace
+
+// Provide a weak definition for the default font families used by skparagraph.
+// This allows the paragraph module to fall back to our configured default font
+// when no explicit font family is specified in the text style.
+const std::vector<SkString>* ::skia::textlayout::TextStyle::kDefaultFontFamilies __attribute__((weak)) = &textlayout_defaults::kDefaultFontFamilies;
 
 extern "C" {
 
@@ -879,6 +920,134 @@ void drift_skia_canvas_draw_image_rgba(DriftSkiaCanvas canvas, const uint8_t* pi
         return;
     }
     reinterpret_cast<SkCanvas*>(canvas)->drawImage(image, x, y);
+}
+
+DriftSkiaParagraph drift_skia_paragraph_create(
+    const char* text,
+    const char* family,
+    float size,
+    int weight,
+    int style,
+    uint32_t argb,
+    int max_lines,
+    int gradient_type,
+    float x1,
+    float y1,
+    float x2,
+    float y2,
+    float cx,
+    float cy,
+    float radius,
+    const uint32_t* colors,
+    const float* positions,
+    int count,
+    int shadow_enabled,
+    uint32_t shadow_argb,
+    float shadow_dx,
+    float shadow_dy,
+    float shadow_sigma
+) {
+    auto collection = get_paragraph_collection();
+    if (!collection) {
+        return nullptr;
+    }
+    skia::textlayout::ParagraphStyle paragraph_style;
+    if (max_lines > 0) {
+        paragraph_style.setMaxLines(static_cast<size_t>(max_lines));
+    }
+    skia::textlayout::TextStyle text_style;
+    text_style.setFontSize(size);
+    SkFontStyle::Slant slant = (style == 1) ? SkFontStyle::kItalic_Slant : SkFontStyle::kUpright_Slant;
+    text_style.setFontStyle(SkFontStyle(std::clamp(weight, 100, 900), SkFontStyle::kNormal_Width, slant));
+    if (family && family[0] != '\0') {
+        std::vector<SkString> families;
+        families.emplace_back(family);
+        text_style.setFontFamilies(families);
+    }
+    auto typeface = resolve_typeface(family, weight, style);
+    if (typeface) {
+        text_style.setTypeface(typeface);
+    }
+    text_style.setColor(to_sk_color(argb));
+    auto shader = make_gradient_shader(gradient_type, x1, y1, x2, y2, cx, cy, radius, colors, positions, count);
+    if (shader) {
+        SkPaint paint;
+        paint.setAntiAlias(true);
+        paint.setColor(to_sk_color(argb));
+        paint.setShader(shader);
+        text_style.setForegroundPaint(paint);
+    }
+    if (shadow_enabled != 0) {
+        skia::textlayout::TextShadow shadow;
+        shadow.fColor = to_sk_color(shadow_argb);
+        shadow.fOffset = SkPoint::Make(shadow_dx, shadow_dy);
+        shadow.fBlurSigma = shadow_sigma;
+        text_style.addShadow(shadow);
+    }
+    auto unicode = SkUnicodes::Libgrapheme::Make();
+    auto builder = skia::textlayout::ParagraphBuilder::make(paragraph_style, collection, unicode);
+    builder->pushStyle(text_style);
+    if (text) {
+        builder->addText(text);
+    }
+    builder->pop();
+    auto paragraph = builder->Build();
+    return paragraph.release();
+}
+
+void drift_skia_paragraph_layout(DriftSkiaParagraph paragraph, float width) {
+    if (!paragraph) {
+        return;
+    }
+    if (width <= 0) {
+        width = std::numeric_limits<float>::max();
+    }
+    reinterpret_cast<skia::textlayout::Paragraph*>(paragraph)->layout(width);
+}
+
+int drift_skia_paragraph_get_metrics(DriftSkiaParagraph paragraph, float* height, float* longest_line, float* max_intrinsic_width, int* line_count) {
+    if (!paragraph || !height || !longest_line || !max_intrinsic_width || !line_count) {
+        return 0;
+    }
+    auto sk_paragraph = reinterpret_cast<skia::textlayout::Paragraph*>(paragraph);
+    *height = sk_paragraph->getHeight();
+    *longest_line = sk_paragraph->getLongestLine();
+    *max_intrinsic_width = sk_paragraph->getMaxIntrinsicWidth();
+    std::vector<skia::textlayout::LineMetrics> metrics;
+    sk_paragraph->getLineMetrics(metrics);
+    *line_count = static_cast<int>(metrics.size());
+    return 1;
+}
+
+int drift_skia_paragraph_get_line_metrics(DriftSkiaParagraph paragraph, float* widths, float* ascents, float* descents, float* heights, int count) {
+    if (!paragraph || !widths || !ascents || !descents || !heights || count <= 0) {
+        return 0;
+    }
+    auto sk_paragraph = reinterpret_cast<skia::textlayout::Paragraph*>(paragraph);
+    std::vector<skia::textlayout::LineMetrics> metrics;
+    sk_paragraph->getLineMetrics(metrics);
+    int lines = std::min(count, static_cast<int>(metrics.size()));
+    for (int i = 0; i < lines; ++i) {
+        widths[i] = metrics[i].fWidth;
+        ascents[i] = metrics[i].fAscent;
+        descents[i] = metrics[i].fDescent;
+        heights[i] = metrics[i].fHeight;
+    }
+    return 1;
+}
+
+void drift_skia_paragraph_paint(DriftSkiaParagraph paragraph, DriftSkiaCanvas canvas, float x, float y) {
+    if (!paragraph || !canvas) {
+        return;
+    }
+    reinterpret_cast<skia::textlayout::Paragraph*>(paragraph)->paint(reinterpret_cast<SkCanvas*>(canvas), x, y);
+}
+
+void drift_skia_paragraph_destroy(DriftSkiaParagraph paragraph) {
+    if (!paragraph) {
+        return;
+    }
+    delete reinterpret_cast<skia::textlayout::Paragraph*>(paragraph);
 }
 
 DriftSkiaPath drift_skia_path_create(int fill_type) {

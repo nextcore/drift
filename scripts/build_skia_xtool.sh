@@ -171,7 +171,7 @@ cd "$SKIA_DIR"
 python3 tools/git-sync-deps
 
 # Common Skia build args
-COMMON_ARGS='is_official_build=true skia_use_metal=true skia_use_system_harfbuzz=false skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_enable_skresources=true skia_use_icu=false'
+COMMON_ARGS='is_official_build=true skia_use_metal=true skia_use_system_harfbuzz=false skia_use_harfbuzz=true skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_enable_skresources=true skia_use_icu=false skia_use_libgrapheme=true skia_enable_skparagraph=true skia_enable_skshaper=true'
 
 # For cross-compilation, we need to tell GN where the toolchain is
 # Use wrapper scripts that translate -arch to --target
@@ -183,7 +183,7 @@ build_device() {
   local target_cpu="$2"
   echo "Building iOS device ($target_cpu)..."
   bin/gn gen "$out_dir" --args="target_os=\"ios\" target_cpu=\"$target_cpu\" $COMMON_ARGS $XTOOL_ARGS"
-  ninja -C "$out_dir" skia svg skresources
+  ninja -C "$out_dir" skia svg skresources skparagraph skshaper skunicode
 }
 
 build_simulator() {
@@ -195,7 +195,7 @@ build_simulator() {
   fi
   echo "Building iOS simulator ($target_cpu)..."
   bin/gn gen "$out_dir" --args="target_os=\"ios\" target_cpu=\"$target_cpu\" ios_use_simulator=true $COMMON_ARGS $XTOOL_SIM_ARGS"
-  ninja -C "$out_dir" skia svg skresources
+  ninja -C "$out_dir" skia svg skresources skparagraph skshaper skunicode
 }
 
 # Compile bridge code and combine with Skia into libdrift_skia.a (device)

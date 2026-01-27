@@ -2,10 +2,8 @@ package rendering
 
 import (
 	"math"
-	"strings"
+	"runtime"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/go-drift/drift/pkg/errors"
 	"github.com/go-drift/drift/pkg/skia"
@@ -76,6 +74,7 @@ type TextLayout struct {
 	Face       font.Face
 	LineHeight float64
 	Lines      []TextLine
+	paragraph  *skia.Paragraph
 }
 
 // FontManager manages font registration for text rendering.
@@ -153,6 +152,11 @@ func LayoutText(text string, style TextStyle, manager *FontManager) (*TextLayout
 
 // LayoutTextWithConstraints measures and wraps text within the given width.
 func LayoutTextWithConstraints(text string, style TextStyle, manager *FontManager, maxWidth float64) (*TextLayout, error) {
+	return LayoutTextWithConstraintsAndMaxLines(text, style, manager, maxWidth, 0)
+}
+
+// LayoutTextWithConstraintsAndMaxLines measures and wraps text within the given width and line limit.
+func LayoutTextWithConstraintsAndMaxLines(text string, style TextStyle, manager *FontManager, maxWidth float64, maxLines int) (*TextLayout, error) {
 	if manager == nil {
 		return nil, stderrors.New("font manager required")
 	}
@@ -169,37 +173,135 @@ func LayoutTextWithConstraints(text string, style TextStyle, manager *FontManage
 	if weight < 100 {
 		weight = int(FontWeightNormal)
 	}
-	metrics, err := skia.FontMetrics(family, size, weight, int(style.FontStyle))
+	layout, err := layoutParagraph(text, style, family, size, weight, maxWidth, maxLines)
 	if err != nil {
 		return nil, err
 	}
-	ascent := metrics.Ascent
-	descent := metrics.Descent
-	lineHeight := ascent + descent + metrics.Leading
-	if lineHeight == 0 {
-		lineHeight = ascent + descent
-	}
-	var measureErr error
-	measure := func(s string) float64 {
-		width, err := skia.MeasureTextWidth(s, family, size, weight, int(style.FontStyle))
-		if err != nil {
-			measureErr = err
-			return 0
+	// Release the native Skia paragraph when the Go layout is garbage collected.
+	runtime.SetFinalizer(layout, func(layout *TextLayout) {
+		if layout != nil && layout.paragraph != nil {
+			layout.paragraph.Destroy()
+			layout.paragraph = nil
 		}
-		return width
+	})
+	return layout, nil
+}
+
+// layoutParagraph creates a Skia paragraph for text shaping and line breaking.
+// It returns a TextLayout containing both the computed metrics and the native
+// paragraph handle for later rendering.
+func layoutParagraph(text string, style TextStyle, family string, size float64, weight int, maxWidth float64, maxLines int) (*TextLayout, error) {
+	if maxWidth < 0 || math.IsInf(maxWidth, 0) {
+		maxWidth = 0
 	}
-	lines := layoutLines(text, maxWidth, measure, style.PreserveWhitespace)
-	if measureErr != nil {
-		return nil, measureErr
+	payload, hasGradient := buildGradientPayload(style.Gradient)
+	gradientType := int32(0)
+	var colors []uint32
+	var positions []float32
+	var startX, startY, endX, endY, centerX, centerY, radius float32
+	if hasGradient {
+		gradientType = payload.gradientType
+		colors = payload.colors
+		positions = payload.positions
+		startX = float32(payload.start.X)
+		startY = float32(payload.start.Y)
+		endX = float32(payload.end.X)
+		endY = float32(payload.end.Y)
+		centerX = float32(payload.center.X)
+		centerY = float32(payload.center.Y)
+		radius = float32(payload.radius)
 	}
-	maxLineWidth := 0.0
-	for _, line := range lines {
-		maxLineWidth = math.Max(maxLineWidth, line.Width)
+	var shadow *skia.ParagraphShadow
+	if style.Shadow != nil {
+		shadow = &skia.ParagraphShadow{
+			Color:   uint32(style.Shadow.Color),
+			OffsetX: float32(style.Shadow.Offset.X),
+			OffsetY: float32(style.Shadow.Offset.Y),
+			Sigma:   float32(style.Shadow.Sigma()),
+		}
+	}
+	paragraph, err := skia.NewParagraph(
+		text,
+		family,
+		float32(size),
+		weight,
+		int(style.FontStyle),
+		uint32(style.Color),
+		maxLines,
+		gradientType,
+		startX,
+		startY,
+		endX,
+		endY,
+		centerX,
+		centerY,
+		radius,
+		colors,
+		positions,
+		shadow,
+	)
+	if err != nil {
+		return nil, err
+	}
+	paragraph.Layout(float32(maxWidth))
+	metrics, err := paragraph.Metrics()
+	if err != nil {
+		paragraph.Destroy()
+		return nil, err
+	}
+	lineMetrics, err := paragraph.LineMetrics()
+	if err != nil {
+		paragraph.Destroy()
+		return nil, err
+	}
+	lines := make([]TextLine, 0, len(lineMetrics.Widths))
+	for _, width := range lineMetrics.Widths {
+		lines = append(lines, TextLine{Text: "", Width: width})
 	}
 	if len(lines) == 0 {
 		lines = []TextLine{{Text: "", Width: 0}}
 	}
-	layoutSize := Size{Width: maxLineWidth, Height: lineHeight * float64(len(lines))}
+	lineHeight := 0.0
+	ascent := 0.0
+	descent := 0.0
+	if len(lineMetrics.Heights) > 0 {
+		lineHeight = lineMetrics.Heights[0]
+	}
+	if len(lineMetrics.Ascents) > 0 {
+		ascent = lineMetrics.Ascents[0]
+	}
+	if len(lineMetrics.Descents) > 0 {
+		descent = lineMetrics.Descents[0]
+	}
+	// Skia reports ascent as a negative value (distance above baseline);
+	// convert to positive for consistency with the rest of the layout API.
+	if ascent < 0 {
+		ascent = -ascent
+	}
+	if lineHeight == 0 {
+		lineHeight = ascent + descent
+	}
+	layoutSize := Size{Width: metrics.LongestLine, Height: metrics.Height}
+	if layoutSize.Height == 0 {
+		layoutSize.Height = lineHeight * float64(len(lines))
+	}
+	// For empty text or missing paragraph metrics, fall back to font metrics
+	// so that empty text widgets still reserve the correct line height.
+	if layoutSize.Height == 0 {
+		fallback, err := skia.FontMetrics(family, size, weight, int(style.FontStyle))
+		if err == nil {
+			fallbackLineHeight := fallback.Ascent + fallback.Descent + fallback.Leading
+			if fallbackLineHeight == 0 {
+				fallbackLineHeight = fallback.Ascent + fallback.Descent
+			}
+			if fallbackLineHeight > 0 {
+				layoutSize.Height = fallbackLineHeight
+				lineHeight = fallbackLineHeight
+				ascent = fallback.Ascent
+				descent = fallback.Descent
+			}
+		}
+	}
 	return &TextLayout{
 		Text:       text,
 		Style:      style,
@@ -209,77 +311,6 @@ func LayoutTextWithConstraints(text string, style TextStyle, manager *FontManage
 		Face:       nil,
 		LineHeight: lineHeight,
 		Lines:      lines,
+		paragraph:  paragraph,
 	}, nil
-}
-
-func layoutLines(text string, maxWidth float64, measure func(string) float64, preserveWhitespace bool) []TextLine {
-	if maxWidth < 0 || math.IsInf(maxWidth, 0) {
-		maxWidth = 0
-	}
-	paragraphs := strings.Split(text, "\n")
-	lines := make([]TextLine, 0, len(paragraphs))
-	for _, paragraph := range paragraphs {
-		if paragraph == "" {
-			lines = append(lines, TextLine{})
-			continue
-		}
-		if maxWidth == 0 {
-			lines = append(lines, TextLine{Text: paragraph, Width: measure(paragraph)})
-			continue
-		}
-		for _, line := range wrapParagraph(paragraph, maxWidth, measure, preserveWhitespace) {
-			lines = append(lines, TextLine{Text: line, Width: measure(line)})
-		}
-	}
-	return lines
-}
-
-func wrapParagraph(text string, maxWidth float64, measure func(string) float64, preserveWhitespace bool) []string {
-	var lines []string
-	start := 0
-	for start < len(text) {
-		lastBreak := -1
-		lastFit := -1
-		for i := start; i < len(text); {
-			r, size := utf8.DecodeRuneInString(text[i:])
-			next := i + size
-			width := measure(text[start:next])
-			if width > maxWidth {
-				break
-			}
-			lastFit = next
-			if unicode.IsSpace(r) {
-				lastBreak = next
-			}
-			i = next
-		}
-		if lastFit == -1 {
-			_, size := utf8.DecodeRuneInString(text[start:])
-			lastFit = start + size
-		}
-		cut := lastFit
-		if lastFit < len(text) && lastBreak > start && lastBreak < lastFit {
-			cut = lastBreak
-		}
-		line := text[start:cut]
-		if !preserveWhitespace {
-			line = strings.TrimRightFunc(line, unicode.IsSpace)
-		}
-		lines = append(lines, line)
-		start = cut
-		if preserveWhitespace {
-			continue
-		}
-		for start < len(text) {
-			r, size := utf8.DecodeRuneInString(text[start:])
-			if !unicode.IsSpace(r) {
-				break
-			}
-			start += size
-		}
-	}
-	if len(lines) == 0 {
-		return []string{""}
-	}
-	return lines
 }

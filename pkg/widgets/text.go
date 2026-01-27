@@ -119,20 +119,11 @@ func (r *renderText) PerformLayout() {
 		return
 	}
 
-	layout, err := rendering.LayoutTextWithConstraints(r.text, r.style, manager, maxWidth)
+	layout, err := rendering.LayoutTextWithConstraintsAndMaxLines(r.text, r.style, manager, maxWidth, r.maxLines)
 	if err != nil {
 		r.layout = nil
 		r.SetSize(constraints.Constrain(rendering.Size{}))
 		return
-	}
-
-	if r.maxLines > 0 && len(layout.Lines) > r.maxLines {
-		layout.Lines = layout.Lines[:r.maxLines]
-		maxLineWidth := 0.0
-		for _, line := range layout.Lines {
-			maxLineWidth = max(maxLineWidth, line.Width)
-		}
-		layout.Size = rendering.Size{Width: maxLineWidth, Height: layout.LineHeight * float64(len(layout.Lines))}
 	}
 
 	r.layout = layout

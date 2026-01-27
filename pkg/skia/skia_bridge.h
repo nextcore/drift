@@ -12,6 +12,7 @@ typedef void* DriftSkiaSurface;
 typedef void* DriftSkiaCanvas;
 typedef void* DriftSkiaPath;
 typedef void* DriftSkiaSVGDOM;
+typedef void* DriftSkiaParagraph;
 
 DriftSkiaContext drift_skia_context_create_gl(void);
 DriftSkiaContext drift_skia_context_create_metal(void* device, void* queue);
@@ -206,6 +207,36 @@ void drift_skia_canvas_draw_text_gradient(
 void drift_skia_canvas_draw_text(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t argb, int weight, int style);
 void drift_skia_canvas_draw_text_shadow(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t color, float sigma, int weight, int style);
 void drift_skia_canvas_draw_image_rgba(DriftSkiaCanvas canvas, const uint8_t* pixels, int width, int height, int stride, float x, float y);
+DriftSkiaParagraph drift_skia_paragraph_create(
+    const char* text,
+    const char* family,
+    float size,
+    int weight,
+    int style,
+    uint32_t argb,
+    int max_lines,
+    int gradient_type,
+    float x1,
+    float y1,
+    float x2,
+    float y2,
+    float cx,
+    float cy,
+    float radius,
+    const uint32_t* colors,
+    const float* positions,
+    int count,
+    int shadow_enabled,
+    uint32_t shadow_argb,
+    float shadow_dx,
+    float shadow_dy,
+    float shadow_sigma
+);
+void drift_skia_paragraph_layout(DriftSkiaParagraph paragraph, float width);
+int drift_skia_paragraph_get_metrics(DriftSkiaParagraph paragraph, float* height, float* longest_line, float* max_intrinsic_width, int* line_count);
+int drift_skia_paragraph_get_line_metrics(DriftSkiaParagraph paragraph, float* widths, float* ascents, float* descents, float* heights, int count);
+void drift_skia_paragraph_paint(DriftSkiaParagraph paragraph, DriftSkiaCanvas canvas, float x, float y);
+void drift_skia_paragraph_destroy(DriftSkiaParagraph paragraph);
 int drift_skia_register_font(const char* name, const uint8_t* data, int length);
 int drift_skia_measure_text(const char* text, const char* family, float size, int weight, int style, float* width);
 int drift_skia_font_metrics(const char* family, float size, int weight, int style, float* ascent, float* descent, float* leading);

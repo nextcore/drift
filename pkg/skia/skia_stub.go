@@ -21,6 +21,33 @@ type Surface struct{}
 // Path wraps a Skia path for vector drawing.
 type Path struct{}
 
+// Paragraph wraps a Skia text layout paragraph.
+type Paragraph struct{}
+
+// ParagraphShadow describes a paragraph shadow effect.
+type ParagraphShadow struct {
+	Color   uint32
+	OffsetX float32
+	OffsetY float32
+	Sigma   float32
+}
+
+// ParagraphMetrics reports paragraph layout metrics.
+type ParagraphMetrics struct {
+	Height            float64
+	LongestLine       float64
+	MaxIntrinsicWidth float64
+	LineCount         int
+}
+
+// ParagraphLineMetrics reports per-line layout metrics.
+type ParagraphLineMetrics struct {
+	Widths   []float64
+	Ascents  []float64
+	Descents []float64
+	Heights  []float64
+}
+
 // NewGLContext creates a Skia GPU context using the current OpenGL context.
 func NewGLContext() (*Context, error) {
 	return nil, errStubNotSupported
@@ -222,6 +249,43 @@ func CanvasDrawTextShadow(canvas unsafe.Pointer, text, family string, x, y, size
 // CanvasDrawImageRGBA draws an RGBA image at the provided offset.
 func CanvasDrawImageRGBA(canvas unsafe.Pointer, pixels []uint8, width, height, stride int, x, y float32) {
 }
+
+// NewParagraph creates a paragraph layout with shaping support.
+func NewParagraph(
+	text, family string,
+	size float32,
+	weight int,
+	style int,
+	color uint32,
+	maxLines int,
+	gradientType int32,
+	startX, startY, endX, endY float32,
+	centerX, centerY, radius float32,
+	colors []uint32,
+	positions []float32,
+	shadow *ParagraphShadow,
+) (*Paragraph, error) {
+	return nil, errStubNotSupported
+}
+
+// Layout lays out the paragraph within the given width.
+func (p *Paragraph) Layout(width float32) {}
+
+// Metrics returns overall paragraph metrics.
+func (p *Paragraph) Metrics() (ParagraphMetrics, error) {
+	return ParagraphMetrics{}, errStubNotSupported
+}
+
+// LineMetrics returns per-line metrics for the paragraph.
+func (p *Paragraph) LineMetrics() (ParagraphLineMetrics, error) {
+	return ParagraphLineMetrics{}, errStubNotSupported
+}
+
+// Paint renders the paragraph to the canvas at the given position.
+func (p *Paragraph) Paint(canvas unsafe.Pointer, x, y float32) {}
+
+// Destroy releases the paragraph resources.
+func (p *Paragraph) Destroy() {}
 
 // TextMetrics reports font metrics for a typeface.
 type TextMetrics struct {
