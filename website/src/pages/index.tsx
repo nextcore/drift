@@ -2,9 +2,7 @@ import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import useBaseUrl from '@docusaurus/useBaseUrl';
-import Layout from '@theme/Layout';
 import Head from '@docusaurus/Head';
-import {useEffect} from 'react';
 import siteConfig from '@generated/docusaurus.config';
 
 import styles from './index.module.css';
@@ -35,7 +33,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/api/core">
+            to="/docs/category/api-reference">
             API Reference
           </Link>
           <Link
@@ -52,16 +50,13 @@ function HomepageHeader() {
 export default function Home(): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
 
-  useEffect(() => {
-    document.body.classList.add('homepage');
-    return () => document.body.classList.remove('homepage');
-  }, []);
-
   return (
-    <Layout
-      title={`${siteConfig.title} - ${siteConfig.tagline}`}
-      description="Drift is a cross-platform mobile UI framework in Go.">
+    <>
+      <Head>
+        <title>{`${siteConfig.title} - ${siteConfig.tagline}`}</title>
+        <meta name="description" content="Drift is a cross-platform mobile UI framework in Go." />
+      </Head>
       <HomepageHeader />
-    </Layout>
+    </>
   );
 }
