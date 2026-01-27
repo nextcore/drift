@@ -69,11 +69,15 @@ func (c Container) Child() core.Widget {
 }
 
 func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
+	color := c.Color
+	if c.Gradient != nil && color == rendering.ColorTransparent {
+		color = rendering.ColorWhite
+	}
 	box := &renderContainer{
 		padding:   c.Padding,
 		width:     c.Width,
 		height:    c.Height,
-		color:     c.Color,
+		color:     color,
 		gradient:  c.Gradient,
 		alignment: c.Alignment,
 		shadow:    c.Shadow,
@@ -84,10 +88,14 @@ func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject
 
 func (c Container) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if box, ok := renderObject.(*renderContainer); ok {
+		color := c.Color
+		if c.Gradient != nil && color == rendering.ColorTransparent {
+			color = rendering.ColorWhite
+		}
 		box.padding = c.Padding
 		box.width = c.Width
 		box.height = c.Height
-		box.color = c.Color
+		box.color = color
 		box.gradient = c.Gradient
 		box.alignment = c.Alignment
 		box.shadow = c.Shadow
