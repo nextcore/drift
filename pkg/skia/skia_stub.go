@@ -250,6 +250,17 @@ func CanvasDrawTextShadow(canvas unsafe.Pointer, text, family string, x, y, size
 func CanvasDrawImageRGBA(canvas unsafe.Pointer, pixels []uint8, width, height, stride int, x, y float32) {
 }
 
+// CanvasDrawImageRect draws an RGBA image from srcRect to dstRect with sampling quality.
+func CanvasDrawImageRect(
+	canvas unsafe.Pointer,
+	pixels []uint8, width, height, stride int,
+	srcL, srcT, srcR, srcB float32,
+	dstL, dstT, dstR, dstB float32,
+	filterQuality int,
+	cacheKey uintptr,
+) {
+}
+
 // NewParagraph creates a paragraph layout with shaping support.
 func NewParagraph(
 	text, family string,

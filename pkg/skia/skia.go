@@ -471,6 +471,29 @@ func CanvasDrawImageRGBA(canvas unsafe.Pointer, pixels []uint8, width, height, s
 	)
 }
 
+// CanvasDrawImageRect draws an RGBA image from srcRect to dstRect with sampling quality.
+func CanvasDrawImageRect(
+	canvas unsafe.Pointer,
+	pixels []uint8, width, height, stride int,
+	srcL, srcT, srcR, srcB float32,
+	dstL, dstT, dstR, dstB float32,
+	filterQuality int,
+	cacheKey uintptr,
+) {
+	if len(pixels) == 0 || stride <= 0 {
+		return
+	}
+	C.drift_skia_canvas_draw_image_rect(
+		C.DriftSkiaCanvas(canvas),
+		(*C.uchar)(unsafe.Pointer(&pixels[0])),
+		C.int(width), C.int(height), C.int(stride),
+		C.float(srcL), C.float(srcT), C.float(srcR), C.float(srcB),
+		C.float(dstL), C.float(dstT), C.float(dstR), C.float(dstB),
+		C.int(filterQuality),
+		C.uintptr_t(cacheKey),
+	)
+}
+
 // NewParagraph creates a paragraph layout with shaping support.
 func NewParagraph(
 	text, family string,

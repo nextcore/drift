@@ -144,6 +144,10 @@ func (c *recordingCanvas) DrawImage(image image.Image, position Offset) {
 	c.recorder.append(opImage{image: image, position: position})
 }
 
+func (c *recordingCanvas) DrawImageRect(img image.Image, srcRect, dstRect Rect, quality FilterQuality, cacheKey uintptr) {
+	c.recorder.append(opImageRect{image: img, srcRect: srcRect, dstRect: dstRect, quality: quality, cacheKey: cacheKey})
+}
+
 func (c *recordingCanvas) DrawPath(path *Path, paint Paint) {
 	c.recorder.append(opPath{path: path, paint: paint})
 }
@@ -300,6 +304,18 @@ type opImage struct {
 
 func (op opImage) execute(canvas Canvas) {
 	canvas.DrawImage(op.image, op.position)
+}
+
+type opImageRect struct {
+	image    image.Image
+	srcRect  Rect
+	dstRect  Rect
+	quality  FilterQuality
+	cacheKey uintptr
+}
+
+func (op opImageRect) execute(canvas Canvas) {
+	canvas.DrawImageRect(op.image, op.srcRect, op.dstRect, op.quality, op.cacheKey)
 }
 
 type opPath struct {

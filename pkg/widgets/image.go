@@ -2,6 +2,8 @@ package widgets
 
 import (
 	"image"
+	"image/draw"
+	"sync/atomic"
 
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/layout"
@@ -99,6 +101,7 @@ func (i Image) UpdateRenderObject(ctx core.BuildContext, renderObject layout.Ren
 		box.alignment = i.Alignment
 		box.semanticLabel = i.SemanticLabel
 		box.excludeFromSemantics = i.ExcludeFromSemantics
+		box.updateImageCache()
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 		box.MarkNeedsSemanticsUpdate()
@@ -115,6 +118,13 @@ type renderImage struct {
 	intrinsic            rendering.Size
 	semanticLabel        string
 	excludeFromSemantics bool
+
+	// Cache - cachedRGBA holds the converted image, cachedSource tracks which
+	// source was converted, and cacheID is an opaque identifier passed to Skia
+	// for SkImage reuse. cacheID increments whenever the source changes.
+	cachedRGBA   *image.RGBA
+	cachedSource image.Image
+	cacheID      uintptr
 }
 
 func (r *renderImage) SetChild(child layout.RenderObject) {
@@ -125,6 +135,8 @@ func (r *renderImage) PerformLayout() {
 	constraints := r.Constraints()
 	if r.source == nil {
 		r.intrinsic = rendering.Size{}
+		r.cachedRGBA, r.cachedSource = nil, nil
+		r.cacheID = 0
 		r.SetSize(constraints.Constrain(rendering.Size{}))
 		return
 	}
@@ -135,6 +147,7 @@ func (r *renderImage) PerformLayout() {
 		Height: float64(bounds.Dy()),
 	}
 	r.intrinsic = intrinsic
+	r.updateImageCache()
 
 	size := intrinsic
 	if r.width > 0 && r.height > 0 {
@@ -151,7 +164,7 @@ func (r *renderImage) PerformLayout() {
 }
 
 func (r *renderImage) Paint(ctx *layout.PaintContext) {
-	if r.source == nil {
+	if r.source == nil || r.cachedRGBA == nil {
 		return
 	}
 	size := r.Size()
@@ -171,22 +184,14 @@ func (r *renderImage) Paint(ctx *layout.PaintContext) {
 		alignment = layout.AlignmentCenter
 	}
 
-	drawSize := r.fitSize(fit, size)
-	if drawSize.Width <= 0 || drawSize.Height <= 0 {
+	srcRect, dstRect := r.computeFitRects(fit, alignment, size)
+	if srcRect.IsEmpty() || dstRect.IsEmpty() {
 		return
 	}
 
-	scaleX := drawSize.Width / r.intrinsic.Width
-	scaleY := drawSize.Height / r.intrinsic.Height
-	offset := alignment.WithinRect(rendering.RectFromLTWH(0, 0, size.Width, size.Height), drawSize)
-
 	ctx.Canvas.Save()
 	ctx.Canvas.ClipRect(rendering.RectFromLTWH(0, 0, size.Width, size.Height))
-	ctx.Canvas.Translate(offset.X, offset.Y)
-	if scaleX != 1 || scaleY != 1 {
-		ctx.Canvas.Scale(scaleX, scaleY)
-	}
-	ctx.Canvas.DrawImage(r.source, rendering.Offset{})
+	ctx.Canvas.DrawImageRect(r.cachedRGBA, srcRect, dstRect, rendering.FilterQualityLow, r.cacheKey())
 	ctx.Canvas.Restore()
 }
 
@@ -230,6 +235,81 @@ func (r *renderImage) fitSize(fit ImageFit, size rendering.Size) rendering.Size 
 	default:
 		return size
 	}
+}
+
+// imageCacheIDCounter is a global counter for generating unique cache IDs.
+// Using a global ensures IDs are unique across all renderImage instances.
+var imageCacheIDCounter atomic.Uintptr
+
+func (r *renderImage) updateImageCache() {
+	if r.source == nil {
+		r.cachedRGBA = nil
+		r.cachedSource = nil
+		r.cacheID = 0
+		return
+	}
+
+	// Cache hit: same source instance, assume data unchanged.
+	// Note: If callers mutate pixel data in place on the same image.Image
+	// instance, they must pass a new instance to trigger cache invalidation.
+	if r.cachedSource == r.source && r.cachedRGBA != nil {
+		return
+	}
+
+	// Convert and cache
+	r.cachedRGBA = toRGBAImage(r.source)
+	r.cachedSource = r.source
+	r.cacheID = imageCacheIDCounter.Add(1)
+}
+
+func (r *renderImage) cacheKey() uintptr {
+	return r.cacheID
+}
+
+func (r *renderImage) computeFitRects(fit ImageFit, align layout.Alignment, box rendering.Size) (src, dst rendering.Rect) {
+	intrinsic := r.intrinsic
+	fullSrc := rendering.RectFromLTWH(0, 0, intrinsic.Width, intrinsic.Height)
+
+	switch fit {
+	case ImageFitFill:
+		return fullSrc, rendering.RectFromLTWH(0, 0, box.Width, box.Height)
+
+	case ImageFitContain, ImageFitScaleDown:
+		scale := min(box.Width/intrinsic.Width, box.Height/intrinsic.Height)
+		if fit == ImageFitScaleDown && scale > 1 {
+			scale = 1
+		}
+		drawSize := rendering.Size{Width: intrinsic.Width * scale, Height: intrinsic.Height * scale}
+		offset := align.WithinRect(rendering.RectFromLTWH(0, 0, box.Width, box.Height), drawSize)
+		return fullSrc, rendering.RectFromLTWH(offset.X, offset.Y, drawSize.Width, drawSize.Height)
+
+	case ImageFitCover:
+		scale := max(box.Width/intrinsic.Width, box.Height/intrinsic.Height)
+		scaledSize := rendering.Size{Width: intrinsic.Width * scale, Height: intrinsic.Height * scale}
+		offset := align.WithinRect(rendering.RectFromLTWH(0, 0, box.Width, box.Height), scaledSize)
+		// Convert back to source coordinates
+		srcX, srcY := -offset.X/scale, -offset.Y/scale
+		srcW, srcH := box.Width/scale, box.Height/scale
+		return rendering.RectFromLTWH(srcX, srcY, srcW, srcH), rendering.RectFromLTWH(0, 0, box.Width, box.Height)
+
+	case ImageFitNone:
+		offset := align.WithinRect(rendering.RectFromLTWH(0, 0, box.Width, box.Height), intrinsic)
+		return fullSrc, rendering.RectFromLTWH(offset.X, offset.Y, intrinsic.Width, intrinsic.Height)
+	}
+	return fullSrc, rendering.RectFromLTWH(0, 0, box.Width, box.Height)
+}
+
+func toRGBAImage(src image.Image) *image.RGBA {
+	if rgba, ok := src.(*image.RGBA); ok {
+		return rgba
+	}
+	bounds := src.Bounds()
+	if bounds.Empty() {
+		return nil
+	}
+	rgba := image.NewRGBA(bounds)
+	draw.Draw(rgba, bounds, src, bounds.Min, draw.Src)
+	return rgba
 }
 
 // DescribeSemanticsConfiguration implements SemanticsDescriber for accessibility.

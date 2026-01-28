@@ -344,11 +344,11 @@ func (c *SkiaCanvas) DrawText(layout *TextLayout, position Offset) {
 	}
 }
 
-func (c *SkiaCanvas) DrawImage(image image.Image, position Offset) {
-	if image == nil {
+func (c *SkiaCanvas) DrawImage(img image.Image, position Offset) {
+	if img == nil {
 		return
 	}
-	rgba := toRGBA(image)
+	rgba := toRGBA(img)
 	if rgba == nil {
 		return
 	}
@@ -366,6 +366,28 @@ func (c *SkiaCanvas) DrawImage(image image.Image, position Offset) {
 		rgba.Stride,
 		float32(position.X),
 		float32(position.Y),
+	)
+}
+
+func (c *SkiaCanvas) DrawImageRect(img image.Image, srcRect, dstRect Rect, quality FilterQuality, cacheKey uintptr) {
+	if img == nil {
+		return
+	}
+	rgba := toRGBA(img)
+	if rgba == nil {
+		return
+	}
+	bounds := rgba.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	if w <= 0 || h <= 0 {
+		return
+	}
+
+	skia.CanvasDrawImageRect(
+		c.canvas, rgba.Pix, w, h, rgba.Stride,
+		float32(srcRect.Left), float32(srcRect.Top), float32(srcRect.Right), float32(srcRect.Bottom),
+		float32(dstRect.Left), float32(dstRect.Top), float32(dstRect.Right), float32(dstRect.Bottom),
+		int(quality), cacheKey,
 	)
 }
 

@@ -207,6 +207,14 @@ void drift_skia_canvas_draw_text_gradient(
 void drift_skia_canvas_draw_text(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t argb, int weight, int style);
 void drift_skia_canvas_draw_text_shadow(DriftSkiaCanvas canvas, const char* text, const char* family, float x, float y, float size, uint32_t color, float sigma, int weight, int style);
 void drift_skia_canvas_draw_image_rgba(DriftSkiaCanvas canvas, const uint8_t* pixels, int width, int height, int stride, float x, float y);
+void drift_skia_canvas_draw_image_rect(
+    DriftSkiaCanvas canvas,
+    const uint8_t* pixels, int width, int height, int stride,
+    float src_l, float src_t, float src_r, float src_b,
+    float dst_l, float dst_t, float dst_r, float dst_b,
+    int filter_quality,
+    uintptr_t cache_key
+);
 DriftSkiaParagraph drift_skia_paragraph_create(
     const char* text,
     const char* family,

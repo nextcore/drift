@@ -5,6 +5,16 @@ import (
 	"unsafe"
 )
 
+// FilterQuality controls image sampling quality during scaling.
+type FilterQuality int
+
+const (
+	FilterQualityNone   FilterQuality = iota // Nearest neighbor (pixelated)
+	FilterQualityLow                         // Bilinear
+	FilterQualityMedium                      // Bilinear + mipmaps
+	FilterQualityHigh                        // Bicubic (Mitchell)
+)
+
 // Canvas records or renders drawing commands.
 type Canvas interface {
 	// Save pushes the current transform and clip state.
@@ -52,6 +62,12 @@ type Canvas interface {
 
 	// DrawImage draws an image with its top-left corner at the given position.
 	DrawImage(image image.Image, position Offset)
+
+	// DrawImageRect draws an image from srcRect to dstRect with sampling quality.
+	// srcRect selects the source region (zero rect = entire image).
+	// cacheKey enables SkImage caching; pass 0 to disable, or a unique ID that
+	// changes when the underlying pixel data changes.
+	DrawImageRect(img image.Image, srcRect, dstRect Rect, quality FilterQuality, cacheKey uintptr)
 
 	// DrawPath draws a path with the provided paint.
 	DrawPath(path *Path, paint Paint)

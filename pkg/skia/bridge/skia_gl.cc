@@ -314,6 +314,23 @@ SkFont make_font(const char* family, float size, int weight, int style) {
     return font;
 }
 
+SkSamplingOptions make_sampling_options(int quality) {
+    switch (quality) {
+        case 0: return SkSamplingOptions(SkFilterMode::kNearest);
+        case 1: return SkSamplingOptions(SkFilterMode::kLinear);
+        case 2: return SkSamplingOptions(SkFilterMode::kLinear, SkMipmapMode::kLinear);
+        case 3: return SkSamplingOptions(SkCubicResampler::Mitchell());
+        default: return SkSamplingOptions(SkFilterMode::kLinear);
+    }
+}
+
+struct ImageCache {
+    uintptr_t key = 0;
+    sk_sp<SkImage> image;
+    int width = 0, height = 0;
+};
+thread_local ImageCache g_image_cache;
+
 }  // namespace
 
 // Provide a weak definition for the default font families used by skparagraph.
@@ -920,6 +937,47 @@ void drift_skia_canvas_draw_image_rgba(DriftSkiaCanvas canvas, const uint8_t* pi
         return;
     }
     reinterpret_cast<SkCanvas*>(canvas)->drawImage(image, x, y);
+}
+
+void drift_skia_canvas_draw_image_rect(
+    DriftSkiaCanvas canvas,
+    const uint8_t* pixels, int width, int height, int stride,
+    float src_l, float src_t, float src_r, float src_b,
+    float dst_l, float dst_t, float dst_r, float dst_b,
+    int filter_quality,
+    uintptr_t cache_key
+) {
+    if (!canvas || !pixels || width <= 0 || height <= 0 || stride <= 0) {
+        return;
+    }
+
+    sk_sp<SkImage> image;
+    if (cache_key != 0 && g_image_cache.key == cache_key &&
+        g_image_cache.width == width && g_image_cache.height == height) {
+        image = g_image_cache.image;
+    } else {
+        SkImageInfo info = SkImageInfo::Make(width, height, kRGBA_8888_SkColorType, kPremul_SkAlphaType);
+        auto data = SkData::MakeWithCopy(pixels, static_cast<size_t>(stride) * height);
+        if (!data) {
+            return;
+        }
+        image = SkImages::RasterFromData(info, data, stride);
+        if (!image) {
+            return;
+        }
+        if (cache_key != 0) {
+            g_image_cache = {cache_key, image, width, height};
+        }
+    }
+
+    SkRect srcRect = (src_l == 0 && src_t == 0 && src_r == 0 && src_b == 0)
+        ? SkRect::MakeWH(width, height)
+        : SkRect::MakeLTRB(src_l, src_t, src_r, src_b);
+    SkRect dstRect = SkRect::MakeLTRB(dst_l, dst_t, dst_r, dst_b);
+
+    auto sampling = make_sampling_options(filter_quality);
+    reinterpret_cast<SkCanvas*>(canvas)->drawImageRect(
+        image, srcRect, dstRect, sampling, nullptr, SkCanvas::kStrict_SrcRectConstraint);
 }
 
 DriftSkiaParagraph drift_skia_paragraph_create(
