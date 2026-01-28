@@ -40,6 +40,50 @@ func NewAppThemeData(platform TargetPlatform, brightness Brightness) *AppThemeDa
 	}
 }
 
+// Copy returns a deep copy of the theme data. All nested structs and pointer
+// fields are independently copied so tests can mutate without affecting the
+// original.
+func (a *AppThemeData) Copy() *AppThemeData {
+	c := *a // shallow copy
+	if a.Material != nil {
+		mc := *a.Material
+		if a.Material.ButtonTheme != nil {
+			bt := *a.Material.ButtonTheme
+			mc.ButtonTheme = &bt
+		}
+		if a.Material.CheckboxTheme != nil {
+			ct := *a.Material.CheckboxTheme
+			mc.CheckboxTheme = &ct
+		}
+		if a.Material.SwitchTheme != nil {
+			st := *a.Material.SwitchTheme
+			mc.SwitchTheme = &st
+		}
+		if a.Material.TextFieldTheme != nil {
+			tf := *a.Material.TextFieldTheme
+			mc.TextFieldTheme = &tf
+		}
+		if a.Material.TabBarTheme != nil {
+			tb := *a.Material.TabBarTheme
+			mc.TabBarTheme = &tb
+		}
+		if a.Material.RadioTheme != nil {
+			rt := *a.Material.RadioTheme
+			mc.RadioTheme = &rt
+		}
+		if a.Material.DropdownTheme != nil {
+			dt := *a.Material.DropdownTheme
+			mc.DropdownTheme = &dt
+		}
+		c.Material = &mc
+	}
+	if a.Cupertino != nil {
+		cc := *a.Cupertino
+		c.Cupertino = &cc
+	}
+	return &c
+}
+
 // AppTheme provides unified theme data via InheritedWidget.
 type AppTheme struct {
 	Data        *AppThemeData

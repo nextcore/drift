@@ -746,7 +746,7 @@ func newBallisticState(position *ScrollPosition, velocity float64) *ballisticSta
 	b := &ballisticState{
 		position: position,
 		velocity: velocity,
-		lastTime: time.Now(),
+		lastTime: animation.Now(),
 	}
 	// If overscrolled, create spring simulation immediately
 	if isOverscrolled(position) && isBouncing(position.physics) {
@@ -872,7 +872,7 @@ func StepBallistics() {
 		ballisticMu.Unlock()
 		return
 	}
-	now := time.Now()
+	now := animation.Now()
 	positions := make([]*ScrollPosition, 0, len(ballisticPositions))
 	for position := range ballisticPositions {
 		positions = append(positions, position)

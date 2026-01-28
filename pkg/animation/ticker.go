@@ -80,7 +80,7 @@ func (t *Ticker) Start() {
 		return
 	}
 	t.isActive = true
-	t.start = time.Now()
+	t.start = Now()
 	tickerMu.Lock()
 	activeTickers[t] = struct{}{}
 	tickerMu.Unlock()
@@ -107,7 +107,7 @@ func (t *Ticker) Elapsed() time.Duration {
 	if !t.isActive {
 		return 0
 	}
-	return time.Since(t.start)
+	return Now().Sub(t.start)
 }
 
 // TickerProvider creates tickers.
@@ -132,7 +132,7 @@ func StepTickers() {
 
 	for _, ticker := range tickers {
 		if ticker.isActive && ticker.callback != nil {
-			elapsed := time.Since(ticker.start)
+			elapsed := Now().Sub(ticker.start)
 			ticker.callback(elapsed)
 		}
 	}
