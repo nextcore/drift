@@ -1,6 +1,7 @@
 package animation
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -28,6 +29,22 @@ const (
 	// AnimationCompleted means the animation is stopped at the upper bound (1.0).
 	AnimationCompleted
 )
+
+// String returns a human-readable representation of the animation status.
+func (s AnimationStatus) String() string {
+	switch s {
+	case AnimationDismissed:
+		return "dismissed"
+	case AnimationForward:
+		return "forward"
+	case AnimationReverse:
+		return "reverse"
+	case AnimationCompleted:
+		return "completed"
+	default:
+		return fmt.Sprintf("AnimationStatus(%d)", int(s))
+	}
+}
 
 // AnimationController drives an animation by producing values over time.
 //

@@ -75,6 +75,14 @@ type SvgImage struct {
 	ExcludeFromSemantics bool
 }
 
+// SvgImageOf creates an SVG image widget with the given source.
+// This is a convenience helper equivalent to:
+//
+//	SvgImage{Source: source}
+func SvgImageOf(source *svg.Icon) SvgImage {
+	return SvgImage{Source: source}
+}
+
 func (s SvgImage) CreateElement() core.Element {
 	return core.NewRenderObjectElement(s, nil)
 }

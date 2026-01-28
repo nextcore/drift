@@ -1,5 +1,7 @@
 package rendering
 
+import "fmt"
+
 // BlurStyle controls how the blur mask is generated.
 type BlurStyle int
 
@@ -13,6 +15,22 @@ const (
 	// BlurStyleInner blurs inside the shape only, nothing outside.
 	BlurStyleInner
 )
+
+// String returns a human-readable representation of the blur style.
+func (s BlurStyle) String() string {
+	switch s {
+	case BlurStyleNormal:
+		return "normal"
+	case BlurStyleSolid:
+		return "solid"
+	case BlurStyleOuter:
+		return "outer"
+	case BlurStyleInner:
+		return "inner"
+	default:
+		return fmt.Sprintf("BlurStyle(%d)", int(s))
+	}
+}
 
 // BoxShadow defines a shadow to draw behind a shape.
 type BoxShadow struct {

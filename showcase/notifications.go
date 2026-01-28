@@ -80,7 +80,7 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Request notification permissions on iOS/Android:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Request Permission", func() {
+		widgets.ButtonOf("Request Permission", func() {
 			s.requestPermissions()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
@@ -90,7 +90,7 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Schedule a notification 5 seconds from now:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Schedule Local", func() {
+		widgets.ButtonOf("Schedule Local", func() {
 			s.scheduleLocal()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(12),
@@ -140,12 +140,13 @@ func (s *notificationsState) scheduleLocal() {
 }
 
 func statusCard(text string, colors theme.ColorScheme) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingAll(12,
+	return widgets.Container{
+		Color: colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(12,
 			widgets.TextOf(text, rendering.TextStyle{
 				Color:    colors.OnSurfaceVariant,
 				FontSize: 14,
 			}),
 		),
-	).WithColor(colors.SurfaceVariant).Build()
+	}
 }

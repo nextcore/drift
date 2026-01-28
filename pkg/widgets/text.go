@@ -44,6 +44,14 @@ type Text struct {
 	Wrap bool
 }
 
+// TextOf creates a styled text widget with wrapping enabled.
+// This is a convenience helper equivalent to:
+//
+//	Text{Content: content, Style: style, Wrap: true}
+func TextOf(content string, style rendering.TextStyle) Text {
+	return Text{Content: content, Style: style, Wrap: true}
+}
+
 func (t Text) CreateElement() core.Element {
 	return core.NewRenderObjectElement(t, nil)
 }
@@ -52,8 +60,21 @@ func (t Text) Key() any {
 	return nil
 }
 
+// WithWrap returns a copy of the text with the specified wrap setting.
 func (t Text) WithWrap(wrap bool) Text {
 	t.Wrap = wrap
+	return t
+}
+
+// WithStyle returns a copy of the text with the specified style.
+func (t Text) WithStyle(style rendering.TextStyle) Text {
+	t.Style = style
+	return t
+}
+
+// WithMaxLines returns a copy of the text with the specified max lines limit.
+func (t Text) WithMaxLines(maxLines int) Text {
+	t.MaxLines = maxLines
 	return t
 }
 

@@ -61,6 +61,27 @@ type Checkbox struct {
 	BackgroundColor rendering.Color
 }
 
+// CheckboxOf creates a checkbox with the given value and change handler.
+// This is a convenience helper equivalent to:
+//
+//	Checkbox{Value: value, OnChanged: onChanged}
+func CheckboxOf(value bool, onChanged func(bool)) Checkbox {
+	return Checkbox{Value: value, OnChanged: onChanged}
+}
+
+// WithColors returns a copy of the checkbox with the specified colors.
+func (c Checkbox) WithColors(activeColor, checkColor rendering.Color) Checkbox {
+	c.ActiveColor = activeColor
+	c.CheckColor = checkColor
+	return c
+}
+
+// WithSize returns a copy of the checkbox with the specified size.
+func (c Checkbox) WithSize(size float64) Checkbox {
+	c.Size = size
+	return c
+}
+
 func (c Checkbox) CreateElement() core.Element {
 	return core.NewStatelessElement(c, nil)
 }

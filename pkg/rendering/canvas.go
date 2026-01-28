@@ -1,6 +1,7 @@
 package rendering
 
 import (
+	"fmt"
 	"image"
 	"unsafe"
 )
@@ -15,6 +16,22 @@ const (
 	FilterQualityHigh                        // Bicubic (Mitchell)
 )
 
+// String returns a human-readable representation of the filter quality.
+func (q FilterQuality) String() string {
+	switch q {
+	case FilterQualityNone:
+		return "none"
+	case FilterQualityLow:
+		return "low"
+	case FilterQualityMedium:
+		return "medium"
+	case FilterQualityHigh:
+		return "high"
+	default:
+		return fmt.Sprintf("FilterQuality(%d)", int(q))
+	}
+}
+
 // ClipOp specifies how a new clip shape combines with the existing clip region.
 //
 // Clips are cumulative within a Save/Restore pair. Each clip operation
@@ -25,6 +42,18 @@ const (
 	ClipOpIntersect  ClipOp = iota // Restrict to intersection of old and new clips
 	ClipOpDifference               // Subtract new shape from old clip (creates holes)
 )
+
+// String returns a human-readable representation of the clip operation.
+func (o ClipOp) String() string {
+	switch o {
+	case ClipOpIntersect:
+		return "intersect"
+	case ClipOpDifference:
+		return "difference"
+	default:
+		return fmt.Sprintf("ClipOp(%d)", int(o))
+	}
+}
 
 // Canvas records or renders drawing commands.
 type Canvas interface {

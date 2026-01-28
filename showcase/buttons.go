@@ -27,7 +27,7 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("The simplest way to create a button:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Tap Me", func() {
+		widgets.ButtonOf("Tap Me", func() {
 			platform.Haptics.LightImpact()
 		}),
 		widgets.VSpace(20),
@@ -37,16 +37,16 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Use WithColor() to set background and text:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Primary", func() {}).
+		widgets.ButtonOf("Primary", func() {}).
 			WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(8),
-		widgets.NewButton("Secondary", func() {}).
+		widgets.ButtonOf("Secondary", func() {}).
 			WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(8),
-		widgets.NewButton("Error", func() {}).
+		widgets.ButtonOf("Error", func() {}).
 			WithColor(colors.Error, colors.OnError),
 		widgets.VSpace(8),
-		widgets.NewButton("Surface", func() {}).
+		widgets.ButtonOf("Surface", func() {}).
 			WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 		widgets.VSpace(20),
 
@@ -55,7 +55,7 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Use WithGradient() for colorful backgrounds:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Sunset", func() {}).
+		widgets.ButtonOf("Sunset", func() {}).
 			WithColor(colors.Primary, colors.OnPrimary).
 			WithGradient(buttonGradient),
 		widgets.VSpace(20),
@@ -65,12 +65,12 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Adjust padding and font size:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("Small", func() {}).
+		widgets.ButtonOf("Small", func() {}).
 			WithColor(colors.Primary, colors.OnPrimary).
 			WithPadding(layout.EdgeInsetsSymmetric(12, 8)).
 			WithFontSize(12),
 		widgets.VSpace(8),
-		widgets.NewButton("Large", func() {}).
+		widgets.ButtonOf("Large", func() {}).
 			WithColor(colors.Primary, colors.OnPrimary).
 			WithPadding(layout.EdgeInsetsSymmetric(32, 18)).
 			WithFontSize(20),
@@ -81,11 +81,11 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Buttons include haptic feedback by default:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewButton("With Haptics (default)", func() {
+		widgets.ButtonOf("With Haptics (default)", func() {
 			platform.Haptics.LightImpact()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(8),
-		widgets.NewButton("No Haptics", func() {}).
+		widgets.ButtonOf("No Haptics", func() {}).
 			WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
 			WithHaptic(false),
 		widgets.VSpace(40),

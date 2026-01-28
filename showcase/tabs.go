@@ -67,8 +67,9 @@ func buildTabSpec(label string, icon *svg.Icon, color rendering.Color) navigatio
 func buildTabRootPage(ctx core.BuildContext, label string) core.Widget {
 	_, colors, textTheme := theme.UseTheme(ctx)
 
-	return widgets.NewContainer(
-		widgets.Centered(
+	return widgets.Container{
+		Color: colors.Background,
+		ChildWidget: widgets.Centered(
 			widgets.ColumnOf(
 				widgets.MainAxisAlignmentCenter,
 				widgets.CrossAxisAlignmentStart,
@@ -76,7 +77,7 @@ func buildTabRootPage(ctx core.BuildContext, label string) core.Widget {
 
 				widgets.TextOf(label+" Tab", textTheme.HeadlineMedium),
 				widgets.VSpace(16),
-				widgets.NewButton("Open details", func() {
+				widgets.ButtonOf("Open details", func() {
 					nav := navigation.NavigatorOf(ctx)
 					if nav != nil {
 						nav.PushNamed("/detail", nil)
@@ -84,17 +85,18 @@ func buildTabRootPage(ctx core.BuildContext, label string) core.Widget {
 				}).WithColor(colors.Primary, colors.OnPrimary),
 			),
 		),
-	).WithColor(colors.Background).Build()
+	}
 }
 
 func buildTabDetailPage(ctx core.BuildContext, label string) core.Widget {
 	_, colors, textTheme := theme.UseTheme(ctx)
 
-	content := widgets.NewContainer(
-		widgets.Centered(
+	content := widgets.Container{
+		Color: colors.Background,
+		ChildWidget: widgets.Centered(
 			widgets.TextOf("Detail view for "+label, textTheme.BodyLarge),
 		),
-	).WithColor(colors.Background).Build()
+	}
 
 	return pageScaffold(ctx, label+" Details", content)
 }

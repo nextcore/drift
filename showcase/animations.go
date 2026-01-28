@@ -103,7 +103,7 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 				widgets.MainAxisAlignmentCenter,
 				widgets.CrossAxisAlignmentCenter,
 				widgets.MainAxisSizeMax,
-				widgets.NewButton("Toggle Size", func() {
+				widgets.ButtonOf("Toggle Size", func() {
 					s.SetState(func() {
 						s.containerExpanded = !s.containerExpanded
 					})
@@ -111,7 +111,7 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 					WithPadding(layout.EdgeInsetsSymmetric(16, 10)).
 					WithFontSize(14),
 				widgets.HSpace(12),
-				widgets.NewButton("Change Color", func() {
+				widgets.ButtonOf("Change Color", func() {
 					s.SetState(func() {
 						s.containerColorIdx++
 					})
@@ -151,7 +151,7 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 			widgets.VSpace(16),
 
 			// Control for AnimatedOpacity
-			widgets.NewButton("Toggle Visibility", func() {
+			widgets.ButtonOf("Toggle Visibility", func() {
 				s.SetState(func() {
 					s.opacityVisible = !s.opacityVisible
 				})

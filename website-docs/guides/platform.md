@@ -31,7 +31,7 @@ err := platform.Clipboard.Clear()
 ### Example: Copy Button
 
 ```go
-widgets.NewButton("Copy Link", func() {
+widgets.ButtonOf("Copy Link", func() {
     platform.Clipboard.SetText(shareURL)
     platform.Haptics.LightImpact()
     showToast("Link copied!")

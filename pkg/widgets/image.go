@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	"sync/atomic"
@@ -69,6 +70,51 @@ const (
 	// ImageFitScaleDown fits the image if needed, otherwise keeps intrinsic size.
 	ImageFitScaleDown
 )
+
+// String returns a human-readable representation of the image fit mode.
+func (f ImageFit) String() string {
+	switch f {
+	case ImageFitFill:
+		return "fill"
+	case ImageFitContain:
+		return "contain"
+	case ImageFitCover:
+		return "cover"
+	case ImageFitNone:
+		return "none"
+	case ImageFitScaleDown:
+		return "scale_down"
+	default:
+		return fmt.Sprintf("ImageFit(%d)", int(f))
+	}
+}
+
+// ImageOf creates an image widget with the given source.
+// This is a convenience helper equivalent to:
+//
+//	Image{Source: source}
+func ImageOf(source image.Image) Image {
+	return Image{Source: source}
+}
+
+// WithFit returns a copy of the image with the specified fit mode.
+func (i Image) WithFit(fit ImageFit) Image {
+	i.Fit = fit
+	return i
+}
+
+// WithSize returns a copy of the image with the specified width and height.
+func (i Image) WithSize(width, height float64) Image {
+	i.Width = width
+	i.Height = height
+	return i
+}
+
+// WithAlignment returns a copy of the image with the specified alignment.
+func (i Image) WithAlignment(alignment layout.Alignment) Image {
+	i.Alignment = alignment
+	return i
+}
 
 func (i Image) CreateElement() core.Element {
 	return core.NewRenderObjectElement(i, nil)

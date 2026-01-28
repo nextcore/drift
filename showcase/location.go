@@ -86,12 +86,12 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf(enabledText, labelStyle(colors)),
 		widgets.VSpace(16),
 
-		widgets.NewButton("Get Current Location", func() {
+		widgets.ButtonOf("Get Current Location", func() {
 			s.getCurrentLocation()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
 
-		widgets.NewButton(toggleLabel, func() {
+		widgets.ButtonOf(toggleLabel, func() {
 			s.toggleUpdates()
 		}).WithColor(toggleColor, colors.OnSecondary),
 		widgets.VSpace(24),
@@ -110,18 +110,20 @@ func (s *locationState) locationCard(colors theme.ColorScheme) core.Widget {
 	loc := s.location.Get()
 
 	if loc == nil {
-		return widgets.NewContainer(
-			widgets.PaddingAll(16,
+		return widgets.Container{
+			Color: colors.SurfaceVariant,
+			ChildWidget: widgets.PaddingAll(16,
 				widgets.TextOf("No location data yet", rendering.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,
 				}),
 			),
-		).WithColor(colors.SurfaceVariant).Build()
+		}
 	}
 
-	return widgets.NewContainer(
-		widgets.PaddingAll(16,
+	return widgets.Container{
+		Color: colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(16,
 			widgets.Column{
 				MainAxisAlignment:  widgets.MainAxisAlignmentStart,
 				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
@@ -139,7 +141,7 @@ func (s *locationState) locationCard(colors theme.ColorScheme) core.Widget {
 				},
 			},
 		),
-	).WithColor(colors.SurfaceVariant).Build()
+	}
 }
 
 func (s *locationState) locationRow(label, value string, colors theme.ColorScheme) core.Widget {

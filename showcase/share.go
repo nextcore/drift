@@ -54,7 +54,7 @@ func (s *shareState) Build(ctx core.BuildContext) core.Widget {
 		},
 		widgets.VSpace(16),
 
-		widgets.NewButton("Share Text", func() {
+		widgets.ButtonOf("Share Text", func() {
 			s.shareText()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(24),
@@ -64,7 +64,7 @@ func (s *shareState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf("Share the Drift GitHub repository:", labelStyle(colors)),
 		widgets.VSpace(8),
 
-		widgets.NewButton("Share URL", func() {
+		widgets.ButtonOf("Share URL", func() {
 			s.shareURL()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(24),

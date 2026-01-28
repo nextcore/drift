@@ -209,20 +209,22 @@ func pageScaffold(ctx core.BuildContext, title string, content core.Widget) core
 	headerPadding := widgets.SafeAreaPadding(ctx).OnlyTop().Add(16)
 
 	return widgets.Expanded{
-		ChildWidget: widgets.NewContainer(
-			widgets.ColumnOf(
+		ChildWidget: widgets.Container{
+			Color: colors.Background,
+			ChildWidget: widgets.ColumnOf(
 				widgets.MainAxisAlignmentStart,
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMax,
 				// Header
-				widgets.NewContainer(
-					widgets.Padding{
+				widgets.Container{
+					Color: colors.Surface,
+					ChildWidget: widgets.Padding{
 						Padding: headerPadding,
 						ChildWidget: widgets.RowOf(
 							widgets.MainAxisAlignmentStart,
 							widgets.CrossAxisAlignmentStart,
 							widgets.MainAxisSizeMax,
-							widgets.NewButton("Back", func() {
+							widgets.ButtonOf("Back", func() {
 								nav := navigation.NavigatorOf(ctx)
 								if nav != nil {
 									nav.Pop(nil)
@@ -234,10 +236,10 @@ func pageScaffold(ctx core.BuildContext, title string, content core.Widget) core
 							widgets.TextOf(title, textTheme.HeadlineMedium),
 						),
 					},
-				).WithColor(colors.Surface).Build(),
+				},
 				// Content
 				widgets.Expanded{ChildWidget: content},
 			),
-		).WithColor(colors.Background).Build(),
+		},
 	}
 }

@@ -23,9 +23,9 @@ import (
 //	    Disabled: !isValid,
 //	}
 //
-// Example using fluent builder pattern:
+// Example using XxxOf helper:
 //
-//	NewButton("Submit", handleSubmit).
+//	ButtonOf("Submit", handleSubmit).
 //	    WithColor(colors.Primary, colors.OnPrimary).
 //	    WithPadding(layout.EdgeInsetsSymmetric(32, 16)).
 //	    WithDisabled(!isValid)
@@ -58,9 +58,13 @@ type Button struct {
 	Haptic bool
 }
 
-// NewButton creates a button with the given label and tap handler.
-// Uses sensible defaults for styling.
-func NewButton(label string, onTap func()) Button {
+// ButtonOf creates a button with the given label and tap handler.
+// Haptic feedback is enabled by default for better touch response.
+//
+// This is a convenience helper equivalent to:
+//
+//	Button{Label: label, OnTap: onTap, Haptic: true}
+func ButtonOf(label string, onTap func()) Button {
 	return Button{
 		Label:  label,
 		OnTap:  onTap,
@@ -68,44 +72,44 @@ func NewButton(label string, onTap func()) Button {
 	}
 }
 
-// WithColor sets the background and text colors.
+// WithColor returns a copy of the button with the specified background and text colors.
 func (b Button) WithColor(bg, text rendering.Color) Button {
 	b.Color = bg
 	b.TextColor = text
 	return b
 }
 
-// WithGradient sets the background gradient.
+// WithGradient returns a copy of the button with the specified background gradient.
 func (b Button) WithGradient(gradient *rendering.Gradient) Button {
 	b.Gradient = gradient
 	return b
 }
 
-// WithPadding sets the button padding.
+// WithPadding returns a copy of the button with the specified padding.
 func (b Button) WithPadding(padding layout.EdgeInsets) Button {
 	b.Padding = padding
 	return b
 }
 
-// WithFontSize sets the label font size.
+// WithFontSize returns a copy of the button with the specified label font size.
 func (b Button) WithFontSize(size float64) Button {
 	b.FontSize = size
 	return b
 }
 
-// WithHaptic enables or disables haptic feedback.
+// WithHaptic returns a copy of the button with haptic feedback enabled or disabled.
 func (b Button) WithHaptic(enabled bool) Button {
 	b.Haptic = enabled
 	return b
 }
 
-// WithDisabled sets the disabled state.
+// WithDisabled returns a copy of the button with the specified disabled state.
 func (b Button) WithDisabled(disabled bool) Button {
 	b.Disabled = disabled
 	return b
 }
 
-// WithBorderRadius sets the corner radius.
+// WithBorderRadius returns a copy of the button with the specified corner radius.
 func (b Button) WithBorderRadius(radius float64) Button {
 	b.BorderRadius = radius
 	return b

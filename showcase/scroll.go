@@ -86,20 +86,22 @@ func buildScrollPage(ctx core.BuildContext) core.Widget {
 
 // listItem creates a styled list item.
 func listItem(index int, bgColor rendering.Color, colors theme.ColorScheme) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingSym(16, 14,
+	return widgets.Container{
+		Color: bgColor,
+		ChildWidget: widgets.PaddingSym(16, 14,
 			widgets.RowOf(
 				widgets.MainAxisAlignmentStart,
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMax,
-				widgets.NewContainer(
-					widgets.PaddingAll(8,
+				widgets.Container{
+					Color: colors.Primary,
+					ChildWidget: widgets.PaddingAll(8,
 						widgets.TextOf(itoa(index), rendering.TextStyle{
 							Color:    colors.OnPrimary,
 							FontSize: 12,
 						}),
 					),
-				).WithColor(colors.Primary).Build(),
+				},
 				widgets.HSpace(16),
 				widgets.TextOf("List Item "+itoa(index), rendering.TextStyle{
 					Color:    colors.OnSurface,
@@ -107,5 +109,5 @@ func listItem(index int, bgColor rendering.Color, colors theme.ColorScheme) core
 				}),
 			),
 		),
-	).WithColor(bgColor).Build()
+	}
 }

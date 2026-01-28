@@ -63,13 +63,13 @@ func (s *errorBoundariesState) Build(ctx core.BuildContext) core.Widget {
 		widgets.Row{
 			MainAxisAlignment: widgets.MainAxisAlignmentStart,
 			ChildrenWidgets: []core.Widget{
-				widgets.NewButton("Trigger Stateless Panic", func() {
+				widgets.ButtonOf("Trigger Stateless Panic", func() {
 					s.SetState(func() {
 						s.triggerStatelessPanic = true
 					})
 				}).WithColor(colors.Error, colors.OnError),
 				widgets.HSpace(12),
-				widgets.NewButton("Reset", func() {
+				widgets.ButtonOf("Reset", func() {
 					s.SetState(func() {
 						s.triggerStatelessPanic = false
 					})
@@ -92,13 +92,13 @@ func (s *errorBoundariesState) Build(ctx core.BuildContext) core.Widget {
 		widgets.Row{
 			MainAxisAlignment: widgets.MainAxisAlignmentStart,
 			ChildrenWidgets: []core.Widget{
-				widgets.NewButton("Trigger Bounded Panic", func() {
+				widgets.ButtonOf("Trigger Bounded Panic", func() {
 					s.SetState(func() {
 						s.triggerStatefulPanic = true
 					})
 				}).WithColor(colors.Error, colors.OnError),
 				widgets.HSpace(12),
-				widgets.NewButton("Reset Boundary", func() {
+				widgets.ButtonOf("Reset Boundary", func() {
 					s.SetState(func() {
 						s.triggerStatefulPanic = false
 						s.boundaryKey++ // Force boundary rebuild

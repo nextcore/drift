@@ -32,8 +32,9 @@ func buildThemingPage(ctx core.BuildContext, isDark bool, isCupertino bool) core
 
 	contentWidgets := []core.Widget{
 		// Current mode indicator
-		widgets.NewContainer(
-			widgets.PaddingAll(16,
+		widgets.Container{
+			Color: colors.Primary,
+			ChildWidget: widgets.PaddingAll(16,
 				widgets.ColumnOf(
 					widgets.MainAxisAlignmentStart,
 					widgets.CrossAxisAlignmentCenter,
@@ -50,7 +51,7 @@ func buildThemingPage(ctx core.BuildContext, isDark bool, isCupertino bool) core
 					}),
 				),
 			),
-		).WithColor(colors.Primary).Build(),
+		},
 		widgets.VSpace(24),
 
 		// Color palette section
@@ -140,8 +141,9 @@ func buildThemingPage(ctx core.BuildContext, isDark bool, isCupertino bool) core
 
 // colorSwatch displays a color with its name.
 func colorSwatch(name string, bg, fg rendering.Color) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingSym(16, 12,
+	return widgets.Container{
+		Color: bg,
+		ChildWidget: widgets.PaddingSym(16, 12,
 			widgets.RowOf(
 				widgets.MainAxisAlignmentSpaceBetween,
 				widgets.CrossAxisAlignmentStart,
@@ -156,7 +158,7 @@ func colorSwatch(name string, bg, fg rendering.Color) core.Widget {
 				}),
 			),
 		),
-	).WithColor(bg).Build()
+	}
 }
 
 // colorHex formats a color as a hex string.

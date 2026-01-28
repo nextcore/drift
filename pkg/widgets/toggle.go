@@ -29,6 +29,14 @@ type Toggle struct {
 	ThumbColor rendering.Color
 }
 
+// ToggleOf creates a toggle switch with the given value and change handler.
+// This is a convenience helper equivalent to:
+//
+//	Toggle{Value: value, OnChanged: onChanged}
+func ToggleOf(value bool, onChanged func(bool)) Toggle {
+	return Toggle{Value: value, OnChanged: onChanged}
+}
+
 func (s Toggle) CreateElement() core.Element {
 	return core.NewStatelessElement(s, nil)
 }

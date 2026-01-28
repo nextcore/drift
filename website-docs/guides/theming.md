@@ -16,9 +16,10 @@ Get all theme parts in one call:
 func (s *myState) Build(ctx core.BuildContext) core.Widget {
     _, colors, textTheme := theme.UseTheme(ctx)
 
-    return widgets.NewContainer(
-        widgets.TextOf("Hello", textTheme.HeadlineLarge),
-    ).WithColor(colors.Surface).Build()
+    return widgets.Container{
+        Color:       colors.Surface,
+        ChildWidget: widgets.TextOf("Hello", textTheme.HeadlineLarge),
+    }
 }
 ```
 
@@ -77,9 +78,10 @@ Usage:
 ```go
 colors := theme.ColorsOf(ctx)
 
-widgets.NewContainer(child).
-    WithColor(colors.Surface).
-    Build()
+widgets.Container{
+    Color:       colors.Surface,
+    ChildWidget: child,
+}
 
 widgets.TextOf("Error!", rendering.TextStyle{
     Color: colors.Error,

@@ -81,17 +81,18 @@ func fitPreview(label string, fit widgets.ImageFit, logo image.Image, colors the
 		widgets.MainAxisSizeMin,
 		widgets.TextOf(label, textTheme.BodyMedium),
 		widgets.VSpace(8),
-		widgets.NewContainer(
-			widgets.Image{
+		widgets.Container{
+			Color:     colors.SurfaceVariant,
+			Width:     240,
+			Height:    140,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Image{
 				Source:    logo,
 				Width:     220,
 				Height:    120,
 				Fit:       fit,
 				Alignment: layout.AlignmentCenter,
 			},
-		).WithColor(colors.SurfaceVariant).
-			WithSize(240, 140).
-			WithAlignment(layout.AlignmentCenter).
-			Build(),
+		},
 	)
 }

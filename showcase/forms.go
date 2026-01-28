@@ -304,7 +304,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.NewButton("-10%", func() {
+			widgets.ButtonOf("-10%", func() {
 				v := s.progressValue.Get() - 0.1
 				if v < 0 {
 					v = 0
@@ -312,7 +312,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 				s.progressValue.Set(v)
 			}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 			widgets.HSpace(8),
-			widgets.NewButton("+10%", func() {
+			widgets.ButtonOf("+10%", func() {
 				v := s.progressValue.Get() + 0.1
 				if v > 1 {
 					v = 1
@@ -320,7 +320,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 				s.progressValue.Set(v)
 			}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 			widgets.HSpace(16),
-			widgets.NewButton("Toggle Loading", func() {
+			widgets.ButtonOf("Toggle Loading", func() {
 				s.isLoading.Set(!s.isLoading.Get())
 			}).WithColor(colors.Primary, colors.OnPrimary),
 		),
@@ -450,13 +450,13 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(24),
 
 		// Buttons
-		widgets.NewButton("Submit", func() {
+		widgets.ButtonOf("Submit", func() {
 			if form != nil {
 				f.parent.handleSubmit(form)
 			}
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(8),
-		widgets.NewButton("Reset", func() {
+		widgets.ButtonOf("Reset", func() {
 			if form != nil {
 				f.parent.handleReset(form)
 			}
@@ -464,14 +464,15 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(16),
 
 		// Status display
-		widgets.NewContainer(
-			widgets.PaddingAll(12,
+		widgets.Container{
+			Color: colors.SurfaceVariant,
+			ChildWidget: widgets.PaddingAll(12,
 				widgets.TextOf(f.parent.statusText.Get(), rendering.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,
 				}),
 			),
-		).WithColor(colors.SurfaceVariant).Build(),
+		},
 	)
 }
 

@@ -1,6 +1,9 @@
 package rendering
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // GradientType describes the gradient variant.
 type GradientType int
@@ -13,6 +16,20 @@ const (
 	// GradientTypeRadial indicates a radial gradient.
 	GradientTypeRadial
 )
+
+// String returns a human-readable representation of the gradient type.
+func (t GradientType) String() string {
+	switch t {
+	case GradientTypeNone:
+		return "none"
+	case GradientTypeLinear:
+		return "linear"
+	case GradientTypeRadial:
+		return "radial"
+	default:
+		return fmt.Sprintf("GradientType(%d)", int(t))
+	}
+}
 
 // GradientStop defines a color stop within a gradient.
 type GradientStop struct {

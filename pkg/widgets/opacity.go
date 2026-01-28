@@ -22,6 +22,15 @@ type Opacity struct {
 	ChildWidget core.Widget
 }
 
+// OpacityOf creates an opacity widget with the given opacity value and child.
+// The opacity value should be between 0.0 (fully transparent) and 1.0 (fully opaque).
+// This is a convenience helper equivalent to:
+//
+//	Opacity{Opacity: opacity, ChildWidget: child}
+func OpacityOf(opacity float64, child core.Widget) Opacity {
+	return Opacity{Opacity: opacity, ChildWidget: child}
+}
+
 func (o Opacity) CreateElement() core.Element {
 	return core.NewRenderObjectElement(o, nil)
 }

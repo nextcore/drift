@@ -125,7 +125,7 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf("Open app settings to manage permissions:", labelStyle(colors)),
 		widgets.VSpace(8),
 
-		widgets.NewButton("Open Settings", func() {
+		widgets.ButtonOf("Open Settings", func() {
 			s.openSettings()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(40),
@@ -133,8 +133,9 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *permissionsState) permissionRow(name string, status platform.PermissionResult, colors theme.ColorScheme) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingAll(12,
+	return widgets.Container{
+		Color: colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(12,
 			widgets.Row{
 				MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
 				CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
@@ -166,7 +167,7 @@ func (s *permissionsState) permissionRow(name string, status platform.Permission
 				},
 			},
 		),
-	).WithColor(colors.SurfaceVariant).Build()
+	}
 }
 
 func (s *permissionsState) statusBadge(status platform.PermissionResult, colors theme.ColorScheme) core.Widget {

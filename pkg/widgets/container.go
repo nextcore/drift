@@ -62,6 +62,37 @@ type Container struct {
 	Overflow rendering.Overflow
 }
 
+// WithColor returns a copy of the container with the specified background color.
+func (c Container) WithColor(color rendering.Color) Container {
+	c.Color = color
+	return c
+}
+
+// WithPadding returns a copy of the container with the specified padding.
+func (c Container) WithPadding(padding layout.EdgeInsets) Container {
+	c.Padding = padding
+	return c
+}
+
+// WithSize returns a copy of the container with the specified width and height.
+func (c Container) WithSize(width, height float64) Container {
+	c.Width = width
+	c.Height = height
+	return c
+}
+
+// WithAlignment returns a copy of the container with the specified child alignment.
+func (c Container) WithAlignment(alignment layout.Alignment) Container {
+	c.Alignment = alignment
+	return c
+}
+
+// WithGradient returns a copy of the container with the specified background gradient.
+func (c Container) WithGradient(gradient *rendering.Gradient) Container {
+	c.Gradient = gradient
+	return c
+}
+
 func (c Container) CreateElement() core.Element {
 	return core.NewRenderObjectElement(c, nil)
 }

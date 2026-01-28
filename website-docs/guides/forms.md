@@ -78,7 +78,7 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
         },
         widgets.VSpace(24),
 
-        widgets.NewButton("Submit", func() {
+        widgets.ButtonOf("Submit", func() {
             if form.Validate() {
                 form.Save()
                 // Use f.parent.email and f.parent.password

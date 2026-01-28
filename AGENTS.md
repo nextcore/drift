@@ -29,7 +29,7 @@ go vet ./...            # Lint
 
 ## Widget Patterns
 - Prefer struct literals for simple widgets
-- Use helper constructors when defaults matter (e.g., `widgets.NewButton`)
+- Use helper constructors when defaults matter (e.g., `widgets.ButtonOf`)
 - Compose UIs by nesting widgets
 - Only mutate state inside `SetState`
 

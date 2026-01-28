@@ -15,7 +15,7 @@ import (
 
 // This example shows how to create a basic button with a tap handler.
 func ExampleButton() {
-	button := widgets.NewButton("Click Me", func() {
+	button := widgets.ButtonOf("Click Me", func() {
 		fmt.Println("Button tapped!")
 	})
 	_ = button
@@ -23,7 +23,7 @@ func ExampleButton() {
 
 // This example shows how to customize a button's appearance.
 func ExampleButton_withStyles() {
-	button := widgets.NewButton("Submit", func() {
+	button := widgets.ButtonOf("Submit", func() {
 		fmt.Println("Submitted!")
 	}).
 		WithColor(rendering.RGB(33, 150, 243), rendering.ColorWhite).

@@ -95,12 +95,12 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf("Take a photo using the device camera:", labelStyle(colors)),
 		widgets.VSpace(16),
 
-		widgets.NewButton("Take Photo", func() {
+		widgets.ButtonOf("Take Photo", func() {
 			s.takePhoto(false)
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Take Selfie", func() {
+		widgets.ButtonOf("Take Selfie", func() {
 			s.takePhoto(true)
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(24),
@@ -110,7 +110,7 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf("Pick an image from the photo library:", labelStyle(colors)),
 		widgets.VSpace(8),
 
-		widgets.NewButton("Pick from Gallery", func() {
+		widgets.ButtonOf("Pick from Gallery", func() {
 			s.pickFromGallery()
 		}).WithColor(colors.Tertiary, colors.OnTertiary),
 		widgets.VSpace(24),
@@ -127,8 +127,9 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 
 func (s *cameraState) imagePreview(path string, colors theme.ColorScheme) core.Widget {
 	if path == "" {
-		return widgets.NewContainer(
-			widgets.PaddingAll(24,
+		return widgets.Container{
+			Color: colors.SurfaceVariant,
+			ChildWidget: widgets.PaddingAll(24,
 				widgets.Column{
 					MainAxisAlignment:  widgets.MainAxisAlignmentCenter,
 					CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
@@ -141,12 +142,13 @@ func (s *cameraState) imagePreview(path string, colors theme.ColorScheme) core.W
 					},
 				},
 			),
-		).WithColor(colors.SurfaceVariant).Build()
+		}
 	}
 
 	imageInfo := s.imageInfo.Get()
-	return widgets.NewContainer(
-		widgets.PaddingAll(12,
+	return widgets.Container{
+		Color: colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(12,
 			widgets.Column{
 				MainAxisAlignment:  widgets.MainAxisAlignmentStart,
 				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
@@ -176,7 +178,7 @@ func (s *cameraState) imagePreview(path string, colors theme.ColorScheme) core.W
 				},
 			},
 		),
-	).WithColor(colors.SurfaceVariant).Build()
+	}
 }
 
 func (s *cameraState) takePhoto(useFrontCamera bool) {

@@ -1,6 +1,8 @@
 package widgets
 
 import (
+	"fmt"
+
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/rendering"
@@ -15,6 +17,18 @@ const (
 	// StackFitExpand forces children to fill the stack.
 	StackFitExpand
 )
+
+// String returns a human-readable representation of the stack fit.
+func (f StackFit) String() string {
+	switch f {
+	case StackFitLoose:
+		return "loose"
+	case StackFitExpand:
+		return "expand"
+	default:
+		return fmt.Sprintf("StackFit(%d)", int(f))
+	}
+}
 
 // Stack overlays children on top of each other.
 //
@@ -48,6 +62,13 @@ type Stack struct {
 	Alignment layout.Alignment
 	// Fit controls how children are sized.
 	Fit StackFit
+}
+
+// StackOf creates a stack with the given children.
+// This is a convenience helper for the common case of creating a Stack with children.
+// Children are layered with the first child at the bottom and last child on top.
+func StackOf(children ...core.Widget) Stack {
+	return Stack{ChildrenWidgets: children}
 }
 
 // CreateElement returns a RenderObjectElement for this Stack.

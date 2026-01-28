@@ -46,4 +46,15 @@
 //
 // UseController, UseListenable, and UseObservable help manage resources
 // and subscriptions with automatic cleanup on disposal.
+//
+// # Constructor Conventions
+//
+// Controllers and services use NewX() constructors returning pointers:
+//
+//	ctrl := animation.NewAnimationController(time.Second)
+//	channel := platform.NewMethodChannel("app.channel")
+//
+// This distinguishes long-lived, mutable objects (controllers) from
+// immutable configuration objects (widgets, which use struct literals
+// or XxxOf() helpers).
 package core

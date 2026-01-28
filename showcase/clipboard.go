@@ -44,22 +44,22 @@ func (s *clipboardState) Build(ctx core.BuildContext) core.Widget {
 		widgets.TextOf("Interact with the system clipboard:", labelStyle(colors)),
 		widgets.VSpace(16),
 
-		widgets.NewButton("Copy Sample Text", func() {
+		widgets.ButtonOf("Copy Sample Text", func() {
 			s.copyText()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Read Clipboard", func() {
+		widgets.ButtonOf("Read Clipboard", func() {
 			s.readClipboard()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Check Has Text", func() {
+		widgets.ButtonOf("Check Has Text", func() {
 			s.checkHasText()
 		}).WithColor(colors.Tertiary, colors.OnTertiary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Clear Clipboard", func() {
+		widgets.ButtonOf("Clear Clipboard", func() {
 			s.clearClipboard()
 		}).WithColor(colors.Error, colors.OnError),
 		widgets.VSpace(24),

@@ -75,10 +75,10 @@ text := widgets.Text{
 Use helpers when sensible defaults improve ergonomics:
 
 ```go
-// NewButton applies defaults (haptic feedback, etc.)
-button := widgets.NewButton("Submit", handleSubmit)
+// ButtonOf applies defaults (haptic feedback enabled)
+button := widgets.ButtonOf("Submit", handleSubmit)
 
-// TextOf is concise for styled text
+// TextOf is concise for styled text (Wrap defaults to true)
 title := widgets.TextOf("Welcome", textTheme.HeadlineLarge)
 
 // Centered wraps a child in a Center widget
@@ -99,16 +99,17 @@ col := widgets.ColumnOf(
 Chain methods when you need to override defaults:
 
 ```go
-button := widgets.NewButton("Submit", onSubmit).
+button := widgets.ButtonOf("Submit", onSubmit).
     WithColor(colors.Primary, colors.OnPrimary).
     WithFontSize(18).
     WithPadding(layout.EdgeInsetsSymmetric(32, 16))
 
-container := widgets.NewContainer(child).
-    WithColor(colors.Surface).
-    WithPaddingAll(20).
-    WithAlignment(layout.AlignmentCenter).
-    Build()
+container := widgets.Container{
+    Color:     colors.Surface,
+    Padding:   layout.EdgeInsetsAll(20),
+    Alignment: layout.AlignmentCenter,
+    ChildWidget: child,
+}
 ```
 
 ## Available Widgets
@@ -244,7 +245,7 @@ func (s *counterState) InitState() {
 }
 
 func (s *counterState) Build(ctx core.BuildContext) core.Widget {
-    return widgets.NewButton(
+    return widgets.ButtonOf(
         fmt.Sprintf("Count: %d", s.count),
         func() {
             s.SetState(func() {
@@ -289,7 +290,7 @@ func buildHomeScreen(ctx core.BuildContext) core.Widget {
             return widgets.Column{
                 ChildrenWidgets: []core.Widget{
                     widgets.Text{Content: "Failed to load home screen"},
-                    widgets.NewButton("Retry", func() {
+                    widgets.ButtonOf("Retry", func() {
                         // Trigger rebuild
                     }),
                 },
@@ -327,9 +328,10 @@ widgets.ListViewBuilder{
     CacheExtent: 100, // Extra pixels to render beyond viewport
     ItemBuilder: func(ctx core.BuildContext, index int) core.Widget {
         item := items[index]
-        return widgets.NewContainer(
-            widgets.Text{Content: item.Title},
-        ).WithPaddingAll(16).Build()
+        return widgets.Container{
+            Padding:     layout.EdgeInsetsAll(16),
+            ChildWidget: widgets.Text{Content: item.Title},
+        }
     },
 }
 ```

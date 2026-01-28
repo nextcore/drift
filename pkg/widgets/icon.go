@@ -18,6 +18,14 @@ type Icon struct {
 	Weight rendering.FontWeight
 }
 
+// IconOf creates an icon with the given glyph.
+// This is a convenience helper equivalent to:
+//
+//	Icon{Glyph: glyph}
+func IconOf(glyph string) Icon {
+	return Icon{Glyph: glyph}
+}
+
 func (i Icon) CreateElement() core.Element {
 	return core.NewStatelessElement(i, nil)
 }

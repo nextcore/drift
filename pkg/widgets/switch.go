@@ -40,6 +40,14 @@ type Switch struct {
 	ThumbColor rendering.Color
 }
 
+// SwitchOf creates a switch with the given value and change handler.
+// This is a convenience helper equivalent to:
+//
+//	Switch{Value: value, OnChanged: onChanged}
+func SwitchOf(value bool, onChanged func(bool)) Switch {
+	return Switch{Value: value, OnChanged: onChanged}
+}
+
 func (s Switch) CreateElement() core.Element {
 	return core.NewStatefulElement(s, nil)
 }

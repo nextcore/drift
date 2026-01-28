@@ -1,5 +1,7 @@
 package rendering
 
+import "fmt"
+
 // PathOp represents a path drawing operation type.
 type PathOp int
 
@@ -10,6 +12,24 @@ const (
 	PathOpCubicTo               // Draw cubic curve to (x3, y3) via controls (x1, y1), (x2, y2)
 	PathOpClose                 // Close subpath with line to start point
 )
+
+// String returns a human-readable representation of the path operation.
+func (o PathOp) String() string {
+	switch o {
+	case PathOpMoveTo:
+		return "move_to"
+	case PathOpLineTo:
+		return "line_to"
+	case PathOpQuadTo:
+		return "quad_to"
+	case PathOpCubicTo:
+		return "cubic_to"
+	case PathOpClose:
+		return "close"
+	default:
+		return fmt.Sprintf("PathOp(%d)", int(o))
+	}
+}
 
 // PathFillRule determines how path interiors are calculated for filling.
 type PathFillRule int
@@ -24,6 +44,18 @@ const (
 	// Useful for creating holes: nested shapes alternate between filled/unfilled.
 	FillRuleEvenOdd
 )
+
+// String returns a human-readable representation of the path fill rule.
+func (r PathFillRule) String() string {
+	switch r {
+	case FillRuleNonZero:
+		return "nonzero"
+	case FillRuleEvenOdd:
+		return "evenodd"
+	default:
+		return fmt.Sprintf("PathFillRule(%d)", int(r))
+	}
+}
 
 // PathCommand represents a single path operation with its coordinate arguments.
 type PathCommand struct {

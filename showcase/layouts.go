@@ -88,8 +88,9 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.TextOf("Vertical arrangement:", labelStyle(colors)),
 		widgets.VSpace(8),
-		widgets.NewContainer(
-			widgets.PaddingAll(8,
+		widgets.Container{
+			Color: colors.SurfaceVariant,
+			ChildWidget: widgets.PaddingAll(8,
 				widgets.ColumnOf(
 					widgets.MainAxisAlignmentStart,
 					widgets.CrossAxisAlignmentStart,
@@ -101,7 +102,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 					colorBox(colors.Error, "Third"),
 				),
 			),
-		).WithColor(colors.SurfaceVariant).Build(),
+		},
 		widgets.VSpace(24),
 
 		// Stack section
@@ -115,15 +116,9 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 			ChildWidget: widgets.Stack{
 				Alignment: layout.AlignmentCenter,
 				ChildrenWidgets: []core.Widget{
-					widgets.NewContainer(nil).
-						WithColor(colors.Primary).
-						WithSize(200, 120).Build(),
-					widgets.NewContainer(nil).
-						WithColor(colors.Secondary).
-						WithSize(140, 80).Build(),
-					widgets.NewContainer(nil).
-						WithColor(colors.Error).
-						WithSize(80, 40).Build(),
+					widgets.Container{Color: colors.Primary, Width: 200, Height: 120},
+					widgets.Container{Color: colors.Secondary, Width: 140, Height: 80},
+					widgets.Container{Color: colors.Error, Width: 80, Height: 40},
 					widgets.TextOf("Stacked", rendering.TextStyle{
 						Color:    colors.OnError,
 						FontSize: 14,
@@ -137,19 +132,21 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 
 // layoutContainer wraps layout demos in a styled container.
 func layoutContainer(child core.Widget, colors theme.ColorScheme) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingAll(8, child),
-	).WithColor(colors.SurfaceVariant).Build()
+	return widgets.Container{
+		Color:       colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(8, child),
+	}
 }
 
 // colorBox creates a small colored box with a label.
 func colorBox(color rendering.Color, label string) core.Widget {
-	return widgets.NewContainer(
-		widgets.PaddingAll(12,
+	return widgets.Container{
+		Color: color,
+		ChildWidget: widgets.PaddingAll(12,
 			widgets.TextOf(label, rendering.TextStyle{
 				Color:    rendering.ColorWhite,
 				FontSize: 14,
 			}),
 		),
-	).WithColor(color).Build()
+	}
 }

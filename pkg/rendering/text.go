@@ -1,6 +1,7 @@
 package rendering
 
 import (
+	"fmt"
 	"math"
 	"runtime"
 	"sync"
@@ -32,6 +33,32 @@ const (
 	FontWeightBlack      FontWeight = 900
 )
 
+// String returns a human-readable representation of the font weight.
+func (w FontWeight) String() string {
+	switch w {
+	case FontWeightThin:
+		return "thin"
+	case FontWeightExtraLight:
+		return "extra_light"
+	case FontWeightLight:
+		return "light"
+	case FontWeightNormal:
+		return "normal"
+	case FontWeightMedium:
+		return "medium"
+	case FontWeightSemibold:
+		return "semibold"
+	case FontWeightBold:
+		return "bold"
+	case FontWeightExtraBold:
+		return "extra_bold"
+	case FontWeightBlack:
+		return "black"
+	default:
+		return fmt.Sprintf("FontWeight(%d)", int(w))
+	}
+}
+
 // FontStyle represents normal or italic text styles.
 type FontStyle int
 
@@ -39,6 +66,18 @@ const (
 	FontStyleNormal FontStyle = iota
 	FontStyleItalic
 )
+
+// String returns a human-readable representation of the font style.
+func (s FontStyle) String() string {
+	switch s {
+	case FontStyleNormal:
+		return "normal"
+	case FontStyleItalic:
+		return "italic"
+	default:
+		return fmt.Sprintf("FontStyle(%d)", int(s))
+	}
+}
 
 // TextStyle describes how text should be rendered.
 type TextStyle struct {

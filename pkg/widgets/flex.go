@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/go-drift/drift/pkg/core"
@@ -16,6 +17,18 @@ const (
 	AxisVertical Axis = iota
 	AxisHorizontal
 )
+
+// String returns a human-readable representation of the axis.
+func (a Axis) String() string {
+	switch a {
+	case AxisVertical:
+		return "vertical"
+	case AxisHorizontal:
+		return "horizontal"
+	default:
+		return fmt.Sprintf("Axis(%d)", int(a))
+	}
+}
 
 // MainAxisAlignment controls how children are positioned along the main axis
 // (horizontal for [Row], vertical for [Column]).
@@ -39,6 +52,26 @@ const (
 	MainAxisAlignmentSpaceEvenly
 )
 
+// String returns a human-readable representation of the main axis alignment.
+func (a MainAxisAlignment) String() string {
+	switch a {
+	case MainAxisAlignmentStart:
+		return "start"
+	case MainAxisAlignmentEnd:
+		return "end"
+	case MainAxisAlignmentCenter:
+		return "center"
+	case MainAxisAlignmentSpaceBetween:
+		return "space_between"
+	case MainAxisAlignmentSpaceAround:
+		return "space_around"
+	case MainAxisAlignmentSpaceEvenly:
+		return "space_evenly"
+	default:
+		return fmt.Sprintf("MainAxisAlignment(%d)", int(a))
+	}
+}
+
 // CrossAxisAlignment controls how children are positioned along the cross axis
 // (vertical for [Row], horizontal for [Column]).
 type CrossAxisAlignment int
@@ -54,6 +87,22 @@ const (
 	CrossAxisAlignmentStretch
 )
 
+// String returns a human-readable representation of the cross axis alignment.
+func (a CrossAxisAlignment) String() string {
+	switch a {
+	case CrossAxisAlignmentStart:
+		return "start"
+	case CrossAxisAlignmentEnd:
+		return "end"
+	case CrossAxisAlignmentCenter:
+		return "center"
+	case CrossAxisAlignmentStretch:
+		return "stretch"
+	default:
+		return fmt.Sprintf("CrossAxisAlignment(%d)", int(a))
+	}
+}
+
 // MainAxisSize controls how much space the flex container takes along its main axis.
 type MainAxisSize int
 
@@ -64,6 +113,18 @@ const (
 	// This is required for [Expanded] children to receive space.
 	MainAxisSizeMax
 )
+
+// String returns a human-readable representation of the main axis size.
+func (s MainAxisSize) String() string {
+	switch s {
+	case MainAxisSizeMin:
+		return "min"
+	case MainAxisSizeMax:
+		return "max"
+	default:
+		return fmt.Sprintf("MainAxisSize(%d)", int(s))
+	}
+}
 
 // FlexFactor reports the flex value for a render box.
 type FlexFactor interface {
@@ -106,6 +167,17 @@ type Row struct {
 	MainAxisAlignment  MainAxisAlignment
 	CrossAxisAlignment CrossAxisAlignment
 	MainAxisSize       MainAxisSize
+}
+
+// RowOf creates a horizontal layout with the specified alignments and sizing behavior.
+// This is a convenience helper for the common case of creating a Row with children.
+func RowOf(alignment MainAxisAlignment, crossAlignment CrossAxisAlignment, size MainAxisSize, children ...core.Widget) Row {
+	return Row{
+		ChildrenWidgets:    children,
+		MainAxisAlignment:  alignment,
+		CrossAxisAlignment: crossAlignment,
+		MainAxisSize:       size,
+	}
 }
 
 func (r Row) CreateElement() core.Element {
@@ -178,6 +250,17 @@ type Column struct {
 	MainAxisAlignment  MainAxisAlignment
 	CrossAxisAlignment CrossAxisAlignment
 	MainAxisSize       MainAxisSize
+}
+
+// ColumnOf creates a vertical layout with the specified alignments and sizing behavior.
+// This is a convenience helper for the common case of creating a Column with children.
+func ColumnOf(alignment MainAxisAlignment, crossAlignment CrossAxisAlignment, size MainAxisSize, children ...core.Widget) Column {
+	return Column{
+		ChildrenWidgets:    children,
+		MainAxisAlignment:  alignment,
+		CrossAxisAlignment: crossAlignment,
+		MainAxisSize:       size,
+	}
 }
 
 func (c Column) CreateElement() core.Element {

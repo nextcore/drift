@@ -44,15 +44,16 @@ func (s *appState) InitState() {
 func (s *appState) Build(ctx core.BuildContext) core.Widget {
 	_, colors, textTheme := theme.UseTheme(ctx)
 
-	return widgets.NewContainer(
-		widgets.Centered(
+	return widgets.Container{
+		Color: colors.Background,
+		ChildWidget: widgets.Centered(
 			widgets.ColumnOf(
 				widgets.MainAxisAlignmentCenter,
 				widgets.CrossAxisAlignmentCenter,
 				widgets.MainAxisSizeMin,
 				widgets.TextOf("Hello from Drift!", textTheme.HeadlineMedium),
 				widgets.VSpace(16),
-				widgets.NewButton("Increment Counter", func() {
+				widgets.ButtonOf("Increment Counter", func() {
 					s.SetState(func() {
 						s.counter = s.counter + 1
 					})
@@ -64,5 +65,5 @@ func (s *appState) Build(ctx core.BuildContext) core.Widget {
 				},
 			),
 		),
-	).WithColor(colors.Background).Build()
+	}
 }

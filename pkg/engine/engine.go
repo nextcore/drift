@@ -660,8 +660,9 @@ func (d defaultPlaceholder) Build(ctx core.BuildContext) core.Widget {
 	return theme.Theme{
 		Data: theme.DefaultDarkTheme(),
 		ChildWidget: widgets.Expanded{
-			ChildWidget: widgets.NewContainer(
-				widgets.Centered(
+			ChildWidget: widgets.Container{
+				Color: colors.Background,
+				ChildWidget: widgets.Centered(
 					widgets.ColumnOf(
 						widgets.MainAxisAlignmentCenter,
 						widgets.CrossAxisAlignmentStart,
@@ -680,7 +681,7 @@ func (d defaultPlaceholder) Build(ctx core.BuildContext) core.Widget {
 						}),
 					),
 				),
-			).WithColor(colors.Background).Build(),
+			},
 		},
 	}
 }

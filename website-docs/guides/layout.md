@@ -35,7 +35,7 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
                 ),
                 widgets.VSpace(16),
                 // Action
-                widgets.NewButton("Save", s.handleSave).
+                widgets.ButtonOf("Save", s.handleSave).
                     WithColor(colors.Primary, colors.OnPrimary),
             ),
         ),
@@ -324,12 +324,13 @@ widgets.Padding{
 Combines decoration, sizing, padding, and alignment:
 
 ```go
-// Builder pattern
-widgets.NewContainer(child).
-    WithColor(colors.Surface).
-    WithPaddingAll(20).
-    WithAlignment(layout.AlignmentCenter).
-    Build()
+// Struct literal (preferred)
+widgets.Container{
+    Color:       colors.Surface,
+    Padding:     layout.EdgeInsetsAll(20),
+    Alignment:   layout.AlignmentCenter,
+    ChildWidget: child,
+}
 
 // For rounded corners, wrap with DecoratedBox or ClipRRect
 widgets.DecoratedBox{
@@ -527,8 +528,10 @@ widgets.PaddingAll(16,
 ### App Bar
 
 ```go
-widgets.NewContainer(
-    widgets.RowOf(
+widgets.Container{
+    Color:   colors.Surface,
+    Padding: layout.EdgeInsetsSymmetric(16, 12),
+    ChildWidget: widgets.RowOf(
         widgets.MainAxisAlignmentSpaceBetween,
         widgets.CrossAxisAlignmentCenter,
         widgets.MainAxisSizeMax,
@@ -536,10 +539,7 @@ widgets.NewContainer(
         widgets.TextOf(title, textTheme.TitleLarge),
         menuButton,
     ),
-).
-    WithColor(colors.Surface).
-    WithPadding(layout.EdgeInsetsSymmetric(16, 12)).
-    Build()
+}
 ```
 
 ## Next Steps

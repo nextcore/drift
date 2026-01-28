@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 )
@@ -110,8 +111,13 @@ func (c *EventChannel) Listen(handler EventHandler) *Subscription {
 	c.subscriptions = append(c.subscriptions, sub)
 	c.mu.Unlock()
 
-	// Notify native that we're listening (errors are reported internally)
-	_ = startEventStream(c.name)
+	// Notify native that we're listening
+	if err := startEventStream(c.name); err != nil {
+		// Dispatch startup error to handler if provided
+		if handler.OnError != nil {
+			handler.OnError(err)
+		}
+	}
 
 	return sub
 }
@@ -128,9 +134,12 @@ func (c *EventChannel) removeSubscription(sub *Subscription) {
 	hasListeners := len(c.subscriptions) > 0
 	c.mu.Unlock()
 
-	// Notify native if no more listeners (errors are reported internally)
+	// Notify native if no more listeners.
+	// ErrClosed is expected during normal shutdown and not reported.
 	if !hasListeners {
-		_ = stopEventStream(c.name)
+		if err := stopEventStream(c.name); err != nil && !errors.Is(err, ErrClosed) {
+			// Unexpected teardown error - already reported by stopEventStream
+		}
 	}
 }
 

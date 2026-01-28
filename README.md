@@ -64,11 +64,21 @@ drift run android
 | `third_party/skia` | Skia source checkout |
 | `third_party/drift_skia` | Skia bridge outputs |
 
+## API Stability
+
+Drift follows semantic versioning.
+
+**Before v1.0.0**: Breaking changes may occur in any release.
+
+**After v1.0.0**:
+- Deprecated APIs are marked with `// Deprecated: use X instead`
+- Deprecated APIs remain for at least 2 minor versions
+- Breaking changes only in major versions
+
 ## Roadmap
 
 **v1.0.0 targets:**
 
-- API stability and deprecation policy
 - Testing framework with widget tests and golden tests
 - More widgets (Dialog, BottomSheet, Drawer, Snackbar, Slider)
 - Internationalization (i18n/l10n)

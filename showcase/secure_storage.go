@@ -116,12 +116,12 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(16),
 
 		// Action buttons
-		widgets.NewButton("Save to Secure Storage", func() {
+		widgets.ButtonOf("Save to Secure Storage", func() {
 			s.saveValue()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Save with Biometric", func() {
+		widgets.ButtonOf("Save with Biometric", func() {
 			s.saveWithBiometric()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(16),
@@ -132,12 +132,12 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		// Retrieve section
 		sectionTitle("Retrieve Value", colors),
 		widgets.VSpace(12),
-		widgets.NewButton("Get from Secure Storage", func() {
+		widgets.ButtonOf("Get from Secure Storage", func() {
 			s.getValue()
 		}).WithColor(colors.Primary, colors.OnPrimary),
 		widgets.VSpace(12),
 
-		widgets.NewButton("Check if Key Exists", func() {
+		widgets.ButtonOf("Check if Key Exists", func() {
 			s.checkExists()
 		}).WithColor(colors.Tertiary, colors.OnTertiary),
 		widgets.VSpace(12),
@@ -148,12 +148,12 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		// Management section
 		sectionTitle("Manage Storage", colors),
 		widgets.VSpace(12),
-		widgets.NewButton("Delete Key", func() {
+		widgets.ButtonOf("Delete Key", func() {
 			s.deleteValue()
 		}).WithColor(colors.Error, colors.OnError),
 		widgets.VSpace(12),
 
-		widgets.NewButton("List All Keys", func() {
+		widgets.ButtonOf("List All Keys", func() {
 			s.listKeys()
 		}).WithColor(colors.SurfaceContainerHigh, colors.OnSurface),
 		widgets.VSpace(40),
@@ -299,8 +299,9 @@ func retrievedValueCard(value string, colors theme.ColorScheme) core.Widget {
 		displayValue = "(no value retrieved)"
 	}
 
-	return widgets.NewContainer(
-		widgets.PaddingAll(12,
+	return widgets.Container{
+		Color: colors.SurfaceVariant,
+		ChildWidget: widgets.PaddingAll(12,
 			widgets.ColumnOf(
 				widgets.MainAxisAlignmentStart,
 				widgets.CrossAxisAlignmentStart,
@@ -317,5 +318,5 @@ func retrievedValueCard(value string, colors theme.ColorScheme) core.Widget {
 				}),
 			),
 		),
-	).WithColor(colors.SurfaceVariant).Build()
+	}
 }

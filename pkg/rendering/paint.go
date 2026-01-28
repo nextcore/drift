@@ -1,5 +1,7 @@
 package rendering
 
+import "fmt"
+
 // PaintStyle describes how shapes are filled or stroked.
 type PaintStyle int
 
@@ -14,6 +16,20 @@ const (
 	PaintStyleFillAndStroke
 )
 
+// String returns a human-readable representation of the paint style.
+func (s PaintStyle) String() string {
+	switch s {
+	case PaintStyleFill:
+		return "fill"
+	case PaintStyleStroke:
+		return "stroke"
+	case PaintStyleFillAndStroke:
+		return "fill_and_stroke"
+	default:
+		return fmt.Sprintf("PaintStyle(%d)", int(s))
+	}
+}
+
 // StrokeCap describes how stroke endpoints are drawn.
 type StrokeCap int
 
@@ -22,6 +38,20 @@ const (
 	CapRound                   // Semicircle at endpoint
 	CapSquare                  // Square extending past endpoint
 )
+
+// String returns a human-readable representation of the stroke cap.
+func (c StrokeCap) String() string {
+	switch c {
+	case CapButt:
+		return "butt"
+	case CapRound:
+		return "round"
+	case CapSquare:
+		return "square"
+	default:
+		return fmt.Sprintf("StrokeCap(%d)", int(c))
+	}
+}
 
 // StrokeJoin describes how stroke corners are drawn.
 type StrokeJoin int
@@ -32,41 +62,73 @@ const (
 	JoinBevel                   // Flattened corner
 )
 
+// String returns a human-readable representation of the stroke join.
+func (j StrokeJoin) String() string {
+	switch j {
+	case JoinMiter:
+		return "miter"
+	case JoinRound:
+		return "round"
+	case JoinBevel:
+		return "bevel"
+	default:
+		return fmt.Sprintf("StrokeJoin(%d)", int(j))
+	}
+}
+
 // BlendMode controls how source and destination colors are composited.
 // Values match Skia's SkBlendMode enum exactly (required for C interop).
 type BlendMode int
 
 const (
-	BlendModeClear    BlendMode = iota // Clears destination to transparent
-	BlendModeSrc                       // Replaces destination with source
-	BlendModeDst                       // Keeps destination, ignores source
-	BlendModeSrcOver                   // Source over destination (default alpha compositing)
-	BlendModeDstOver                   // Destination over source
-	BlendModeSrcIn                     // Source where destination is opaque
-	BlendModeDstIn                     // Destination where source is opaque
-	BlendModeSrcOut                    // Source where destination is transparent
-	BlendModeDstOut                    // Destination where source is transparent
-	BlendModeSrcATop                   // Source atop destination
-	BlendModeDstATop                   // Destination atop source
-	BlendModeXor                       // Source or destination, but not both
-	BlendModePlus                      // Adds source and destination (clamped)
-	BlendModeModulate                  // Multiplies source and destination
-	BlendModeScreen                    // Inverse multiply, brightens
-	BlendModeOverlay                   // Multiply or screen depending on destination
-	BlendModeDarken                    // Keeps darker of source and destination
-	BlendModeLighten                   // Keeps lighter of source and destination
-	BlendModeColorDodge                // Brightens destination based on source
-	BlendModeColorBurn                 // Darkens destination based on source
-	BlendModeHardLight                 // Multiply or screen depending on source
-	BlendModeSoftLight                 // Soft version of hard light
-	BlendModeDifference                // Absolute difference of colors
-	BlendModeExclusion                 // Lower contrast difference
-	BlendModeMultiply                  // Multiplies colors, always darkens
-	BlendModeHue                       // Hue of source, saturation/luminosity of destination
-	BlendModeSaturation                // Saturation of source, hue/luminosity of destination
-	BlendModeColor                     // Hue/saturation of source, luminosity of destination
-	BlendModeLuminosity                // Luminosity of source, hue/saturation of destination
+	BlendModeClear      BlendMode = iota // clear
+	BlendModeSrc                         // src
+	BlendModeDst                         // dst
+	BlendModeSrcOver                     // src_over
+	BlendModeDstOver                     // dst_over
+	BlendModeSrcIn                       // src_in
+	BlendModeDstIn                       // dst_in
+	BlendModeSrcOut                      // src_out
+	BlendModeDstOut                      // dst_out
+	BlendModeSrcATop                     // src_atop
+	BlendModeDstATop                     // dst_atop
+	BlendModeXor                         // xor
+	BlendModePlus                        // plus
+	BlendModeModulate                    // modulate
+	BlendModeScreen                      // screen
+	BlendModeOverlay                     // overlay
+	BlendModeDarken                      // darken
+	BlendModeLighten                     // lighten
+	BlendModeColorDodge                  // color_dodge
+	BlendModeColorBurn                   // color_burn
+	BlendModeHardLight                   // hard_light
+	BlendModeSoftLight                   // soft_light
+	BlendModeDifference                  // difference
+	BlendModeExclusion                   // exclusion
+	BlendModeMultiply                    // multiply
+	BlendModeHue                         // hue
+	BlendModeSaturation                  // saturation
+	BlendModeColor                       // color
+	BlendModeLuminosity                  // luminosity
 )
+
+var _BlendMode_names = []string{
+	"clear", "src", "dst", "src_over", "dst_over",
+	"src_in", "dst_in", "src_out", "dst_out",
+	"src_atop", "dst_atop", "xor", "plus", "modulate",
+	"screen", "overlay", "darken", "lighten",
+	"color_dodge", "color_burn", "hard_light", "soft_light",
+	"difference", "exclusion", "multiply",
+	"hue", "saturation", "color", "luminosity",
+}
+
+// String returns a human-readable representation of the blend mode.
+func (b BlendMode) String() string {
+	if int(b) >= 0 && int(b) < len(_BlendMode_names) {
+		return _BlendMode_names[b]
+	}
+	return fmt.Sprintf("BlendMode(%d)", int(b))
+}
 
 // DashPattern defines a stroke dash pattern as alternating on/off lengths.
 //
