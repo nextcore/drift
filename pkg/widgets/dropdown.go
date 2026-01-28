@@ -17,8 +17,8 @@ type DropdownItem[T any] struct {
 	Value T
 	// Label is the text shown for the item.
 	Label string
-	// Child overrides the label when provided.
-	Child core.Widget
+	// ChildWidget overrides the label when provided.
+	ChildWidget core.Widget
 	// Disabled disables selection when true.
 	Disabled bool
 }
@@ -43,7 +43,7 @@ type DropdownItem[T any] struct {
 //	    },
 //	}
 //
-// Each [DropdownItem] can have a custom Child widget instead of a text Label.
+// Each [DropdownItem] can have a custom ChildWidget instead of a text Label.
 // Items can be individually disabled by setting Disabled: true.
 //
 // The dropdown uses theme colors by default but supports full customization
@@ -236,7 +236,7 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 	for _, item := range w.Items {
 		if reflect.DeepEqual(item.Value, w.Value) {
 			selectedLabel = item.Label
-			selectedChild = item.Child
+			selectedChild = item.ChildWidget
 			break
 		}
 	}
@@ -304,7 +304,7 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 	for _, item := range w.Items {
 		itemEnabled := enabled && !item.Disabled
 		itemLabel := item.Label
-		itemChild := item.Child
+		itemChild := item.ChildWidget
 		if itemChild == nil {
 			itemChild = Text{Content: itemLabel, Style: textStyle}
 		}

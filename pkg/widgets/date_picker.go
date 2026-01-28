@@ -85,8 +85,8 @@ type DatePicker struct {
 	// TextStyle for the value text.
 	TextStyle graphics.TextStyle
 
-	// Child overrides the default rendering for full customization.
-	Child core.Widget
+	// ChildWidget overrides the default rendering for full customization.
+	ChildWidget core.Widget
 }
 
 func (d DatePicker) CreateElement() core.Element {
@@ -130,14 +130,14 @@ func (s *datePickerState) Build(ctx core.BuildContext) core.Widget {
 	themeData, _, textTheme := theme.UseTheme(ctx)
 
 	// If custom child provided, wrap it with gesture detector
-	if w.Child != nil {
+	if w.ChildWidget != nil {
 		return GestureDetector{
 			OnTap: func() {
 				if !w.Disabled {
 					s.showPicker()
 				}
 			},
-			ChildWidget: w.Child,
+			ChildWidget: w.ChildWidget,
 		}
 	}
 
