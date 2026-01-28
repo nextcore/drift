@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
         'guides/gestures',
         'guides/accessibility',
         'guides/platform',
+        'guides/testing',
         'guides/skia',
         'guides/xtool-setup',
       ],
