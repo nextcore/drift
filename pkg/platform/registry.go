@@ -63,6 +63,19 @@ var (
 // This is set by the bridge package during initialization.
 var nativeBridge NativeBridge
 
+// builtinInits holds functions that re-register the built-in event listeners
+// set up during package init (lifecycle, safe area, accessibility, etc.).
+// Each init() function appends its listener setup here so that ResetForTest
+// can replay them after clearing subscriptions.
+var builtinInits []func()
+
+// registerBuiltinInit registers a function that sets up built-in event
+// listeners. Called from init() functions in lifecycle.go, safe_area.go, etc.
+// The registered function will be replayed by ResetForTest.
+func registerBuiltinInit(fn func()) {
+	builtinInits = append(builtinInits, fn)
+}
+
 // NativeBridge defines the interface for calling native platform code.
 type NativeBridge interface {
 	// InvokeMethod calls a method on the native side.
@@ -77,8 +90,40 @@ type NativeBridge interface {
 
 // SetNativeBridge sets the native bridge implementation.
 // Called by the bridge package during initialization.
+//
+// After setting the bridge, SetNativeBridge starts event streams for any
+// event channels that acquired subscriptions before the bridge was available
+// (e.g., during package init). This ensures that init-time Listen calls
+// for Lifecycle, SafeArea, Accessibility, etc. are not silently lost.
+// Startup errors are dispatched to subscribers' error handlers.
 func SetNativeBridge(bridge NativeBridge) {
 	nativeBridge = bridge
+
+	// Start event streams for channels that subscribed before the bridge was set.
+	registry.mu.RLock()
+	channels := make([]*EventChannel, 0, len(registry.eventChannels))
+	for _, ch := range registry.eventChannels {
+		channels = append(channels, ch)
+	}
+	registry.mu.RUnlock()
+
+	for _, ch := range channels {
+		ch.mu.Lock()
+		shouldStart := len(ch.subscriptions) > 0 && !ch.started
+		if shouldStart {
+			ch.started = true
+		}
+		ch.mu.Unlock()
+
+		if shouldStart {
+			if err := startEventStream(ch.name); err != nil {
+				ch.mu.Lock()
+				ch.started = false
+				ch.mu.Unlock()
+				ch.dispatchError(err)
+			}
+		}
+	}
 }
 
 // invokeNative calls a method on the native side.
@@ -233,4 +278,46 @@ func HandleEventDone(channel string) error {
 
 	ch.dispatchDone()
 	return nil
+}
+
+// ResetForTest resets all global platform state for test isolation.
+// It clears the native bridge, resets cached state (lifecycle, safe area),
+// removes all event subscriptions, and re-registers the built-in init-time
+// listeners (lifecycle, safe area, accessibility) so that the package
+// behaves as if freshly initialized. This should only be called from tests.
+func ResetForTest() {
+	nativeBridge = nil
+
+	// Reset lifecycle
+	Lifecycle.mu.Lock()
+	Lifecycle.state = LifecycleStateResumed
+	Lifecycle.handlers = Lifecycle.handlers[:0]
+	Lifecycle.mu.Unlock()
+
+	// Reset safe area
+	SafeArea.mu.Lock()
+	SafeArea.insets = EdgeInsets{}
+	SafeArea.handlers = SafeArea.handlers[:0]
+	SafeArea.mu.Unlock()
+
+	// Clear all event channel subscriptions and started flags
+	registry.mu.RLock()
+	channels := make([]*EventChannel, 0, len(registry.eventChannels))
+	for _, ch := range registry.eventChannels {
+		channels = append(channels, ch)
+	}
+	registry.mu.RUnlock()
+
+	for _, ch := range channels {
+		ch.mu.Lock()
+		ch.subscriptions = ch.subscriptions[:0]
+		ch.started = false
+		ch.mu.Unlock()
+	}
+
+	// Re-register built-in listeners (lifecycle, safe area, accessibility)
+	// so the package behaves as if freshly initialized.
+	for _, fn := range builtinInits {
+		fn()
+	}
 }

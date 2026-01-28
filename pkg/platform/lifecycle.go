@@ -45,6 +45,11 @@ const (
 type LifecycleHandler func(state LifecycleState)
 
 func init() {
+	initLifecycleListeners()
+	registerBuiltinInit(initLifecycleListeners)
+}
+
+func initLifecycleListeners() {
 	// Set up event listener for lifecycle changes
 	Lifecycle.events.Listen(EventHandler{
 		OnEvent: func(data any) {

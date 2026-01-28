@@ -22,6 +22,11 @@ type SafeAreaService struct {
 }
 
 func init() {
+	initSafeAreaListeners()
+	registerBuiltinInit(initSafeAreaListeners)
+}
+
+func initSafeAreaListeners() {
 	SafeArea.events.Listen(EventHandler{
 		OnEvent: func(data any) {
 			if m, ok := data.(map[string]any); ok {

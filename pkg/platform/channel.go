@@ -81,6 +81,7 @@ type EventChannel struct {
 	name          string
 	codec         MessageCodec
 	subscriptions []*Subscription
+	started       bool // whether native event stream is active
 	mu            sync.Mutex
 }
 
@@ -100,6 +101,8 @@ func (c *EventChannel) Name() string {
 }
 
 // Listen subscribes to events on this channel.
+// If the native bridge is not yet available (e.g., during init), the subscription
+// is created but the event stream start is deferred until [SetNativeBridge] is called.
 // Any error from starting the native event stream is reported via the error handler
 // but does not prevent the subscription from being created.
 func (c *EventChannel) Listen(handler EventHandler) *Subscription {
@@ -107,15 +110,26 @@ func (c *EventChannel) Listen(handler EventHandler) *Subscription {
 		channel: c,
 		handler: &handler,
 	}
+
 	c.mu.Lock()
 	c.subscriptions = append(c.subscriptions, sub)
+	shouldStart := nativeBridge != nil && !c.started
+	if shouldStart {
+		c.started = true
+	}
 	c.mu.Unlock()
 
-	// Notify native that we're listening
-	if err := startEventStream(c.name); err != nil {
-		// Dispatch startup error to handler if provided
-		if handler.OnError != nil {
-			handler.OnError(err)
+	// Notify native that we're listening. Skip if:
+	// - bridge not yet set (SetNativeBridge will start pending streams), or
+	// - stream already started by a prior subscriber or SetNativeBridge.
+	if shouldStart {
+		if err := startEventStream(c.name); err != nil {
+			c.mu.Lock()
+			c.started = false
+			c.mu.Unlock()
+			if handler.OnError != nil {
+				handler.OnError(err)
+			}
 		}
 	}
 
@@ -132,6 +146,9 @@ func (c *EventChannel) removeSubscription(sub *Subscription) {
 		}
 	}
 	hasListeners := len(c.subscriptions) > 0
+	if !hasListeners {
+		c.started = false
+	}
 	c.mu.Unlock()
 
 	// Notify native if no more listeners.
@@ -177,6 +194,7 @@ func (c *EventChannel) dispatchDone() {
 	subs := make([]*Subscription, len(c.subscriptions))
 	copy(subs, c.subscriptions)
 	c.subscriptions = nil
+	c.started = false
 	c.mu.Unlock()
 
 	for _, sub := range subs {

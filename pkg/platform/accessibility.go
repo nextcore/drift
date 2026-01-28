@@ -32,6 +32,11 @@ var Accessibility = &accessibilityChannel{
 }
 
 func init() {
+	initAccessibilityListeners()
+	registerBuiltinInit(initAccessibilityListeners)
+}
+
+func initAccessibilityListeners() {
 	// Set up handler for incoming method calls from the platform
 	// Note: performAction comes via event channel, not method channel
 	Accessibility.method.SetHandler(func(method string, args any) (any, error) {
