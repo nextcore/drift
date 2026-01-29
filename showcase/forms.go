@@ -90,7 +90,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 
 		widgets.VSpace(24),
 
-		// Selection controls (unchanged)
+		// Selection controls
 		sectionTitle("Selection Controls", colors),
 		widgets.VSpace(12),
 		widgets.RowOf(
@@ -98,14 +98,11 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.Checkbox{
-				Value: s.acceptTerms.Get(),
-				OnChanged: func(value bool) {
-					s.acceptTerms.Set(value)
-				},
-			},
+			theme.CheckboxOf(ctx, s.acceptTerms.Get(), func(value bool) {
+				s.acceptTerms.Set(value)
+			}),
 			widgets.HSpace(10),
-			widgets.TextOf("Accept terms of service", labelStyle(colors)),
+			widgets.Text{Content: "Accept terms of service", Style: labelStyle(colors)},
 		),
 		widgets.VSpace(12),
 		widgets.RowOf(
@@ -121,7 +118,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 				},
 			},
 			widgets.HSpace(10),
-			widgets.TextOf("Native Switch", labelStyle(colors)),
+			widgets.Text{Content: "Native Switch", Style: labelStyle(colors)},
 		),
 		widgets.VSpace(12),
 		widgets.RowOf(
@@ -129,32 +126,25 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.Toggle{
-				Value: s.enableAlerts.Get(),
-				OnChanged: func(value bool) {
-					s.enableAlerts.Set(value)
-				},
-			},
+			theme.ToggleOf(ctx, s.enableAlerts.Get(), func(value bool) {
+				s.enableAlerts.Set(value)
+			}),
 			widgets.HSpace(10),
-			widgets.TextOf("Skia Toggle", labelStyle(colors)),
+			widgets.Text{Content: "Skia Toggle", Style: labelStyle(colors)},
 		),
 		widgets.VSpace(16),
-		widgets.TextOf("Contact preference", labelStyle(colors)),
+		widgets.Text{Content: "Contact preference", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.RowOf(
 			widgets.MainAxisAlignmentStart,
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.Radio[string]{
-				Value:      "email",
-				GroupValue: s.contactMethod.Get(),
-				OnChanged: func(value string) {
-					s.contactMethod.Set(value)
-				},
-			},
+			theme.RadioOf(ctx, "email", s.contactMethod.Get(), func(value string) {
+				s.contactMethod.Set(value)
+			}),
 			widgets.HSpace(10),
-			widgets.TextOf("Email", labelStyle(colors)),
+			widgets.Text{Content: "Email", Style: labelStyle(colors)},
 		),
 		widgets.VSpace(6),
 		widgets.RowOf(
@@ -162,67 +152,39 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.Radio[string]{
-				Value:      "sms",
-				GroupValue: s.contactMethod.Get(),
-				OnChanged: func(value string) {
-					s.contactMethod.Set(value)
-				},
-			},
+			theme.RadioOf(ctx, "sms", s.contactMethod.Get(), func(value string) {
+				s.contactMethod.Set(value)
+			}),
 			widgets.HSpace(10),
-			widgets.TextOf("SMS", labelStyle(colors)),
+			widgets.Text{Content: "SMS", Style: labelStyle(colors)},
 		),
 		widgets.VSpace(16),
-		widgets.TextOf("Plan", labelStyle(colors)),
+		widgets.Text{Content: "Plan", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.Dropdown[string]{
-			Value: s.planSelection.Get(),
-			Hint:  "Select a plan",
-			Items: []widgets.DropdownItem[string]{
-				{Value: "starter", Label: "Starter"},
-				{Value: "pro", Label: "Pro"},
-				{Value: "enterprise", Label: "Enterprise"},
-			},
-			OnChanged: func(value string) {
-				s.planSelection.Set(value)
-			},
-			BorderRadius: 8,
-		},
+		theme.DropdownOf(ctx, s.planSelection.Get(), []widgets.DropdownItem[string]{
+			{Value: "starter", Label: "Starter"},
+			{Value: "pro", Label: "Pro"},
+			{Value: "enterprise", Label: "Enterprise"},
+		}, func(value string) {
+			s.planSelection.Set(value)
+		}).WithHint("Select a plan"),
 		widgets.VSpace(24),
 
 		// Date & Time Pickers
 		sectionTitle("Date & Time Pickers", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Select a date using the native picker", labelStyle(colors)),
+		widgets.Text{Content: "Select a date using the native picker", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.DatePicker{
-			Value: s.selectedDate.Get(),
-			OnChanged: func(date time.Time) {
-				s.selectedDate.Set(&date)
-			},
-			Placeholder: "Select date",
-			Decoration: &widgets.InputDecoration{
-				LabelText:    "Birth Date",
-				HintText:     "Tap to select",
-				BorderRadius: 8,
-			},
-		},
+		theme.DatePickerOf(ctx, s.selectedDate.Get(), func(date time.Time) {
+			s.selectedDate.Set(&date)
+		}),
 		widgets.VSpace(16),
-		widgets.TextOf("Select a time using the native picker", labelStyle(colors)),
+		widgets.Text{Content: "Select a time using the native picker", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.TimePicker{
-			Hour:   s.selectedHour.Get(),
-			Minute: s.selectedMin.Get(),
-			OnChanged: func(hour, minute int) {
-				s.selectedHour.Set(hour)
-				s.selectedMin.Set(minute)
-			},
-			Decoration: &widgets.InputDecoration{
-				LabelText:    "Appointment Time",
-				HintText:     "Tap to select",
-				BorderRadius: 8,
-			},
-		},
+		theme.TimePickerOf(ctx, s.selectedHour.Get(), s.selectedMin.Get(), func(hour, minute int) {
+			s.selectedHour.Set(hour)
+			s.selectedMin.Set(minute)
+		}),
 		widgets.VSpace(24),
 
 		// Progress Indicators
@@ -230,7 +192,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 
 		// Native Activity Indicator
-		widgets.TextOf("Native Activity Indicator", labelStyle(colors)),
+		widgets.Text{Content: "Native Activity Indicator", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.RowOf(
 			widgets.MainAxisAlignmentStart,
@@ -256,7 +218,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(16),
 
 		// Circular Progress Indicators (indeterminate only when loading)
-		widgets.TextOf("Circular Progress (toggle loading to animate)", labelStyle(colors)),
+		widgets.Text{Content: "Circular Progress (toggle loading to animate)", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.RowOf(
 			widgets.MainAxisAlignmentStart,
@@ -281,19 +243,19 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			},
 		),
 		widgets.VSpace(16),
-		widgets.TextOf("Circular Progress (Determinate: "+itoa(int(s.progressValue.Get()*100))+"%)", labelStyle(colors)),
+		widgets.Text{Content: "Circular Progress (Determinate: " + itoa(int(s.progressValue.Get()*100)) + "%)", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		s.buildDeterminateCircular(colors),
 		widgets.VSpace(16),
 
 		// Linear Progress Indicators (indeterminate only when loading)
-		widgets.TextOf("Linear Progress (toggle loading to animate)", labelStyle(colors)),
+		widgets.Text{Content: "Linear Progress (toggle loading to animate)", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.LinearProgressIndicator{
 			Value: s.indeterminateValue(),
 		},
 		widgets.VSpace(16),
-		widgets.TextOf("Linear Progress (Determinate: "+itoa(int(s.progressValue.Get()*100))+"%)", labelStyle(colors)),
+		widgets.Text{Content: "Linear Progress (Determinate: " + itoa(int(s.progressValue.Get()*100)) + "%)", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		s.buildDeterminateLinear(colors),
 		widgets.VSpace(16),
@@ -304,7 +266,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			widgets.ButtonOf("-10%", func() {
+			theme.ButtonOf(ctx, "-10%", func() {
 				v := s.progressValue.Get() - 0.1
 				if v < 0 {
 					v = 0
@@ -312,7 +274,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 				s.progressValue.Set(v)
 			}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 			widgets.HSpace(8),
-			widgets.ButtonOf("+10%", func() {
+			theme.ButtonOf(ctx, "+10%", func() {
 				v := s.progressValue.Get() + 0.1
 				if v > 1 {
 					v = 1
@@ -320,9 +282,9 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 				s.progressValue.Set(v)
 			}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 			widgets.HSpace(16),
-			widgets.ButtonOf("Toggle Loading", func() {
+			theme.ButtonOf(ctx, "Toggle Loading", func() {
 				s.isLoading.Set(!s.isLoading.Get())
-			}).WithColor(colors.Primary, colors.OnPrimary),
+			}),
 		),
 		widgets.VSpace(40),
 	)
@@ -450,13 +412,13 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(24),
 
 		// Buttons
-		widgets.ButtonOf("Submit", func() {
+		theme.ButtonOf(ctx, "Submit", func() {
 			if form != nil {
 				f.parent.handleSubmit(form)
 			}
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		}),
 		widgets.VSpace(8),
-		widgets.ButtonOf("Reset", func() {
+		theme.ButtonOf(ctx, "Reset", func() {
 			if form != nil {
 				f.parent.handleReset(form)
 			}
@@ -467,10 +429,13 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 		widgets.Container{
 			Color: colors.SurfaceVariant,
 			ChildWidget: widgets.PaddingAll(12,
-				widgets.TextOf(f.parent.statusText.Get(), graphics.TextStyle{
-					Color:    colors.OnSurfaceVariant,
-					FontSize: 14,
-				}),
+				widgets.Text{
+					Content: f.parent.statusText.Get(),
+					Style: graphics.TextStyle{
+						Color:    colors.OnSurfaceVariant,
+						FontSize: 14,
+					},
+				},
 			),
 		},
 	)

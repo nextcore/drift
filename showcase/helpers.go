@@ -10,11 +10,14 @@ import (
 
 // sectionTitle creates a styled section header for demo pages.
 func sectionTitle(text string, colors theme.ColorScheme) core.Widget {
-	return widgets.TextOf(text, graphics.TextStyle{
-		Color:      colors.OnSurface,
-		FontSize:   20,
-		FontWeight: graphics.FontWeightBold,
-	})
+	return widgets.Text{
+		Content: text,
+		Style: graphics.TextStyle{
+			Color:      colors.OnSurface,
+			FontSize:   20,
+			FontWeight: graphics.FontWeightBold,
+		},
+	}
 }
 
 // labelStyle returns a text style for descriptive labels.

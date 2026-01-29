@@ -6,7 +6,6 @@ import (
 	"github.com/go-drift/drift/pkg/platform"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // TimePicker displays a time selection field that opens a native time picker modal.
@@ -85,7 +84,6 @@ func (s *timePickerState) SetState(fn func()) {
 
 func (s *timePickerState) Build(ctx core.BuildContext) core.Widget {
 	w := s.element.Widget().(TimePicker)
-	themeData, _, textTheme := theme.UseTheme(ctx)
 
 	// If custom child provided, wrap it with gesture detector
 	if w.ChildWidget != nil {
@@ -100,73 +98,30 @@ func (s *timePickerState) Build(ctx core.BuildContext) core.Widget {
 	}
 
 	// Build default styled field
-	return s.buildDefaultField(ctx, w, *themeData, textTheme)
+	return s.buildDefaultField(ctx, w)
 }
 
-func (s *timePickerState) buildDefaultField(ctx core.BuildContext, w TimePicker, themeData theme.ThemeData, textTheme theme.TextTheme) core.Widget {
-	textFieldTheme := themeData.TextFieldThemeOf()
-
-	// Apply defaults from decoration or theme
+func (s *timePickerState) buildDefaultField(ctx core.BuildContext, w TimePicker) core.Widget {
+	// Apply defaults from decoration
 	decoration := w.Decoration
 	if decoration == nil {
 		decoration = &InputDecoration{}
 	}
 
 	borderRadius := decoration.BorderRadius
-	if borderRadius == 0 {
-		borderRadius = 8
-	}
-
 	borderColor := decoration.BorderColor
-	if borderColor == 0 {
-		borderColor = textFieldTheme.BorderColor
-	}
-
 	bgColor := decoration.BackgroundColor
-	if bgColor == 0 {
-		bgColor = textFieldTheme.BackgroundColor
-	}
 
 	contentPadding := decoration.ContentPadding
 	if contentPadding == (layout.EdgeInsets{}) {
 		contentPadding = layout.EdgeInsets{Left: 12, Top: 12, Right: 12, Bottom: 12}
 	}
 
-	// Text style
+	// Text style - use field values directly
 	textStyle := w.TextStyle
-	if textStyle.FontSize == 0 {
-		textStyle = textTheme.BodyLarge
-	}
-	if textStyle.Color == 0 {
-		textStyle.Color = textFieldTheme.TextColor
-	}
-
-	// Hint style
 	hintStyle := decoration.HintStyle
-	if hintStyle.FontSize == 0 {
-		hintStyle = textTheme.BodyLarge
-	}
-	if hintStyle.Color == 0 {
-		hintStyle.Color = textFieldTheme.PlaceholderColor
-	}
-
-	// Label style
 	labelStyle := decoration.LabelStyle
-	if labelStyle.FontSize == 0 {
-		labelStyle = textTheme.LabelMedium
-	}
-	if labelStyle.Color == 0 {
-		labelStyle.Color = textFieldTheme.LabelColor
-	}
-
-	// Helper style
 	helperStyle := decoration.HelperStyle
-	if helperStyle.FontSize == 0 {
-		helperStyle = textTheme.BodySmall
-	}
-	if helperStyle.Color == 0 {
-		helperStyle.Color = textFieldTheme.PlaceholderColor
-	}
 
 	// Format the time value
 	var displayText string
@@ -247,7 +202,7 @@ func (s *timePickerState) buildDefaultField(ctx core.BuildContext, w TimePicker,
 	// Helper or error text
 	if decoration.ErrorText != "" {
 		errorStyle := helperStyle
-		errorStyle.Color = textFieldTheme.ErrorColor
+		errorStyle.Color = decoration.ErrorColor
 		children = append(children, SizedBox{Height: 6})
 		children = append(children, Text{Content: decoration.ErrorText, Style: errorStyle})
 	} else if decoration.HelperText != "" {

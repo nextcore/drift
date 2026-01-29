@@ -224,16 +224,22 @@ func pageScaffold(ctx core.BuildContext, title string, content core.Widget) core
 							widgets.MainAxisAlignmentStart,
 							widgets.CrossAxisAlignmentStart,
 							widgets.MainAxisSizeMax,
-							widgets.ButtonOf("Back", func() {
-								nav := navigation.NavigatorOf(ctx)
-								if nav != nil {
-									nav.Pop(nil)
-								}
-							}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
-								WithPadding(layout.EdgeInsetsSymmetric(16, 10)).
-								WithFontSize(14),
+							widgets.Button{
+								Label: "Back",
+								OnTap: func() {
+									nav := navigation.NavigatorOf(ctx)
+									if nav != nil {
+										nav.Pop(nil)
+									}
+								},
+								Color:        colors.SurfaceVariant,
+								TextColor:    colors.OnSurfaceVariant,
+								Padding:      layout.EdgeInsetsSymmetric(16, 10),
+								FontSize:     14,
+								Haptic:       true,
+							},
 							widgets.HSpace(16),
-							widgets.TextOf(title, textTheme.HeadlineMedium),
+							widgets.Text{Content: title, Style: textTheme.HeadlineMedium},
 						),
 					},
 				},

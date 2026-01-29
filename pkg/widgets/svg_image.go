@@ -12,7 +12,9 @@ import (
 // The SVG is rendered using Skia's native SVG DOM, which supports gradients,
 // filters, transforms, and most SVG features.
 //
-// Example:
+// # Creation Pattern
+//
+// Use struct literal:
 //
 //	icon, _ := svg.LoadFile("icon.svg")
 //	widgets.SvgImage{
@@ -73,14 +75,6 @@ type SvgImage struct {
 
 	// ExcludeFromSemantics excludes from the semantics tree when true.
 	ExcludeFromSemantics bool
-}
-
-// SvgImageOf creates an SVG image widget with the given source.
-// This is a convenience helper equivalent to:
-//
-//	SvgImage{Source: source}
-func SvgImageOf(source *svg.Icon) SvgImage {
-	return SvgImage{Source: source}
 }
 
 func (s SvgImage) CreateElement() core.Element {

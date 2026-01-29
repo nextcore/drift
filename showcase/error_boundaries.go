@@ -44,36 +44,42 @@ func (s *errorBoundariesState) Build(ctx core.BuildContext) core.Widget {
 		// Introduction
 		sectionTitle("Graceful Error Handling", colors),
 		widgets.VSpace(12),
-		widgets.TextOf(
-			"Error boundaries catch panics in widget builds and display "+
-				"fallback UI instead of crashing the app.",
-			labelStyle(colors),
-		),
+		widgets.Text{Content: "Error boundaries catch panics in widget builds and display " +
+			"fallback UI instead of crashing the app.", Style: labelStyle(colors)},
 		widgets.VSpace(24),
 
 		// Section: Unhandled Panics
 		sectionTitle("Unhandled Panics", colors),
 		widgets.VSpace(12),
-		widgets.TextOf(
-			"When a widget panics without an ErrorBoundary, the global "+
-				"ErrorWidget is displayed:",
-			labelStyle(colors),
-		),
+		widgets.Text{Content: "When a widget panics without an ErrorBoundary, the global " +
+			"ErrorWidget is displayed:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		widgets.Row{
 			MainAxisAlignment: widgets.MainAxisAlignmentStart,
 			ChildrenWidgets: []core.Widget{
-				widgets.ButtonOf("Trigger Stateless Panic", func() {
-					s.SetState(func() {
-						s.triggerStatelessPanic = true
-					})
-				}).WithColor(colors.Error, colors.OnError),
+				widgets.Button{
+					Label: "Trigger Stateless Panic",
+					OnTap: func() {
+						s.SetState(func() {
+							s.triggerStatelessPanic = true
+						})
+					},
+					Color:     colors.Error,
+					TextColor: colors.OnError,
+					Haptic:    true,
+				},
 				widgets.HSpace(12),
-				widgets.ButtonOf("Reset", func() {
-					s.SetState(func() {
-						s.triggerStatelessPanic = false
-					})
-				}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
+				widgets.Button{
+					Label: "Reset",
+					OnTap: func() {
+						s.SetState(func() {
+							s.triggerStatelessPanic = false
+						})
+					},
+					Color:     colors.SurfaceVariant,
+					TextColor: colors.OnSurfaceVariant,
+					Haptic:    true,
+				},
 			},
 		},
 		widgets.VSpace(12),
@@ -83,27 +89,36 @@ func (s *errorBoundariesState) Build(ctx core.BuildContext) core.Widget {
 		// Section: ErrorBoundary Widget
 		sectionTitle("ErrorBoundary Widget", colors),
 		widgets.VSpace(12),
-		widgets.TextOf(
-			"Wrap risky widgets in an ErrorBoundary to catch errors locally "+
-				"without affecting the rest of the app:",
-			labelStyle(colors),
-		),
+		widgets.Text{Content: "Wrap risky widgets in an ErrorBoundary to catch errors locally " +
+			"without affecting the rest of the app:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		widgets.Row{
 			MainAxisAlignment: widgets.MainAxisAlignmentStart,
 			ChildrenWidgets: []core.Widget{
-				widgets.ButtonOf("Trigger Bounded Panic", func() {
-					s.SetState(func() {
-						s.triggerStatefulPanic = true
-					})
-				}).WithColor(colors.Error, colors.OnError),
+				widgets.Button{
+					Label: "Trigger Bounded Panic",
+					OnTap: func() {
+						s.SetState(func() {
+							s.triggerStatefulPanic = true
+						})
+					},
+					Color:     colors.Error,
+					TextColor: colors.OnError,
+					Haptic:    true,
+				},
 				widgets.HSpace(12),
-				widgets.ButtonOf("Reset Boundary", func() {
-					s.SetState(func() {
-						s.triggerStatefulPanic = false
-						s.boundaryKey++ // Force boundary rebuild
-					})
-				}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
+				widgets.Button{
+					Label: "Reset Boundary",
+					OnTap: func() {
+						s.SetState(func() {
+							s.triggerStatefulPanic = false
+							s.boundaryKey++ // Force boundary rebuild
+						})
+					},
+					Color:     colors.SurfaceVariant,
+					TextColor: colors.OnSurfaceVariant,
+					Haptic:    true,
+				},
 			},
 		},
 		widgets.VSpace(12),
@@ -113,10 +128,7 @@ func (s *errorBoundariesState) Build(ctx core.BuildContext) core.Widget {
 		// Section: Custom Fallback
 		sectionTitle("Custom Fallback Builder", colors),
 		widgets.VSpace(12),
-		widgets.TextOf(
-			"ErrorBoundary accepts a FallbackBuilder for custom error UI:",
-			labelStyle(colors),
-		),
+		widgets.Text{Content: "ErrorBoundary accepts a FallbackBuilder for custom error UI:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		s.buildCustomFallbackDemo(colors),
 		widgets.VSpace(24),

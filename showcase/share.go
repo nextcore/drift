@@ -43,7 +43,7 @@ func (s *shareState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Share",
 		sectionTitle("Share Text", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Enter custom text to share:", labelStyle(colors)),
+		widgets.Text{Content: "Enter custom text to share:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.TextField{
 			Label:        "Text to share",
@@ -54,19 +54,31 @@ func (s *shareState) Build(ctx core.BuildContext) core.Widget {
 		},
 		widgets.VSpace(16),
 
-		widgets.ButtonOf("Share Text", func() {
-			s.shareText()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Share Text",
+			OnTap: func() {
+				s.shareText()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Share URL", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Share the Drift GitHub repository:", labelStyle(colors)),
+		widgets.Text{Content: "Share the Drift GitHub repository:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 
-		widgets.ButtonOf("Share URL", func() {
-			s.shareURL()
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Share URL",
+			OnTap: func() {
+				s.shareURL()
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Result", colors),

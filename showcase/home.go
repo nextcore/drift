@@ -98,23 +98,33 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 								Width:  200,
 							},
 						}, widgets.VSpace(8),
-						widgets.TextOf("Cross-platform UI for Go", textTheme.HeadlineSmall),
+						widgets.Text{Content: "Cross-platform UI for Go", Style: textTheme.HeadlineSmall},
 						widgets.VSpace(4),
-						widgets.TextOf("Build native iOS & Android apps with idiomatic Go", graphics.TextStyle{
+						widgets.Text{Content: "Build native iOS & Android apps with idiomatic Go", Style: graphics.TextStyle{
 							Color:    colors.OnSurfaceVariant,
 							FontSize: 14,
-						}),
+						}},
 						widgets.VSpace(40),
 					}, append(navItems,
 						widgets.VSpace(32),
 
 						// Theme toggle
-						widgets.ButtonOf(themeLabel, toggleTheme).
-							WithColor(colors.Secondary, colors.OnSecondary),
+						widgets.Button{
+							Label:     themeLabel,
+							OnTap:     toggleTheme,
+							Color:     colors.Secondary,
+							TextColor: colors.OnSecondary,
+							Haptic:    true,
+						},
 						widgets.VSpace(12),
 						// Platform toggle
-						widgets.ButtonOf(platformLabel, togglePlatform).
-							WithColor(colors.Tertiary, colors.OnTertiary),
+						widgets.Button{
+							Label:     platformLabel,
+							OnTap:     togglePlatform,
+							Color:     colors.Tertiary,
+							TextColor: colors.OnTertiary,
+							Haptic:    true,
+						},
 						widgets.VSpace(40),
 					)...),
 				},
@@ -125,11 +135,11 @@ func buildHomePage(ctx core.BuildContext, isDark bool, isCupertino bool, toggleT
 
 // sectionHeader creates a styled section header for the home page.
 func sectionHeader(text string, colors theme.ColorScheme) core.Widget {
-	return widgets.TextOf(text, graphics.TextStyle{
+	return widgets.Text{Content: text, Style: graphics.TextStyle{
 		Color:      colors.OnSurface,
 		FontSize:   20,
 		FontWeight: graphics.FontWeightBold,
-	})
+	}}
 }
 
 // navButton creates a navigation button for the home page.

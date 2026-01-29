@@ -9,29 +9,51 @@ import (
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // LinearProgressIndicator displays a linear progress indicator.
 // When Value is nil, it shows an indeterminate animation.
 // When Value is set, it shows determinate progress from 0.0 to 1.0.
+//
+// # Styling Model
+//
+// LinearProgressIndicator is explicit by default — zero values mean zero
+// (no color). For theme-styled indicators, use [theme.LinearProgressIndicatorOf]
+// which pre-fills Color from Primary and TrackColor from SurfaceVariant.
+//
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.LinearProgressIndicator{
+//	    Value:        nil, // indeterminate
+//	    Color:        colors.Primary,
+//	    TrackColor:   colors.SurfaceVariant,
+//	    Height:       4,
+//	    BorderRadius: 2,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.LinearProgressIndicatorOf(ctx, nil)  // indeterminate
+//	theme.LinearProgressIndicatorOf(ctx, &progress)  // determinate
 type LinearProgressIndicator struct {
 	// Value is the progress value (0.0 to 1.0). Nil means indeterminate.
 	Value *float64
 
-	// Color is the indicator color. Uses theme primary color if not set.
+	// Color is the indicator color. Zero means transparent (invisible).
 	Color graphics.Color
 
-	// TrackColor is the background track color. Uses theme surface variant if not set.
+	// TrackColor is the background track color. Zero means no track.
 	TrackColor graphics.Color
 
-	// Height is the thickness of the indicator. Default: 4.0
+	// Height is the thickness of the indicator. Zero means zero height (not rendered).
 	Height float64
 
-	// BorderRadius is the corner radius. Default: 2.0
+	// BorderRadius is the corner radius. Zero means sharp corners.
 	BorderRadius float64
 
-	// MinWidth is the minimum width for the indicator. Default: 0 (use constraints).
+	// MinWidth is the minimum width for the indicator. Zero uses constraints.
 	MinWidth float64
 }
 
@@ -113,28 +135,12 @@ func (s *linearProgressState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 
 func (s *linearProgressState) Build(ctx core.BuildContext) core.Widget {
 	w := s.Element().Widget().(LinearProgressIndicator)
-	themeData, _, _ := theme.UseTheme(ctx)
 
-	// Apply defaults
+	// Use field values directly — zero means zero
 	height := w.Height
-	if height == 0 {
-		height = 4
-	}
-
 	borderRadius := w.BorderRadius
-	if borderRadius == 0 {
-		borderRadius = 2
-	}
-
 	color := w.Color
-	if color == 0 {
-		color = themeData.ColorScheme.Primary
-	}
-
 	trackColor := w.TrackColor
-	if trackColor == 0 {
-		trackColor = themeData.ColorScheme.SurfaceVariant
-	}
 
 	// Calculate animation value for indeterminate mode
 	var animValue float64

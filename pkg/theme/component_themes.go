@@ -83,6 +83,8 @@ type TextFieldThemeData struct {
 	Padding layout.EdgeInsets
 	// BorderRadius is the default corner radius.
 	BorderRadius float64
+	// BorderWidth is the default border stroke width.
+	BorderWidth float64
 	// Height is the default field height.
 	Height float64
 }
@@ -143,6 +145,8 @@ type DropdownThemeData struct {
 	ItemPadding layout.EdgeInsets
 	// Height is the default trigger/item height.
 	Height float64
+	// FontSize is the default text font size.
+	FontSize float64
 }
 
 // DefaultButtonTheme returns ButtonThemeData derived from a ColorScheme.
@@ -198,6 +202,7 @@ func DefaultTextFieldTheme(colors ColorScheme) TextFieldThemeData {
 		PlaceholderColor: colors.OnSurfaceVariant,
 		Padding:          layout.EdgeInsetsSymmetric(12, 8),
 		BorderRadius:     8,
+		BorderWidth:      1,
 		Height:           48,
 	}
 }
@@ -240,5 +245,6 @@ func DefaultDropdownTheme(colors ColorScheme) DropdownThemeData {
 		BorderRadius:        8,
 		ItemPadding:         layout.EdgeInsetsSymmetric(12, 8),
 		Height:              44,
+		FontSize:            16,
 	}
 }

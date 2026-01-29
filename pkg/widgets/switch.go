@@ -16,17 +16,22 @@ import (
 // calls OnChanged when toggled. To change the switch state, update Value in
 // your state in response to OnChanged.
 //
-// Example:
+// # Creation Pattern
 //
-//	Switch{
+// Use struct literal (no themed constructor exists for native Switch):
+//
+//	widgets.Switch{
 //	    Value: s.notificationsEnabled,
 //	    OnChanged: func(enabled bool) {
 //	        s.SetState(func() { s.notificationsEnabled = enabled })
 //	    },
+//	    OnTintColor: colors.Primary,  // optional
 //	}
 //
 // The native implementation provides platform-appropriate animations and
 // haptic feedback automatically.
+//
+// For a Drift-rendered toggle with full styling control, use [Toggle] instead.
 type Switch struct {
 	// Value indicates the current on/off state.
 	Value bool
@@ -38,14 +43,6 @@ type Switch struct {
 	OnTintColor graphics.Color
 	// ThumbColor is the thumb color (optional).
 	ThumbColor graphics.Color
-}
-
-// SwitchOf creates a switch with the given value and change handler.
-// This is a convenience helper equivalent to:
-//
-//	Switch{Value: value, OnChanged: onChanged}
-func SwitchOf(value bool, onChanged func(bool)) Switch {
-	return Switch{Value: value, OnChanged: onChanged}
 }
 
 func (s Switch) CreateElement() core.Element {

@@ -18,7 +18,7 @@ func buildScrollPage(ctx core.BuildContext) core.Widget {
 	items = append(items,
 		sectionTitle("ListView", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("ListView builds a scrollable column for simple lists:", labelStyle(colors)),
+		widgets.Text{Content: "ListView builds a scrollable column for simple lists:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.SizedBox{
 			Height: 220,
@@ -38,7 +38,7 @@ func buildScrollPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(20),
 		sectionTitle("ListView Builder", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Use ListViewBuilder for item generation:", labelStyle(colors)),
+		widgets.Text{Content: "Use ListViewBuilder for item generation:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.SizedBox{
 			Height: 220,
@@ -58,7 +58,7 @@ func buildScrollPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(20),
 		sectionTitle("Scrollable List", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Drag to scroll through 40 items", labelStyle(colors)),
+		widgets.Text{Content: "Drag to scroll through 40 items", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 	)
 
@@ -96,17 +96,17 @@ func listItem(index int, bgColor graphics.Color, colors theme.ColorScheme) core.
 				widgets.Container{
 					Color: colors.Primary,
 					ChildWidget: widgets.PaddingAll(8,
-						widgets.TextOf(itoa(index), graphics.TextStyle{
+						widgets.Text{Content: itoa(index), Style: graphics.TextStyle{
 							Color:    colors.OnPrimary,
 							FontSize: 12,
-						}),
+						}},
 					),
 				},
 				widgets.HSpace(16),
-				widgets.TextOf("List Item "+itoa(index), graphics.TextStyle{
+				widgets.Text{Content: "List Item " + itoa(index), Style: graphics.TextStyle{
 					Color:    colors.OnSurface,
 					FontSize: 16,
-				}),
+				}},
 			),
 		),
 	}

@@ -57,7 +57,7 @@ func TestButton_Tap(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 
 	tapped := false
-	tester.PumpWidget(widgets.ButtonOf("Click", func() { tapped = true }))
+	tester.PumpWidget(widgets.Button{Label: "Click", OnTap: func() { tapped = true }, Haptic: true})
 
 	if err := tester.Tap(drifttest.ByText("Click")); err != nil {
 		t.Fatalf("Tap failed: %v", err)
@@ -73,7 +73,7 @@ func TestButton_Disabled(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 
 	tapped := false
-	tester.PumpWidget(widgets.ButtonOf("Click", func() { tapped = true }).WithDisabled(true))
+	tester.PumpWidget(widgets.Button{Label: "Click", OnTap: func() { tapped = true }, Disabled: true, Haptic: true})
 
 	if err := tester.Tap(drifttest.ByText("Click")); err != nil {
 		t.Fatalf("Tap failed: %v", err)
@@ -88,7 +88,7 @@ func TestButton_Disabled(t *testing.T) {
 func TestButton_Label(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 
-	tester.PumpWidget(widgets.ButtonOf("Submit", nil))
+	tester.PumpWidget(widgets.Button{Label: "Submit"})
 
 	if !tester.Find(drifttest.ByText("Submit")).Exists() {
 		t.Error("expected to find button label text \"Submit\"")
@@ -98,7 +98,7 @@ func TestButton_Label(t *testing.T) {
 func TestButton_WidgetTree(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 
-	tester.PumpWidget(widgets.ButtonOf("OK", nil))
+	tester.PumpWidget(widgets.Button{Label: "OK"})
 
 	if !tester.Find(drifttest.ByType[widgets.GestureDetector]()).Exists() {
 		t.Error("expected GestureDetector in button's widget tree")
@@ -112,7 +112,7 @@ func TestButton_DisabledNilsGesture(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 
 	tapped := false
-	tester.PumpWidget(widgets.ButtonOf("Nope", func() { tapped = true }).WithDisabled(true))
+	tester.PumpWidget(widgets.Button{Label: "Nope", OnTap: func() { tapped = true }, Disabled: true, Haptic: true})
 
 	// GestureDetector is in the tree but OnTap should be nil when disabled
 	if !tester.Find(drifttest.ByType[widgets.GestureDetector]()).Exists() {

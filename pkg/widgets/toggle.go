@@ -6,10 +6,47 @@ import (
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // Toggle is a Skia-rendered toggle switch for on/off states.
+//
+// # Styling Model
+//
+// Toggle is explicit by default — all visual properties use their struct field
+// values directly. A zero value means zero, not "use theme default." For example:
+//
+//   - ActiveColor: 0 means transparent track when on
+//   - Width: 0 means zero width (not rendered)
+//   - Height: 0 means zero height (not rendered)
+//
+// For theme-styled toggles, use [theme.ToggleOf] which pre-fills visual
+// properties from the current theme's [theme.SwitchThemeData].
+//
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.Toggle{
+//	    Value:         isEnabled,
+//	    OnChanged:     func(v bool) { s.SetState(func() { s.isEnabled = v }) },
+//	    ActiveColor:   graphics.RGB(52, 199, 89),
+//	    InactiveColor: graphics.RGB(229, 229, 234),
+//	    ThumbColor:    graphics.ColorWhite,
+//	    Width:         51,
+//	    Height:        31,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.ToggleOf(ctx, isEnabled, onChanged)
+//	// Pre-filled with theme colors and dimensions
+//
+// Toggle is a controlled component - it displays the Value you provide and
+// calls OnChanged when toggled. To change the toggle state, update Value in
+// your state in response to OnChanged.
+//
+// For native platform toggles (UISwitch on iOS, SwitchCompat on Android),
+// use [Switch] instead.
 type Toggle struct {
 	// Value indicates the current on/off state.
 	Value bool
@@ -17,24 +54,28 @@ type Toggle struct {
 	OnChanged func(bool)
 	// Disabled disables interaction when true.
 	Disabled bool
-	// Width controls the overall width.
+	// Width controls the overall width. Zero means zero width (not rendered).
 	Width float64
-	// Height controls the overall height.
+	// Height controls the overall height. Zero means zero height (not rendered).
 	Height float64
-	// ActiveColor is the track color when on.
+	// ActiveColor is the track color when on. Zero means transparent.
 	ActiveColor graphics.Color
-	// InactiveColor is the track color when off.
+	// InactiveColor is the track color when off. Zero means transparent.
 	InactiveColor graphics.Color
-	// ThumbColor is the thumb fill color.
+	// ThumbColor is the thumb fill color. Zero means transparent.
 	ThumbColor graphics.Color
-}
 
-// ToggleOf creates a toggle switch with the given value and change handler.
-// This is a convenience helper equivalent to:
-//
-//	Toggle{Value: value, OnChanged: onChanged}
-func ToggleOf(value bool, onChanged func(bool)) Toggle {
-	return Toggle{Value: value, OnChanged: onChanged}
+	// DisabledActiveColor is the track color when on and disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledActiveColor graphics.Color
+
+	// DisabledInactiveColor is the track color when off and disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledInactiveColor graphics.Color
+
+	// DisabledThumbColor is the thumb color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledThumbColor graphics.Color
 }
 
 func (s Toggle) CreateElement() core.Element {
@@ -46,38 +87,44 @@ func (s Toggle) Key() any {
 }
 
 func (s Toggle) Build(ctx core.BuildContext) core.Widget {
-	themeData := theme.ThemeOf(ctx)
-	switchTheme := themeData.SwitchThemeOf()
-
+	// Use field values directly — zero means zero
 	activeColor := s.ActiveColor
-	if activeColor == 0 {
-		activeColor = switchTheme.ActiveTrackColor
-	}
 	inactiveColor := s.InactiveColor
-	if inactiveColor == 0 {
-		inactiveColor = switchTheme.InactiveTrackColor
-	}
 	thumbColor := s.ThumbColor
-	if thumbColor == 0 {
-		thumbColor = switchTheme.ThumbColor
-	}
 	width := s.Width
-	if width == 0 {
-		width = switchTheme.Width
-	}
 	height := s.Height
-	if height == 0 {
-		height = switchTheme.Height
-	}
 
 	enabled := !s.Disabled && s.OnChanged != nil
+
+	// Apply disabled styling when not enabled (either Disabled=true or OnChanged=nil).
+	// This ensures widgets with nil handlers also appear disabled.
+	useOpacityFallback := false
 	if !enabled {
-		activeColor = switchTheme.DisabledActiveTrackColor
-		inactiveColor = switchTheme.DisabledInactiveTrackColor
-		thumbColor = switchTheme.DisabledThumbColor
+		if s.DisabledActiveColor != 0 || s.DisabledInactiveColor != 0 || s.DisabledThumbColor != 0 {
+			// At least one disabled color set - use explicit disabled styling
+			// Apply 50% alpha to any color without an explicit disabled variant
+			if s.DisabledActiveColor != 0 {
+				activeColor = s.DisabledActiveColor
+			} else {
+				activeColor = activeColor.WithAlpha(128)
+			}
+			if s.DisabledInactiveColor != 0 {
+				inactiveColor = s.DisabledInactiveColor
+			} else {
+				inactiveColor = inactiveColor.WithAlpha(128)
+			}
+			if s.DisabledThumbColor != 0 {
+				thumbColor = s.DisabledThumbColor
+			} else {
+				thumbColor = thumbColor.WithAlpha(128)
+			}
+		} else {
+			// No disabled colors set - use opacity fallback
+			useOpacityFallback = true
+		}
 	}
 
-	return toggleRender{
+	var result core.Widget = toggleRender{
 		value:         s.Value,
 		onChanged:     s.OnChanged,
 		enabled:       enabled,
@@ -87,6 +134,13 @@ func (s Toggle) Build(ctx core.BuildContext) core.Widget {
 		inactiveColor: inactiveColor,
 		thumbColor:    thumbColor,
 	}
+
+	// Fall back to opacity if no disabled colors provided
+	if useOpacityFallback {
+		result = Opacity{Opacity: 0.5, ChildWidget: result}
+	}
+
+	return result
 }
 
 type toggleRender struct {
@@ -151,12 +205,6 @@ func (r *renderToggle) PerformLayout() {
 	constraints := r.Constraints()
 	width := r.width
 	height := r.height
-	if width == 0 {
-		width = 44
-	}
-	if height == 0 {
-		height = 26
-	}
 	width = min(max(width, constraints.MinWidth), constraints.MaxWidth)
 	height = min(max(height, constraints.MinHeight), constraints.MaxHeight)
 	r.SetSize(graphics.Size{Width: width, Height: height})

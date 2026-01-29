@@ -74,12 +74,12 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 			widgets.MainAxisSizeMin,
 
 			// AnimatedContainer section
-			widgets.TextOf("AnimatedContainer", textTheme.TitleLarge),
+			widgets.Text{Content: "AnimatedContainer", Style: textTheme.TitleLarge},
 			widgets.VSpace(8),
-			widgets.TextOf("Automatically animates size, color, and padding changes", graphics.TextStyle{
+			widgets.Text{Content: "Automatically animates size, color, and padding changes", Style: graphics.TextStyle{
 				Color:    colors.OnSurfaceVariant,
 				FontSize: 14,
-			}),
+			}},
 			widgets.VSpace(16),
 
 			// AnimatedContainer demo
@@ -90,11 +90,11 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 				Height:    containerHeight,
 				Color:     currentColor,
 				Alignment: layout.AlignmentCenter,
-				ChildWidget: widgets.TextOf("Tap buttons", graphics.TextStyle{
+				ChildWidget: widgets.Text{Content: "Tap buttons", Style: graphics.TextStyle{
 					Color:      colors.OnPrimary,
 					FontSize:   14,
 					FontWeight: graphics.FontWeightBold,
-				}),
+				}},
 			},
 			widgets.VSpace(16),
 
@@ -103,32 +103,44 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 				widgets.MainAxisAlignmentCenter,
 				widgets.CrossAxisAlignmentCenter,
 				widgets.MainAxisSizeMax,
-				widgets.ButtonOf("Toggle Size", func() {
-					s.SetState(func() {
-						s.containerExpanded = !s.containerExpanded
-					})
-				}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
-					WithPadding(layout.EdgeInsetsSymmetric(16, 10)).
-					WithFontSize(14),
+				widgets.Button{
+					Label: "Toggle Size",
+					OnTap: func() {
+						s.SetState(func() {
+							s.containerExpanded = !s.containerExpanded
+						})
+					},
+					Color:     colors.SurfaceVariant,
+					TextColor: colors.OnSurfaceVariant,
+					Padding:   layout.EdgeInsetsSymmetric(16, 10),
+					FontSize:  14,
+					Haptic:    true,
+				},
 				widgets.HSpace(12),
-				widgets.ButtonOf("Change Color", func() {
-					s.SetState(func() {
-						s.containerColorIdx++
-					})
-				}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
-					WithPadding(layout.EdgeInsetsSymmetric(16, 10)).
-					WithFontSize(14),
+				widgets.Button{
+					Label: "Change Color",
+					OnTap: func() {
+						s.SetState(func() {
+							s.containerColorIdx++
+						})
+					},
+					Color:     colors.SurfaceVariant,
+					TextColor: colors.OnSurfaceVariant,
+					Padding:   layout.EdgeInsetsSymmetric(16, 10),
+					FontSize:  14,
+					Haptic:    true,
+				},
 			),
 
 			widgets.VSpace(40),
 
 			// AnimatedOpacity section
-			widgets.TextOf("AnimatedOpacity", textTheme.TitleLarge),
+			widgets.Text{Content: "AnimatedOpacity", Style: textTheme.TitleLarge},
 			widgets.VSpace(8),
-			widgets.TextOf("Smoothly fades widgets in and out", graphics.TextStyle{
+			widgets.Text{Content: "Smoothly fades widgets in and out", Style: graphics.TextStyle{
 				Color:    colors.OnSurfaceVariant,
 				FontSize: 14,
-			}),
+			}},
 			widgets.VSpace(16),
 
 			// AnimatedOpacity demo
@@ -141,23 +153,29 @@ func (s *animationsDemoState) Build(ctx core.BuildContext) core.Widget {
 					Height:    80,
 					Color:     colors.Secondary,
 					Alignment: layout.AlignmentCenter,
-					ChildWidget: widgets.TextOf("Fade me!", graphics.TextStyle{
+					ChildWidget: widgets.Text{Content: "Fade me!", Style: graphics.TextStyle{
 						Color:      colors.OnSecondary,
 						FontSize:   16,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 				},
 			},
 			widgets.VSpace(16),
 
 			// Control for AnimatedOpacity
-			widgets.ButtonOf("Toggle Visibility", func() {
-				s.SetState(func() {
-					s.opacityVisible = !s.opacityVisible
-				})
-			}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
-				WithPadding(layout.EdgeInsetsSymmetric(20, 12)).
-				WithFontSize(14),
+			widgets.Button{
+				Label: "Toggle Visibility",
+				OnTap: func() {
+					s.SetState(func() {
+						s.opacityVisible = !s.opacityVisible
+					})
+				},
+				Color:     colors.SurfaceVariant,
+				TextColor: colors.OnSurfaceVariant,
+				Padding:   layout.EdgeInsetsSymmetric(20, 12),
+				FontSize:  14,
+				Haptic:    true,
+			},
 
 			widgets.VSpace(40),
 		),

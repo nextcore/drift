@@ -39,16 +39,16 @@ func buildThemingPage(ctx core.BuildContext, isDark bool, isCupertino bool) core
 					widgets.MainAxisAlignmentStart,
 					widgets.CrossAxisAlignmentCenter,
 					widgets.MainAxisSizeMin,
-					widgets.TextOf(modeLabel, graphics.TextStyle{
+					widgets.Text{Content: modeLabel, Style: graphics.TextStyle{
 						Color:      colors.OnPrimary,
 						FontSize:   18,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(4),
-					widgets.TextOf(platformLabel, graphics.TextStyle{
+					widgets.Text{Content: platformLabel, Style: graphics.TextStyle{
 						Color:    colors.OnPrimary,
 						FontSize: 14,
-					}),
+					}},
 				),
 			),
 		},
@@ -83,32 +83,32 @@ func buildThemingPage(ctx core.BuildContext, isDark bool, isCupertino bool) core
 		// Text theme section
 		sectionTitle("Text Theme", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("HeadlineLarge", textTheme.HeadlineLarge),
+		widgets.Text{Content: "HeadlineLarge", Style: textTheme.HeadlineLarge},
 		widgets.VSpace(8),
-		widgets.TextOf("HeadlineMedium", textTheme.HeadlineMedium),
+		widgets.Text{Content: "HeadlineMedium", Style: textTheme.HeadlineMedium},
 		widgets.VSpace(8),
-		widgets.TextOf("HeadlineSmall", textTheme.HeadlineSmall),
+		widgets.Text{Content: "HeadlineSmall", Style: textTheme.HeadlineSmall},
 		widgets.VSpace(8),
-		widgets.TextOf("TitleLarge", textTheme.TitleLarge),
+		widgets.Text{Content: "TitleLarge", Style: textTheme.TitleLarge},
 		widgets.VSpace(8),
-		widgets.TextOf("TitleMedium", textTheme.TitleMedium),
+		widgets.Text{Content: "TitleMedium", Style: textTheme.TitleMedium},
 		widgets.VSpace(8),
-		widgets.TextOf("BodyLarge", textTheme.BodyLarge),
+		widgets.Text{Content: "BodyLarge", Style: textTheme.BodyLarge},
 		widgets.VSpace(8),
-		widgets.TextOf("BodyMedium", textTheme.BodyMedium),
+		widgets.Text{Content: "BodyMedium", Style: textTheme.BodyMedium},
 		widgets.VSpace(8),
-		widgets.TextOf("LabelLarge", textTheme.LabelLarge),
+		widgets.Text{Content: "LabelLarge", Style: textTheme.LabelLarge},
 		widgets.VSpace(24),
 
 		// Gradient text section
 		sectionTitle("Gradient Text", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Gradient headlines", graphics.TextStyle{
+		widgets.Text{Content: "Gradient headlines", Style: graphics.TextStyle{
 			Color:      colors.OnSurface,
 			Gradient:   gradientText,
 			FontSize:   28,
 			FontWeight: graphics.FontWeightBold,
-		}),
+		}},
 	}
 
 	// Add Cupertino colors section if Cupertino theme is active
@@ -148,14 +148,14 @@ func colorSwatch(name string, bg, fg graphics.Color) core.Widget {
 				widgets.MainAxisAlignmentSpaceBetween,
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMax,
-				widgets.TextOf(name, graphics.TextStyle{
+				widgets.Text{Content: name, Style: graphics.TextStyle{
 					Color:    fg,
 					FontSize: 16,
-				}),
-				widgets.TextOf(colorHex(bg), graphics.TextStyle{
+				}},
+				widgets.Text{Content: colorHex(bg), Style: graphics.TextStyle{
 					Color:    fg,
 					FontSize: 12,
-				}),
+				}},
 			),
 		),
 	}

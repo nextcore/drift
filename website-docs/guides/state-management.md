@@ -39,7 +39,7 @@ func (s *counterState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Column{
         ChildrenWidgets: []core.Widget{
             widgets.Text{Content: fmt.Sprintf("Count: %d", s.count)},
-            widgets.ButtonOf("Increment", func() {
+            theme.ButtonOf(ctx, "Increment", func() {
                 s.SetState(func() {
                     s.count++
                 })
@@ -126,7 +126,7 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Column{
         ChildrenWidgets: []core.Widget{
             widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Get())},
-            widgets.ButtonOf("Increment", func() {
+            theme.ButtonOf(ctx, "Increment", func() {
                 s.count.Set(s.count.Get() + 1) // Automatically triggers rebuild
             }),
         },

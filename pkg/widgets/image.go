@@ -17,6 +17,18 @@ import (
 // Image accepts a Go [image.Image] as its Source. The image is rendered using
 // the specified Fit mode to control scaling behavior.
 //
+// # Creation Pattern
+//
+// Use struct literal:
+//
+//	widgets.Image{
+//	    Source:        loadedImage,
+//	    Width:         200,
+//	    Height:        150,
+//	    Fit:           widgets.ImageFitCover,
+//	    SemanticLabel: "Product photo",
+//	}
+//
 // # Image Fit Modes
 //
 //   - ImageFitFill: Stretches the image to completely fill the box (may distort)
@@ -24,16 +36,6 @@ import (
 //   - ImageFitCover: Scales to cover the box while maintaining aspect ratio (may crop)
 //   - ImageFitNone: Uses the image's intrinsic size
 //   - ImageFitScaleDown: Like Contain, but never scales up
-//
-// Example:
-//
-//	Image{
-//	    Source:        loadedImage,
-//	    Width:         200,
-//	    Height:        150,
-//	    Fit:           ImageFitCover,
-//	    SemanticLabel: "Product photo",
-//	}
 //
 // For decorative images that don't convey information, set ExcludeFromSemantics
 // to true to hide them from screen readers.
@@ -87,14 +89,6 @@ func (f ImageFit) String() string {
 	default:
 		return fmt.Sprintf("ImageFit(%d)", int(f))
 	}
-}
-
-// ImageOf creates an image widget with the given source.
-// This is a convenience helper equivalent to:
-//
-//	Image{Source: source}
-func ImageOf(source image.Image) Image {
-	return Image{Source: source}
 }
 
 // WithFit returns a copy of the image with the specified fit mode.

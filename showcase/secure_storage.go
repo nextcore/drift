@@ -116,14 +116,26 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(16),
 
 		// Action buttons
-		widgets.ButtonOf("Save to Secure Storage", func() {
-			s.saveValue()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Save to Secure Storage",
+			OnTap: func() {
+				s.saveValue()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Save with Biometric", func() {
-			s.saveWithBiometric()
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Save with Biometric",
+			OnTap: func() {
+				s.saveWithBiometric()
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(16),
 
 		statusCard(s.statusText.Get(), colors),
@@ -132,14 +144,26 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		// Retrieve section
 		sectionTitle("Retrieve Value", colors),
 		widgets.VSpace(12),
-		widgets.ButtonOf("Get from Secure Storage", func() {
-			s.getValue()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Get from Secure Storage",
+			OnTap: func() {
+				s.getValue()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Check if Key Exists", func() {
-			s.checkExists()
-		}).WithColor(colors.Tertiary, colors.OnTertiary),
+		widgets.Button{
+			Label: "Check if Key Exists",
+			OnTap: func() {
+				s.checkExists()
+			},
+			Color:     colors.Tertiary,
+			TextColor: colors.OnTertiary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
 		retrievedValueCard(s.storedValue.Get(), colors),
@@ -148,14 +172,26 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 		// Management section
 		sectionTitle("Manage Storage", colors),
 		widgets.VSpace(12),
-		widgets.ButtonOf("Delete Key", func() {
-			s.deleteValue()
-		}).WithColor(colors.Error, colors.OnError),
+		widgets.Button{
+			Label: "Delete Key",
+			OnTap: func() {
+				s.deleteValue()
+			},
+			Color:     colors.Error,
+			TextColor: colors.OnError,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("List All Keys", func() {
-			s.listKeys()
-		}).WithColor(colors.SurfaceContainerHigh, colors.OnSurface),
+		widgets.Button{
+			Label: "List All Keys",
+			OnTap: func() {
+				s.listKeys()
+			},
+			Color:     colors.SurfaceContainerHigh,
+			TextColor: colors.OnSurface,
+			Haptic:    true,
+		},
 		widgets.VSpace(40),
 	)
 }
@@ -306,16 +342,16 @@ func retrievedValueCard(value string, colors theme.ColorScheme) core.Widget {
 				widgets.MainAxisAlignmentStart,
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMin,
-				widgets.TextOf("Retrieved Value:", graphics.TextStyle{
+				widgets.Text{Content: "Retrieved Value:", Style: graphics.TextStyle{
 					Color:      colors.OnSurfaceVariant,
 					FontSize:   12,
 					FontWeight: graphics.FontWeightBold,
-				}),
+				}},
 				widgets.VSpace(4),
-				widgets.TextOf(displayValue, graphics.TextStyle{
+				widgets.Text{Content: displayValue, Style: graphics.TextStyle{
 					Color:    colors.OnSurface,
 					FontSize: 16,
-				}),
+				}},
 			),
 		),
 	}

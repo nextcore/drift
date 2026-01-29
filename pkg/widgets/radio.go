@@ -7,10 +7,37 @@ import (
 	"github.com/go-drift/drift/pkg/gestures"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // Radio renders a single radio button that is part of a mutually exclusive group.
+//
+// # Styling Model
+//
+// Radio is explicit by default — all visual properties use their struct field
+// values directly. A zero value means zero, not "use theme default." For example:
+//
+//   - ActiveColor: 0 means transparent inner dot when selected
+//   - Size: 0 means zero size (not rendered)
+//
+// For theme-styled radio buttons, use [theme.RadioOf] which pre-fills visual
+// properties from the current theme's [theme.RadioThemeData].
+//
+// # Creation Patterns
+//
+// Explicit with struct literal (full control):
+//
+//	widgets.Radio[string]{
+//	    Value:       "small",
+//	    GroupValue:  selectedSize,
+//	    OnChanged:   func(v string) { s.SetState(func() { s.selectedSize = v }) },
+//	    ActiveColor: graphics.RGB(33, 150, 243),
+//	    Size:        24,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.RadioOf(ctx, "small", selectedSize, onChanged)
+//	// Pre-filled with theme colors and size
 //
 // Radio is a generic widget where T is the type of the selection value. Each Radio
 // in a group has its own Value, and all share the same GroupValue (the current
@@ -34,8 +61,6 @@ import (
 //	        Text{Content: "Large"},
 //	    }},
 //	}}
-//
-// The radio automatically uses colors from the current [theme.RadioTheme].
 type Radio[T any] struct {
 	// Value is the value for this radio.
 	Value T
@@ -45,14 +70,22 @@ type Radio[T any] struct {
 	OnChanged func(T)
 	// Disabled disables interaction when true.
 	Disabled bool
-	// Size controls the radio diameter.
+	// Size controls the radio diameter. Zero means zero size (not rendered).
 	Size float64
-	// ActiveColor is the selected fill color.
+	// ActiveColor is the selected inner dot color. Zero means transparent.
 	ActiveColor graphics.Color
-	// InactiveColor is the unselected border color.
+	// InactiveColor is the unselected border color. Zero means transparent.
 	InactiveColor graphics.Color
-	// BackgroundColor is the fill color when unselected.
+	// BackgroundColor is the fill color when unselected. Zero means transparent.
 	BackgroundColor graphics.Color
+
+	// DisabledActiveColor is the selected inner dot color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledActiveColor graphics.Color
+
+	// DisabledInactiveColor is the unselected border color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledInactiveColor graphics.Color
 }
 
 func (r Radio[T]) CreateElement() core.Element {
@@ -64,35 +97,39 @@ func (r Radio[T]) Key() any {
 }
 
 func (r Radio[T]) Build(ctx core.BuildContext) core.Widget {
-	themeData := theme.ThemeOf(ctx)
-	radioTheme := themeData.RadioThemeOf()
-
+	// Use field values directly — zero means zero
 	activeColor := r.ActiveColor
-	if activeColor == 0 {
-		activeColor = radioTheme.ActiveColor
-	}
 	inactiveColor := r.InactiveColor
-	if inactiveColor == 0 {
-		inactiveColor = radioTheme.InactiveColor
-	}
 	backgroundColor := r.BackgroundColor
-	if backgroundColor == 0 {
-		backgroundColor = radioTheme.BackgroundColor
-	}
 	size := r.Size
-	if size == 0 {
-		size = radioTheme.Size
-	}
 
 	enabled := !r.Disabled && r.OnChanged != nil
 	selected := reflect.DeepEqual(r.Value, r.GroupValue)
+
+	// Apply disabled styling when not enabled (either Disabled=true or OnChanged=nil).
+	// This ensures widgets with nil handlers also appear disabled.
+	useOpacityFallback := false
 	if !enabled {
-		activeColor = radioTheme.DisabledActiveColor
-		inactiveColor = radioTheme.DisabledInactiveColor
-		// backgroundColor stays as-is for unselected state
+		if r.DisabledActiveColor != 0 || r.DisabledInactiveColor != 0 {
+			// At least one disabled color set - use explicit disabled styling
+			// Apply 50% alpha to any color without an explicit disabled variant
+			if r.DisabledActiveColor != 0 {
+				activeColor = r.DisabledActiveColor
+			} else {
+				activeColor = activeColor.WithAlpha(128)
+			}
+			if r.DisabledInactiveColor != 0 {
+				inactiveColor = r.DisabledInactiveColor
+			} else {
+				inactiveColor = inactiveColor.WithAlpha(128)
+			}
+		} else {
+			// No disabled colors set - use opacity fallback
+			useOpacityFallback = true
+		}
 	}
 
-	return radioRender[T]{
+	var result core.Widget = radioRender[T]{
 		selected:        selected,
 		onChanged:       r.OnChanged,
 		value:           r.Value,
@@ -102,6 +139,13 @@ func (r Radio[T]) Build(ctx core.BuildContext) core.Widget {
 		inactiveColor:   inactiveColor,
 		backgroundColor: backgroundColor,
 	}
+
+	// Fall back to opacity if no disabled colors provided
+	if useOpacityFallback {
+		result = Opacity{Opacity: 0.5, ChildWidget: result}
+	}
+
+	return result
 }
 
 type radioRender[T any] struct {
@@ -165,9 +209,6 @@ func (r *renderRadio[T]) update(c radioRender[T]) {
 func (r *renderRadio[T]) PerformLayout() {
 	constraints := r.Constraints()
 	size := r.size
-	if size == 0 {
-		size = 20
-	}
 	size = min(max(size, constraints.MinWidth), constraints.MaxWidth)
 	size = min(max(size, constraints.MinHeight), constraints.MaxHeight)
 	r.SetSize(graphics.Size{Width: size, Height: size})

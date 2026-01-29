@@ -106,7 +106,7 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Permissions",
 		sectionTitle("Runtime Permissions", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Check and request app permissions:", labelStyle(colors)),
+		widgets.Text{Content: "Check and request app permissions:", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 
 		widgets.Column{
@@ -122,12 +122,18 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 
 		sectionTitle("Settings", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Open app settings to manage permissions:", labelStyle(colors)),
+		widgets.Text{Content: "Open app settings to manage permissions:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 
-		widgets.ButtonOf("Open Settings", func() {
-			s.openSettings()
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Open Settings",
+			OnTap: func() {
+				s.openSettings()
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(40),
 	)
 }
@@ -145,11 +151,11 @@ func (s *permissionsState) permissionRow(name string, status platform.Permission
 						CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
 						MainAxisSize:       widgets.MainAxisSizeMin,
 						ChildrenWidgets: []core.Widget{
-							widgets.TextOf(name, graphics.TextStyle{
+							widgets.Text{Content: name, Style: graphics.TextStyle{
 								Color:      colors.OnSurface,
 								FontSize:   16,
 								FontWeight: graphics.FontWeightSemibold,
-							}),
+							}},
 							widgets.VSpace(4),
 							s.statusBadge(status, colors),
 						},
@@ -197,10 +203,10 @@ func (s *permissionsState) statusBadge(status platform.PermissionResult, colors 
 		BorderRadius: 4,
 		ChildWidget: widgets.Padding{
 			Padding: layout.EdgeInsetsSymmetric(8, 4),
-			ChildWidget: widgets.TextOf(label, graphics.TextStyle{
+			ChildWidget: widgets.Text{Content: label, Style: graphics.TextStyle{
 				Color:    textColor,
 				FontSize: 12,
-			}),
+			}},
 		},
 	}
 }

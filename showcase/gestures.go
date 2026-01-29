@@ -53,7 +53,7 @@ func (s *gesturesDemoState) Build(ctx core.BuildContext) core.Widget {
 		// Section 1: Pan Gesture (omnidirectional)
 		sectionTitle("Pan Gesture", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Drag in any direction:", labelStyle(colors)),
+		widgets.Text{Content: "Drag in any direction:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		s.buildPanDemo(colors),
 		widgets.VSpace(24),
@@ -61,7 +61,7 @@ func (s *gesturesDemoState) Build(ctx core.BuildContext) core.Widget {
 		// Section 2: Horizontal Drag
 		sectionTitle("Horizontal Drag", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Only responds to horizontal drags:", labelStyle(colors)),
+		widgets.Text{Content: "Only responds to horizontal drags:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		s.buildHorizontalSlider(colors),
 		widgets.VSpace(24),
@@ -69,7 +69,7 @@ func (s *gesturesDemoState) Build(ctx core.BuildContext) core.Widget {
 		// Section 3: Vertical Drag
 		sectionTitle("Vertical Drag", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Only responds to vertical drags:", labelStyle(colors)),
+		widgets.Text{Content: "Only responds to vertical drags:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		s.buildVerticalDemo(colors),
 		widgets.VSpace(24),
@@ -77,7 +77,7 @@ func (s *gesturesDemoState) Build(ctx core.BuildContext) core.Widget {
 		// Section 4: Axis Competition
 		sectionTitle("Axis Competition", colors),
 		widgets.VSpace(8),
-		widgets.TextOf("Horizontal swipe on card inside vertical scroll - card moves, scroll doesn't:", labelStyle(colors)),
+		widgets.Text{Content: "Horizontal swipe on card inside vertical scroll - card moves, scroll doesn't:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		s.buildSwipeCard(colors),
 		widgets.VSpace(40),
@@ -127,10 +127,10 @@ func (s *gesturesDemoState) buildPanDemo(colors theme.ColorScheme) core.Widget {
 								Width:  boxSize,
 								Height: boxSize,
 								ChildWidget: widgets.Center{
-									ChildWidget: widgets.TextOf("Drag me", graphics.TextStyle{
+									ChildWidget: widgets.Text{Content: "Drag me", Style: graphics.TextStyle{
 										Color:    colors.OnPrimary,
 										FontSize: 12,
-									}),
+									}},
 								},
 							},
 						}),
@@ -186,7 +186,7 @@ func (s *gesturesDemoState) buildHorizontalSlider(colors theme.ColorScheme) core
 				},
 			},
 			widgets.VSpace(8),
-			widgets.TextOf("Value: "+itoa(int(((s.sliderX-thumbSize/2)/(trackWidth-thumbSize))*100))+"%", labelStyle(colors)),
+			widgets.Text{Content: "Value: " + itoa(int(((s.sliderX-thumbSize/2)/(trackWidth-thumbSize))*100)) + "%", Style: labelStyle(colors)},
 		},
 	}
 }
@@ -220,10 +220,10 @@ func (s *gesturesDemoState) buildVerticalDemo(colors theme.ColorScheme) core.Wid
 								Width:  boxWidth,
 								Height: boxHeight,
 								ChildWidget: widgets.Center{
-									ChildWidget: widgets.TextOf("Drag up/down", graphics.TextStyle{
+									ChildWidget: widgets.Text{Content: "Drag up/down", Style: graphics.TextStyle{
 										Color:    colors.OnSecondary,
 										FontSize: 12,
-									}),
+									}},
 								},
 							},
 						}),
@@ -258,10 +258,10 @@ func (s *gesturesDemoState) buildSwipeCard(colors theme.ColorScheme) core.Widget
 								CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 								MainAxisSize:       widgets.MainAxisSizeMax,
 								ChildrenWidgets: []core.Widget{
-									widgets.TextOf("Swipe", graphics.TextStyle{
+									widgets.Text{Content: "Swipe", Style: graphics.TextStyle{
 										Color:    colors.OnError,
 										FontSize: 14,
-									}),
+									}},
 								},
 							},
 						},
@@ -294,10 +294,10 @@ func (s *gesturesDemoState) buildSwipeCard(colors theme.ColorScheme) core.Widget
 								Height: cardHeight,
 								ChildWidget: widgets.Padding{
 									Padding: layout.EdgeInsetsAll(16),
-									ChildWidget: widgets.TextOf("Swipe me left", graphics.TextStyle{
+									ChildWidget: widgets.Text{Content: "Swipe me left", Style: graphics.TextStyle{
 										Color:    colors.OnSurface,
 										FontSize: 14,
-									}),
+									}},
 								},
 							},
 						},

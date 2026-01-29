@@ -54,14 +54,23 @@ Drift has three types of widgets:
 
 ## Creating Widgets
 
-### Struct Literals
+Most Drift widgets are **explicit by default** — zero values mean zero, not "use theme default."
+There are three patterns for creating widgets:
 
-Use struct literals when fields are self-documenting:
+### 1. Struct Literals (Full Control)
+
+Use struct literals when you want complete control over all properties:
 
 ```go
+_, colors, _ := theme.UseTheme(ctx)
+
 button := widgets.Button{
-    Label: "Submit",
-    OnTap: handleSubmit,
+    Label:        "Submit",
+    OnTap:        handleSubmit,
+    Color:        colors.Primary,
+    TextColor:    colors.OnPrimary,
+    Padding:      layout.EdgeInsetsSymmetric(24, 14),
+    BorderRadius: 8,
 }
 
 text := widgets.Text{
@@ -70,17 +79,11 @@ text := widgets.Text{
 }
 ```
 
-### Helper Functions
+### 2. Layout Helpers
 
-Use helpers when sensible defaults improve ergonomics:
+Layout helpers like `ColumnOf`, `RowOf`, and `Centered` remain for ergonomics:
 
 ```go
-// ButtonOf applies defaults (haptic feedback enabled)
-button := widgets.ButtonOf("Submit", handleSubmit)
-
-// TextOf is concise for styled text (Wrap defaults to true)
-title := widgets.TextOf("Welcome", textTheme.HeadlineLarge)
-
 // Centered wraps a child in a Center widget
 centered := widgets.Centered(child)
 
@@ -94,23 +97,62 @@ col := widgets.ColumnOf(
 )
 ```
 
-### Builder Pattern
+### 3. `theme.XxxOf(ctx, ...)` (Themed)
 
-Chain methods when you need to override defaults:
+Use themed constructors to read visual properties from the current theme.
+This is the recommended approach for apps that want consistent theming:
 
 ```go
-button := widgets.ButtonOf("Submit", onSubmit).
-    WithColor(colors.Primary, colors.OnPrimary).
-    WithFontSize(18).
-    WithPadding(layout.EdgeInsetsSymmetric(32, 16))
+// Reads colors, padding, font size, border radius from ButtonThemeData
+button := theme.ButtonOf(ctx, "Submit", handleSubmit)
 
-container := widgets.Container{
-    Color:     colors.Surface,
-    Padding:   layout.EdgeInsetsAll(20),
-    Alignment: layout.AlignmentCenter,
-    ChildWidget: child,
-}
+// Themed checkbox with theme colors
+checkbox := theme.CheckboxOf(ctx, isChecked, func(v bool) {
+    s.SetState(func() { isChecked = v })
+})
+
+// Themed dropdown
+dropdown := theme.DropdownOf(ctx, selected, items, func(v string) {
+    s.SetState(func() { selected = v })
+})
 ```
+
+### Builder Pattern (Overrides)
+
+Chain `.WithX()` methods to override specific theme values. Zero values are honored:
+
+```go
+// Themed button with custom border radius (zero = sharp corners)
+button := theme.ButtonOf(ctx, "Submit", onSubmit).
+    WithBorderRadius(0).
+    WithPadding(layout.EdgeInsetsSymmetric(32, 16))
+```
+
+### When to Use What
+
+| Pattern | When to Use |
+|---------|-------------|
+| `theme.XxxOf(ctx, ...)` | Most apps — consistent theme styling |
+| Struct literal | Full control, or widgets without themed constructors |
+
+### Explicit Styling Requirements
+
+Explicit widgets only render what you set. If colors, sizes, or text styles are zero,
+the widget can be invisible or collapsed. Common cases that require full styling:
+
+- `TextField` / `TextInput`: set `Height`, `Padding`, `BackgroundColor`, `BorderColor`,
+  `FocusColor`, `BorderWidth`, `Style` (FontSize + Color), and `PlaceholderColor`.
+- `Dropdown`: set `BackgroundColor`, `BorderColor`, `TextStyle.Color`, and
+  `SelectedItemColor` if you want a visible selected-row highlight.
+- `DatePicker` / `TimePicker`: set `TextStyle` and `Decoration` colors
+  (`BorderColor`, `BackgroundColor`, hint/label styles) for explicit usage.
+
+If you want defaults from the theme, prefer `theme.XxxOf(ctx, ...)`.
+
+### Disabled Styling
+
+Themed widgets use disabled colors from theme data. Explicit widgets without
+`DisabledXxxColor` fields fall back to a 0.5 opacity wrapper when disabled.
 
 ## Available Widgets
 
@@ -214,7 +256,7 @@ func (g Greeting) CreateElement() core.Element {
 func (g Greeting) Key() any { return nil }
 
 func (g Greeting) Build(ctx core.BuildContext) core.Widget {
-    return widgets.TextOf("Hello, "+g.Name, theme.TextThemeOf(ctx).BodyLarge)
+    return widgets.Text{Content: "Hello, " + g.Name, Style: theme.TextThemeOf(ctx).BodyLarge}
 }
 ```
 
@@ -245,14 +287,11 @@ func (s *counterState) InitState() {
 }
 
 func (s *counterState) Build(ctx core.BuildContext) core.Widget {
-    return widgets.ButtonOf(
-        fmt.Sprintf("Count: %d", s.count),
-        func() {
-            s.SetState(func() {
-                s.count++
-            })
-        },
-    )
+    return theme.ButtonOf(ctx, fmt.Sprintf("Count: %d", s.count), func() {
+        s.SetState(func() {
+            s.count++
+        })
+    })
 }
 ```
 
@@ -290,9 +329,7 @@ func buildHomeScreen(ctx core.BuildContext) core.Widget {
             return widgets.Column{
                 ChildrenWidgets: []core.Widget{
                     widgets.Text{Content: "Failed to load home screen"},
-                    widgets.ButtonOf("Retry", func() {
-                        // Trigger rebuild
-                    }),
+                    theme.ButtonOf(ctx, "Retry", func() { /* Trigger rebuild */ }),
                 },
             }
         },

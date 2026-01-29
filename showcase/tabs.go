@@ -75,14 +75,20 @@ func buildTabRootPage(ctx core.BuildContext, label string) core.Widget {
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMin,
 
-				widgets.TextOf(label+" Tab", textTheme.HeadlineMedium),
+				widgets.Text{Content: label+" Tab", Style: textTheme.HeadlineMedium},
 				widgets.VSpace(16),
-				widgets.ButtonOf("Open details", func() {
-					nav := navigation.NavigatorOf(ctx)
-					if nav != nil {
-						nav.PushNamed("/detail", nil)
-					}
-				}).WithColor(colors.Primary, colors.OnPrimary),
+				widgets.Button{
+					Label: "Open details",
+					OnTap: func() {
+						nav := navigation.NavigatorOf(ctx)
+						if nav != nil {
+							nav.PushNamed("/detail", nil)
+						}
+					},
+					Color:     colors.Primary,
+					TextColor: colors.OnPrimary,
+					Haptic:    true,
+				},
 			),
 		),
 	}
@@ -94,7 +100,7 @@ func buildTabDetailPage(ctx core.BuildContext, label string) core.Widget {
 	content := widgets.Container{
 		Color: colors.Background,
 		ChildWidget: widgets.Centered(
-			widgets.TextOf("Detail view for "+label, textTheme.BodyLarge),
+			widgets.Text{Content: "Detail view for "+label, Style: textTheme.BodyLarge},
 		),
 	}
 

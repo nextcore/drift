@@ -78,12 +78,16 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
         },
         widgets.VSpace(24),
 
-        widgets.ButtonOf("Submit", func() {
-            if form.Validate() {
-                form.Save()
-                // Use f.parent.email and f.parent.password
-            }
-        }),
+        widgets.Button{
+            Label: "Submit",
+            OnTap: func() {
+                if form.Validate() {
+                    form.Save()
+                    // Use f.parent.email and f.parent.password
+                }
+            },
+            Haptic: true,
+        },
     )
 }
 ```
@@ -111,11 +115,23 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
 
 ## Selection Controls
 
+Selection controls can be created explicitly or with themed constructors from `pkg/theme`.
+
 ### Checkbox
 
 ```go
+// Themed checkbox (recommended)
+theme.CheckboxOf(ctx, isChecked, func(value bool) {
+    s.SetState(func() {
+        isChecked = value
+    })
+})
+
+// Explicit checkbox
 widgets.Checkbox{
-    Value: isChecked,
+    Value:       isChecked,
+    ActiveColor: colors.Primary,
+    CheckColor:  colors.OnPrimary,
     OnChanged: func(value bool) {
         s.SetState(func() {
             isChecked = value
@@ -129,7 +145,7 @@ widgets.Checkbox{
 `Switch` uses native platform controls (UISwitch/SwitchCompat). `Toggle` is Drift-rendered.
 
 ```go
-// Native switch
+// Native switch (no themed constructor - use struct literal)
 widgets.Switch{
     Value:       isEnabled,
     OnTintColor: colors.Primary,
@@ -140,9 +156,18 @@ widgets.Switch{
     },
 }
 
-// Drift-rendered toggle
+// Themed toggle (Drift-rendered)
+theme.ToggleOf(ctx, isEnabled, func(value bool) {
+    s.SetState(func() {
+        isEnabled = value
+    })
+})
+
+// Explicit toggle
 widgets.Toggle{
-    Value: isEnabled,
+    Value:         isEnabled,
+    ActiveColor:   colors.Primary,
+    InactiveColor: colors.SurfaceVariant,
     OnChanged: func(value bool) {
         s.SetState(func() {
             isEnabled = value
@@ -154,9 +179,18 @@ widgets.Toggle{
 ### Radio
 
 ```go
+// Themed radio (recommended)
+theme.RadioOf(ctx, "email", selectedOption, func(value string) {
+    s.SetState(func() {
+        selectedOption = value
+    })
+})
+
+// Explicit radio
 widgets.Radio[string]{
-    Value:      "email",
-    GroupValue: selectedOption,
+    Value:       "email",
+    GroupValue:  selectedOption,
+    ActiveColor: colors.Primary,
     OnChanged: func(value string) {
         s.SetState(func() {
             selectedOption = value
@@ -168,6 +202,18 @@ widgets.Radio[string]{
 ### Dropdown
 
 ```go
+// Themed dropdown (recommended)
+theme.DropdownOf(ctx, selectedPlan, []widgets.DropdownItem[string]{
+    {Value: "starter", Label: "Starter"},
+    {Value: "pro", Label: "Pro"},
+    {Value: "enterprise", Label: "Enterprise"},
+}, func(value string) {
+    s.SetState(func() {
+        selectedPlan = value
+    })
+}).WithBorderRadius(8)
+
+// Explicit dropdown
 widgets.Dropdown[string]{
     Value: selectedPlan,
     Hint:  "Select a plan",
@@ -181,7 +227,10 @@ widgets.Dropdown[string]{
             selectedPlan = value
         })
     },
-    BorderRadius: 8,
+    BackgroundColor: colors.Surface,
+    BorderColor:     colors.Outline,
+    BorderRadius:    8,
+    SelectedItemColor: colors.SurfaceVariant,
 }
 ```
 
@@ -192,17 +241,26 @@ Native modal pickers for date and time selection.
 ### DatePicker
 
 ```go
+// Themed (recommended)
+theme.DatePickerOf(ctx, selectedDate, func(date time.Time) {
+    s.SetState(func() { selectedDate = &date })
+})
+
+// Explicit with full styling (no theme defaults)
 widgets.DatePicker{
     Value: selectedDate, // *time.Time, nil shows placeholder
     OnChanged: func(date time.Time) {
-        s.SetState(func() {
-            selectedDate = &date
-        })
+        s.SetState(func() { selectedDate = &date })
     },
     Placeholder: "Select date",
+    TextStyle:   graphics.TextStyle{FontSize: 16, Color: colors.OnSurface},
     Decoration: &widgets.InputDecoration{
-        LabelText:    "Birth Date",
-        BorderRadius: 8,
+        LabelText:       "Birth Date",
+        BorderRadius:    8,
+        BorderColor:     colors.Outline,
+        BackgroundColor: colors.Surface,
+        HintStyle:       graphics.TextStyle{FontSize: 16, Color: colors.OnSurfaceVariant},
+        LabelStyle:      graphics.TextStyle{FontSize: 14, Color: colors.OnSurfaceVariant},
     },
 }
 ```
@@ -210,6 +268,12 @@ widgets.DatePicker{
 ### TimePicker
 
 ```go
+// Themed (recommended)
+theme.TimePickerOf(ctx, selectedHour, selectedMinute, func(h, m int) {
+    s.SetState(func() { selectedHour, selectedMinute = h, m })
+})
+
+// Explicit with full styling (no theme defaults)
 widgets.TimePicker{
     Hour:   selectedHour,
     Minute: selectedMinute,
@@ -219,9 +283,14 @@ widgets.TimePicker{
             selectedMinute = minute
         })
     },
+    TextStyle: graphics.TextStyle{FontSize: 16, Color: colors.OnSurface},
     Decoration: &widgets.InputDecoration{
-        LabelText:    "Appointment Time",
-        BorderRadius: 8,
+        LabelText:       "Appointment Time",
+        BorderRadius:    8,
+        BorderColor:     colors.Outline,
+        BackgroundColor: colors.Surface,
+        HintStyle:       graphics.TextStyle{FontSize: 16, Color: colors.OnSurfaceVariant},
+        LabelStyle:      graphics.TextStyle{FontSize: 14, Color: colors.OnSurfaceVariant},
     },
 }
 ```
@@ -245,20 +314,17 @@ widgets.ActivityIndicator{
 Drift-rendered circular progress. Set `Value` to `nil` for indeterminate animation.
 
 ```go
-// Indeterminate (spinning)
-widgets.CircularProgressIndicator{
-    Value: nil,
-    Size:  36,
-}
+// Themed (recommended)
+theme.CircularProgressIndicatorOf(ctx, nil)  // indeterminate
+theme.CircularProgressIndicatorOf(ctx, &progress)  // determinate
 
-// Determinate (0.0 to 1.0)
-progress := 0.65
+// Explicit (full control)
 widgets.CircularProgressIndicator{
-    Value:       &progress,
-    Size:        48,
-    StrokeWidth: 5,
+    Value:       nil,
+    Size:        36,
     Color:       colors.Primary,
     TrackColor:  colors.SurfaceVariant,
+    StrokeWidth: 4,
 }
 ```
 
@@ -267,19 +333,17 @@ widgets.CircularProgressIndicator{
 Drift-rendered linear progress bar. Set `Value` to `nil` for indeterminate animation.
 
 ```go
-// Indeterminate
-widgets.LinearProgressIndicator{
-    Value: nil,
-}
+// Themed (recommended)
+theme.LinearProgressIndicatorOf(ctx, nil)  // indeterminate
+theme.LinearProgressIndicatorOf(ctx, &progress)  // determinate
 
-// Determinate
-progress := 0.35
+// Explicit (full control)
 widgets.LinearProgressIndicator{
-    Value:        &progress,
-    Height:       6,
-    BorderRadius: 3,
+    Value:        nil,
     Color:        colors.Primary,
     TrackColor:   colors.SurfaceVariant,
+    Height:       4,
+    BorderRadius: 2,
 }
 ```
 

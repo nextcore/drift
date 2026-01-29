@@ -43,9 +43,9 @@ func buildImagesPage(ctx core.BuildContext) core.Widget {
 	logo := loadGoLogo()
 
 	return demoPage(ctx, "Images",
-		widgets.TextOf("Images", textTheme.TitleLarge),
+		widgets.Text{Content: "Images", Style: textTheme.TitleLarge},
 		widgets.VSpace(12),
-		widgets.TextOf("Raster images are decoded with Go's image package.", labelStyle(colors)),
+		widgets.Text{Content: "Raster images are decoded with Go's image package.", Style: labelStyle(colors)},
 		widgets.VSpace(24),
 		widgets.RowOf(
 			widgets.MainAxisAlignmentCenter,
@@ -57,9 +57,9 @@ func buildImagesPage(ctx core.BuildContext) core.Widget {
 			},
 		),
 		widgets.VSpace(12),
-		widgets.TextOf("Go logo (PNG)", textTheme.BodySmall),
+		widgets.Text{Content: "Go logo (PNG)", Style: textTheme.BodySmall},
 		widgets.VSpace(32),
-		widgets.TextOf("Fit modes", textTheme.TitleMedium),
+		widgets.Text{Content: "Fit modes", Style: textTheme.TitleMedium},
 		widgets.VSpace(12),
 		fitPreview("Fill", widgets.ImageFitFill, logo, colors, textTheme),
 		widgets.VSpace(16),
@@ -79,7 +79,7 @@ func fitPreview(label string, fit widgets.ImageFit, logo image.Image, colors the
 		widgets.MainAxisAlignmentStart,
 		widgets.CrossAxisAlignmentStart,
 		widgets.MainAxisSizeMin,
-		widgets.TextOf(label, textTheme.BodyMedium),
+		widgets.Text{Content: label, Style: textTheme.BodyMedium},
 		widgets.VSpace(8),
 		widgets.Container{
 			Color:     colors.SurfaceVariant,

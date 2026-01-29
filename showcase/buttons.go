@@ -22,12 +22,12 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 	)
 
 	return demoPage(ctx, "Buttons",
-		// Section: Basic Buttons
-		sectionTitle("Basic Buttons", colors),
+		// Section: Themed Buttons
+		sectionTitle("Themed Buttons", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("The simplest way to create a button:", labelStyle(colors)),
+		widgets.Text{Content: "Use theme.ButtonOf(ctx, ...) for styled buttons:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.ButtonOf("Tap Me", func() {
+		theme.ButtonOf(ctx, "Tap Me", func() {
 			platform.Haptics.LightImpact()
 		}),
 		widgets.VSpace(20),
@@ -35,57 +35,70 @@ func buildButtonsPage(ctx core.BuildContext) core.Widget {
 		// Section: Colored Buttons
 		sectionTitle("Colored Buttons", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Use WithColor() to set background and text:", labelStyle(colors)),
+		widgets.Text{Content: "Override theme with WithColor():", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.ButtonOf("Primary", func() {}).
-			WithColor(colors.Primary, colors.OnPrimary),
+		theme.ButtonOf(ctx, "Primary", func() {}),
 		widgets.VSpace(8),
-		widgets.ButtonOf("Secondary", func() {}).
+		theme.ButtonOf(ctx, "Secondary", func() {}).
 			WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(8),
-		widgets.ButtonOf("Error", func() {}).
+		theme.ButtonOf(ctx, "Error", func() {}).
 			WithColor(colors.Error, colors.OnError),
 		widgets.VSpace(8),
-		widgets.ButtonOf("Surface", func() {}).
+		theme.ButtonOf(ctx, "Surface", func() {}).
 			WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 		widgets.VSpace(20),
 
 		// Section: Gradient Buttons
 		sectionTitle("Gradient Buttons", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Use WithGradient() for colorful backgrounds:", labelStyle(colors)),
+		widgets.Text{Content: "Use WithGradient() for colorful backgrounds:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.ButtonOf("Sunset", func() {}).
-			WithColor(colors.Primary, colors.OnPrimary).
+		theme.ButtonOf(ctx, "Sunset", func() {}).
 			WithGradient(buttonGradient),
 		widgets.VSpace(20),
 
 		// Section: Custom Sizing
 		sectionTitle("Custom Sizing", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Adjust padding and font size:", labelStyle(colors)),
+		widgets.Text{Content: "Adjust padding and font size:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.ButtonOf("Small", func() {}).
-			WithColor(colors.Primary, colors.OnPrimary).
+		theme.ButtonOf(ctx, "Small", func() {}).
 			WithPadding(layout.EdgeInsetsSymmetric(12, 8)).
 			WithFontSize(12),
 		widgets.VSpace(8),
-		widgets.ButtonOf("Large", func() {}).
-			WithColor(colors.Primary, colors.OnPrimary).
+		theme.ButtonOf(ctx, "Large", func() {}).
 			WithPadding(layout.EdgeInsetsSymmetric(32, 18)).
 			WithFontSize(20),
+		widgets.VSpace(20),
+
+		// Section: Explicit Buttons
+		sectionTitle("Explicit Buttons", colors),
+		widgets.VSpace(12),
+		widgets.Text{Content: "Fully explicit with struct literal:", Style: labelStyle(colors)},
+		widgets.VSpace(8),
+		widgets.Button{
+			Label:        "Explicit",
+			OnTap:        func() { platform.Haptics.LightImpact() },
+			Color:        graphics.RGB(156, 39, 176),
+			TextColor:    graphics.ColorWhite,
+			Padding:      layout.EdgeInsetsSymmetric(24, 14),
+			FontSize:     16,
+			BorderRadius: 8,
+			Haptic:       true,
+		},
 		widgets.VSpace(20),
 
 		// Section: Haptic Feedback
 		sectionTitle("Haptic Feedback", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Buttons include haptic feedback by default:", labelStyle(colors)),
+		widgets.Text{Content: "Buttons include haptic feedback by default:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.ButtonOf("With Haptics (default)", func() {
+		theme.ButtonOf(ctx, "With Haptics (default)", func() {
 			platform.Haptics.LightImpact()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		}),
 		widgets.VSpace(8),
-		widgets.ButtonOf("No Haptics", func() {}).
+		theme.ButtonOf(ctx, "No Haptics", func() {}).
 			WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant).
 			WithHaptic(false),
 		widgets.VSpace(40),

@@ -7,7 +7,6 @@ import (
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // TabItem describes a single tab entry.
@@ -17,17 +16,61 @@ type TabItem struct {
 }
 
 // TabBar displays a row of tabs.
+//
+// # Styling Model
+//
+// TabBar is explicit by default — all visual properties use their struct field
+// values directly. A zero value means zero, not "use theme default." For example:
+//
+//   - BackgroundColor: 0 means transparent background
+//   - Height: 0 means zero height (not rendered)
+//   - IndicatorHeight: 0 means no indicator
+//
+// For theme-styled tab bars, use [theme.TabBarOf] which pre-fills visual
+// properties from the current theme's [theme.TabBarThemeData].
+//
+// # Creation Patterns
+//
+// Explicit with struct literal (full control):
+//
+//	widgets.TabBar{
+//	    Items:           []widgets.TabItem{{Label: "Home"}, {Label: "Search"}},
+//	    CurrentIndex:    0,
+//	    OnTap:           func(i int) { s.SetState(func() { s.currentIndex = i }) },
+//	    BackgroundColor: graphics.RGB(33, 33, 33),
+//	    ActiveColor:     graphics.ColorWhite,
+//	    InactiveColor:   graphics.RGBA(255, 255, 255, 153),
+//	    IndicatorColor:  graphics.RGB(33, 150, 243),
+//	    Height:          56,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.TabBarOf(ctx, items, currentIndex, onTap)
+//	// Pre-filled with theme colors, height, padding, indicator
 type TabBar struct {
-	Items           []TabItem
-	CurrentIndex    int
-	OnTap           func(index int)
+	// Items are the tab entries.
+	Items []TabItem
+	// CurrentIndex is the selected tab index.
+	CurrentIndex int
+	// OnTap is called when a tab is tapped.
+	OnTap func(index int)
+	// BackgroundColor is the bar background. Zero means transparent.
 	BackgroundColor graphics.Color
-	ActiveColor     graphics.Color
-	InactiveColor   graphics.Color
-	IndicatorColor  graphics.Color
+	// ActiveColor is the selected tab text/icon color. Zero means transparent.
+	ActiveColor graphics.Color
+	// InactiveColor is the unselected tab text/icon color. Zero means transparent.
+	InactiveColor graphics.Color
+	// IndicatorColor is the selected tab indicator color. Zero means transparent.
+	IndicatorColor graphics.Color
+	// IndicatorHeight is the indicator bar height. Zero means no indicator.
 	IndicatorHeight float64
-	Padding         layout.EdgeInsets
-	Height          float64
+	// Padding is the internal padding. Zero means no padding.
+	Padding layout.EdgeInsets
+	// Height is the bar height. Zero means zero height (not rendered).
+	Height float64
+	// LabelStyle is the text style for labels.
+	LabelStyle graphics.TextStyle
 }
 
 func (t TabBar) CreateElement() core.Element {
@@ -39,29 +82,19 @@ func (t TabBar) Key() any {
 }
 
 func (t TabBar) Build(ctx core.BuildContext) core.Widget {
-	themeData, _, textTheme := theme.UseTheme(ctx)
-	tabBarTheme := themeData.TabBarThemeOf()
-
-	background := colorOrDefault(t.BackgroundColor, tabBarTheme.BackgroundColor)
-	active := colorOrDefault(t.ActiveColor, tabBarTheme.ActiveColor)
-	inactive := colorOrDefault(t.InactiveColor, tabBarTheme.InactiveColor)
-	indicatorColor := colorOrDefault(t.IndicatorColor, tabBarTheme.IndicatorColor)
+	// Use field values directly — zero means zero
+	background := t.BackgroundColor
+	active := t.ActiveColor
+	inactive := t.InactiveColor
+	indicatorColor := t.IndicatorColor
 	indicatorHeight := t.IndicatorHeight
-	if indicatorHeight <= 0 {
-		indicatorHeight = tabBarTheme.IndicatorHeight
-	}
 	padding := t.Padding
-	if padding == (layout.EdgeInsets{}) {
-		padding = tabBarTheme.Padding
-	}
 	height := t.Height
-	if height <= 0 {
-		height = tabBarTheme.Height
-	}
+	labelStyle := t.LabelStyle
 
 	children := make([]core.Widget, 0, len(t.Items))
 	for i, item := range t.Items {
-		children = append(children, t.buildTabItem(i, item, active, inactive, indicatorColor, indicatorHeight, padding, textTheme))
+		children = append(children, t.buildTabItem(i, item, active, inactive, indicatorColor, indicatorHeight, padding, labelStyle))
 	}
 
 	return SizedBox{
@@ -78,15 +111,15 @@ func (t TabBar) Build(ctx core.BuildContext) core.Widget {
 }
 
 // buildTabItem creates a single tab item widget.
-func (t TabBar) buildTabItem(index int, item TabItem, active, inactive, indicatorColor graphics.Color, indicatorHeight float64, padding layout.EdgeInsets, textTheme theme.TextTheme) core.Widget {
+func (t TabBar) buildTabItem(index int, item TabItem, active, inactive, indicatorColor graphics.Color, indicatorHeight float64, padding layout.EdgeInsets, labelStyle graphics.TextStyle) core.Widget {
 	isActive := index == t.CurrentIndex
 	color := inactive
 	if isActive {
 		color = active
 	}
 
-	labelStyle := textTheme.LabelSmall
-	labelStyle.Color = color
+	itemLabelStyle := labelStyle
+	itemLabelStyle.Color = color
 
 	iconWidget := item.Icon
 	if icon, ok := iconWidget.(Icon); ok {
@@ -98,7 +131,7 @@ func (t TabBar) buildTabItem(index int, item TabItem, active, inactive, indicato
 	if iconWidget != nil {
 		content = append(content, iconWidget, VSpace(4))
 	}
-	content = append(content, Text{Content: item.Label, Style: labelStyle, MaxLines: 1})
+	content = append(content, Text{Content: item.Label, Style: itemLabelStyle, MaxLines: 1})
 
 	// Build tab content column
 	tabContent := Column{
@@ -162,12 +195,4 @@ func (t TabBar) buildTabItem(index int, item TabItem, active, inactive, indicato
 	}
 
 	return tabItem
-}
-
-// colorOrDefault returns the color if set, otherwise returns the default.
-func colorOrDefault(color, defaultColor graphics.Color) graphics.Color {
-	if color == graphics.ColorTransparent {
-		return defaultColor
-	}
-	return color
 }

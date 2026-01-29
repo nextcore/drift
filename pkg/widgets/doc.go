@@ -7,7 +7,7 @@
 //
 // # Widget Construction
 //
-// Drift widgets use a three-tier construction pattern:
+// Drift widgets use a two-tier construction pattern:
 //
 // ## Tier 1: Struct Literal (canonical, full control)
 //
@@ -16,44 +16,41 @@
 //	    OnTap:     handleSubmit,
 //	    Color:     colors.Primary,
 //	    Disabled:  !isValid,
+//	    Haptic:    true,
 //	}
 //
 // This is the PRIMARY way to create widgets. All fields are accessible.
+// For themed styling, use theme.XxxOf constructors from pkg/theme instead.
 //
-// ## Tier 2: XxxOf Helper (convenience for required params)
+// ## Tier 2: Layout Helpers (ergonomics for layout widgets)
 //
-//	btn := ButtonOf("Submit", handleSubmit)
-//	txt := TextOf("Hello", style)
+// Layout helpers remain for ergonomic creation of Row, Column, and Stack:
 //
-// XxxOf helpers exist only for widgets with clear required parameters.
-// They match struct literal defaults unless documented otherwise.
+//	col := ColumnOf(
+//	    MainAxisAlignmentCenter,
+//	    CrossAxisAlignmentCenter,
+//	    MainAxisSizeMin,
+//	    child1, child2,
+//	)
 //
-// ## Tier 3: WithX Chaining (optional configuration)
+// Also: RowOf, StackOf, VSpace, HSpace, Centered.
 //
-//	btn := ButtonOf("Submit", handleSubmit).
-//	    WithColor(colors.Primary, colors.OnPrimary).
-//	    WithDisabled(!isValid)
+// ## WithX Chaining (for themed widgets)
+//
+// WithX methods on widgets allow overriding themed defaults:
+//
+//	btn := theme.ButtonOf(ctx, "Submit", handleSubmit).
+//	    WithBorderRadius(0).  // Sharp corners
+//	    WithPadding(layout.EdgeInsetsAll(20))
 //
 // WithX methods return COPIES; they never mutate the receiver.
 //
 // # API Rules
 //
 //   - Canonical = struct literal. Always works, always documented.
-//   - XxxOf only when required params exist. No helpers for zero-param widgets.
-//   - Exception: Variadic children helpers (StackOf, ColumnOf, RowOf) are allowed
-//     for ergonomics even though empty collections are technically valid.
-//   - XxxOf must match zero-value defaults (document exceptions).
+//   - Layout helpers (ColumnOf, RowOf, StackOf) exist for ergonomics.
+//   - For themed widgets, use theme.XxxOf constructors from pkg/theme.
 //   - WithX returns copies. Doc comment must state "returns a copy".
-//   - No helper overloads. Use XxxOf + WithX, not multiple XxxOfWithY variants.
-//
-// # Helper Defaults
-//
-// Some helpers set non-zero defaults for ergonomics:
-//
-//   - ButtonOf sets Haptic: true (provides tactile feedback by default)
-//   - TextOf sets Wrap: true (text wraps to multiple lines by default)
-//
-// These defaults are documented in each helper's doc comment.
 //
 // # Layout Widgets
 //
@@ -70,13 +67,13 @@
 // # Input Widgets
 //
 // Button, TextField, Checkbox, Radio, and Switch handle user input.
-// Use the three-tier pattern for customization:
+// Use struct literals for explicit control or theme.XxxOf for themed widgets:
 //
-//	// Struct literal
-//	widgets.Button{Label: "Submit", OnTap: onTap, Disabled: true}
+//	// Struct literal (explicit)
+//	widgets.Button{Label: "Submit", OnTap: onTap, Color: colors.Primary, Haptic: true}
 //
-//	// Helper with chaining
-//	widgets.ButtonOf("Submit", onTap).WithPadding(padding).WithColor(bg, text)
+//	// Themed constructor (from pkg/theme)
+//	theme.ButtonOf(ctx, "Submit", onTap)
 //
 // # Scrolling
 //

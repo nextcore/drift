@@ -36,7 +36,7 @@ func Stateful[S any](
 //	    Build: func(count int, ctx core.BuildContext, setState func(func(int) int)) core.Widget {
 //	        return widgets.GestureDetector{
 //	            OnTap: func() { setState(func(c int) int { return c + 1 }) },
-//	            Child: widgets.TextOf(fmt.Sprintf("Count: %d", count), ...),
+//	            Child: widgets.Text{Content: fmt.Sprintf("Count: %d", count), ...},
 //	        }
 //	    },
 //	    Dispose: func(count int) {

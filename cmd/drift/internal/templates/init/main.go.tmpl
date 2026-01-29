@@ -51,13 +51,13 @@ func (s *appState) Build(ctx core.BuildContext) core.Widget {
 				widgets.MainAxisAlignmentCenter,
 				widgets.CrossAxisAlignmentCenter,
 				widgets.MainAxisSizeMin,
-				widgets.TextOf("Hello from Drift!", textTheme.HeadlineMedium),
+				widgets.Text{Content: "Hello from Drift!", Style: textTheme.HeadlineMedium},
 				widgets.VSpace(16),
-				widgets.ButtonOf("Increment Counter", func() {
+				theme.ButtonOf(ctx, "Increment Counter", func() {
 					s.SetState(func() {
 						s.counter = s.counter + 1
 					})
-				}).WithColor(colors.Primary, colors.OnPrimary),
+				}),
 				widgets.VSpace(16),
 				widgets.Text{
 					Content: fmt.Sprintf("You have tapped the button %d times", s.counter),

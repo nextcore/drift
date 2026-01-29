@@ -99,22 +99,40 @@ func (s *storageState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Storage",
 		sectionTitle("File Picker", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Pick files and directories:", labelStyle(colors)),
+		widgets.Text{Content: "Pick files and directories:", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 
-		widgets.ButtonOf("Pick File", func() {
-			s.pickFile()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Pick File",
+			OnTap: func() {
+				s.pickFile()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Pick Directory", func() {
-			s.pickDirectory()
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Pick Directory",
+			OnTap: func() {
+				s.pickDirectory()
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Save File", func() {
-			s.saveFile()
-		}).WithColor(colors.Tertiary, colors.OnTertiary),
+		widgets.Button{
+			Label: "Save File",
+			OnTap: func() {
+				s.saveFile()
+			},
+			Color:     colors.Tertiary,
+			TextColor: colors.OnTertiary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Selected Item", colors),
@@ -140,10 +158,10 @@ func (s *storageState) selectedItemCard(colors theme.ColorScheme) core.Widget {
 		return widgets.Container{
 			Color: colors.SurfaceVariant,
 			ChildWidget: widgets.PaddingAll(16,
-				widgets.TextOf("No item selected", graphics.TextStyle{
+				widgets.Text{Content: "No item selected", Style: graphics.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,
-				}),
+				}},
 			),
 		}
 	}
@@ -163,16 +181,16 @@ func (s *storageState) selectedItemCard(colors theme.ColorScheme) core.Widget {
 						widgets.VSpace(8),
 						s.infoRow("Size", formatSize(file.Size), colors),
 						widgets.VSpace(8),
-						widgets.TextOf("Path:", graphics.TextStyle{
+						widgets.Text{Content: "Path:", Style: graphics.TextStyle{
 							Color:      colors.OnSurfaceVariant,
 							FontSize:   12,
 							FontWeight: graphics.FontWeightBold,
-						}),
+						}},
 						widgets.VSpace(4),
-						widgets.TextOf(file.Path, graphics.TextStyle{
+						widgets.Text{Content: file.Path, Style: graphics.TextStyle{
 							Color:    colors.OnSurface,
 							FontSize: 12,
-						}),
+						}},
 					},
 				},
 			),
@@ -187,16 +205,16 @@ func (s *storageState) selectedItemCard(colors theme.ColorScheme) core.Widget {
 				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
 				MainAxisSize:       widgets.MainAxisSizeMin,
 				ChildrenWidgets: []core.Widget{
-					widgets.TextOf("Directory:", graphics.TextStyle{
+					widgets.Text{Content: "Directory:", Style: graphics.TextStyle{
 						Color:      colors.OnSurfaceVariant,
 						FontSize:   12,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(4),
-					widgets.TextOf(path, graphics.TextStyle{
+					widgets.Text{Content: path, Style: graphics.TextStyle{
 						Color:    colors.OnSurface,
 						FontSize: 12,
-					}),
+					}},
 				},
 			},
 		),
@@ -210,10 +228,10 @@ func (s *storageState) appDirectoriesCard(colors theme.ColorScheme) core.Widget 
 		return widgets.Container{
 			Color: colors.SurfaceVariant,
 			ChildWidget: widgets.PaddingAll(16,
-				widgets.TextOf("Loading directories...", graphics.TextStyle{
+				widgets.Text{Content: "Loading directories...", Style: graphics.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,
-				}),
+				}},
 			),
 		}
 	}
@@ -229,16 +247,16 @@ func (s *storageState) appDirectoriesCard(colors theme.ColorScheme) core.Widget 
 				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
 				MainAxisSize:       widgets.MainAxisSizeMin,
 				ChildrenWidgets: []core.Widget{
-					widgets.TextOf(name+":", graphics.TextStyle{
+					widgets.Text{Content: name + ":", Style: graphics.TextStyle{
 						Color:      colors.OnSurfaceVariant,
 						FontSize:   12,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(2),
-					widgets.TextOf(path, graphics.TextStyle{
+					widgets.Text{Content: path, Style: graphics.TextStyle{
 						Color:    colors.OnSurface,
 						FontSize: 11,
-					}),
+					}},
 				},
 			},
 		)
@@ -262,15 +280,15 @@ func (s *storageState) infoRow(label, value string, colors theme.ColorScheme) co
 		MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
 		CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 		ChildrenWidgets: []core.Widget{
-			widgets.TextOf(label, graphics.TextStyle{
+			widgets.Text{Content: label, Style: graphics.TextStyle{
 				Color:    colors.OnSurfaceVariant,
 				FontSize: 14,
-			}),
-			widgets.TextOf(value, graphics.TextStyle{
+			}},
+			widgets.Text{Content: value, Style: graphics.TextStyle{
 				Color:      colors.OnSurface,
 				FontSize:   14,
 				FontWeight: graphics.FontWeightSemibold,
-			}),
+			}},
 		},
 	}
 }

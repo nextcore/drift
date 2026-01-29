@@ -176,7 +176,7 @@ navigation.Navigator{
                     ChildrenWidgets: []core.Widget{
                         widgets.Text{Content: "Page not found"},
                         widgets.Text{Content: settings.Name},
-                        widgets.ButtonOf("Go Home", func() {
+                        theme.ButtonOf(ctx, "Go Home", func() {
                             navigation.NavigatorOf(ctx).PopUntil(func(r navigation.Route) bool {
                                 return r.Settings().Name == "/"
                             })

@@ -83,17 +83,29 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Location",
 		sectionTitle("Location Services", colors),
 		widgets.VSpace(12),
-		widgets.TextOf(enabledText, labelStyle(colors)),
+		widgets.Text{Content: enabledText, Style: labelStyle(colors)},
 		widgets.VSpace(16),
 
-		widgets.ButtonOf("Get Current Location", func() {
-			s.getCurrentLocation()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Get Current Location",
+			OnTap: func() {
+				s.getCurrentLocation()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf(toggleLabel, func() {
-			s.toggleUpdates()
-		}).WithColor(toggleColor, colors.OnSecondary),
+		widgets.Button{
+			Label: toggleLabel,
+			OnTap: func() {
+				s.toggleUpdates()
+			},
+			Color:     toggleColor,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Location Data", colors),
@@ -113,10 +125,10 @@ func (s *locationState) locationCard(colors theme.ColorScheme) core.Widget {
 		return widgets.Container{
 			Color: colors.SurfaceVariant,
 			ChildWidget: widgets.PaddingAll(16,
-				widgets.TextOf("No location data yet", graphics.TextStyle{
+				widgets.Text{Content: "No location data yet", Style: graphics.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,
-				}),
+				}},
 			),
 		}
 	}
@@ -149,15 +161,15 @@ func (s *locationState) locationRow(label, value string, colors theme.ColorSchem
 		MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
 		CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 		ChildrenWidgets: []core.Widget{
-			widgets.TextOf(label, graphics.TextStyle{
+			widgets.Text{Content: label, Style: graphics.TextStyle{
 				Color:    colors.OnSurfaceVariant,
 				FontSize: 14,
-			}),
-			widgets.TextOf(value, graphics.TextStyle{
+			}},
+			widgets.Text{Content: value, Style: graphics.TextStyle{
 				Color:      colors.OnSurface,
 				FontSize:   14,
 				FontWeight: graphics.FontWeightSemibold,
-			}),
+			}},
 		},
 	}
 }

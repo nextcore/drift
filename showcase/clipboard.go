@@ -41,27 +41,51 @@ func (s *clipboardState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Clipboard",
 		sectionTitle("Copy & Paste", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Interact with the system clipboard:", labelStyle(colors)),
+		widgets.Text{Content: "Interact with the system clipboard:", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 
-		widgets.ButtonOf("Copy Sample Text", func() {
-			s.copyText()
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Copy Sample Text",
+			OnTap: func() {
+				s.copyText()
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Read Clipboard", func() {
-			s.readClipboard()
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Read Clipboard",
+			OnTap: func() {
+				s.readClipboard()
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Check Has Text", func() {
-			s.checkHasText()
-		}).WithColor(colors.Tertiary, colors.OnTertiary),
+		widgets.Button{
+			Label: "Check Has Text",
+			OnTap: func() {
+				s.checkHasText()
+			},
+			Color:     colors.Tertiary,
+			TextColor: colors.OnTertiary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Clear Clipboard", func() {
-			s.clearClipboard()
-		}).WithColor(colors.Error, colors.OnError),
+		widgets.Button{
+			Label: "Clear Clipboard",
+			OnTap: func() {
+				s.clearClipboard()
+			},
+			Color:     colors.Error,
+			TextColor: colors.OnError,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Result", colors),

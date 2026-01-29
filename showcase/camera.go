@@ -92,27 +92,45 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Camera",
 		sectionTitle("Capture Photo", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Take a photo using the device camera:", labelStyle(colors)),
+		widgets.Text{Content: "Take a photo using the device camera:", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 
-		widgets.ButtonOf("Take Photo", func() {
-			s.takePhoto(false)
-		}).WithColor(colors.Primary, colors.OnPrimary),
+		widgets.Button{
+			Label: "Take Photo",
+			OnTap: func() {
+				s.takePhoto(false)
+			},
+			Color:     colors.Primary,
+			TextColor: colors.OnPrimary,
+			Haptic:    true,
+		},
 		widgets.VSpace(12),
 
-		widgets.ButtonOf("Take Selfie", func() {
-			s.takePhoto(true)
-		}).WithColor(colors.Secondary, colors.OnSecondary),
+		widgets.Button{
+			Label: "Take Selfie",
+			OnTap: func() {
+				s.takePhoto(true)
+			},
+			Color:     colors.Secondary,
+			TextColor: colors.OnSecondary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Gallery", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Pick an image from the photo library:", labelStyle(colors)),
+		widgets.Text{Content: "Pick an image from the photo library:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 
-		widgets.ButtonOf("Pick from Gallery", func() {
-			s.pickFromGallery()
-		}).WithColor(colors.Tertiary, colors.OnTertiary),
+		widgets.Button{
+			Label: "Pick from Gallery",
+			OnTap: func() {
+				s.pickFromGallery()
+			},
+			Color:     colors.Tertiary,
+			TextColor: colors.OnTertiary,
+			Haptic:    true,
+		},
 		widgets.VSpace(24),
 
 		sectionTitle("Preview", colors),
@@ -135,10 +153,10 @@ func (s *cameraState) imagePreview(path string, colors theme.ColorScheme) core.W
 					CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 					MainAxisSize:       widgets.MainAxisSizeMin,
 					ChildrenWidgets: []core.Widget{
-						widgets.TextOf("No image captured", graphics.TextStyle{
+						widgets.Text{Content: "No image captured", Style: graphics.TextStyle{
 							Color:    colors.OnSurfaceVariant,
 							FontSize: 14,
-						}),
+						}},
 					},
 				},
 			),
@@ -154,27 +172,27 @@ func (s *cameraState) imagePreview(path string, colors theme.ColorScheme) core.W
 				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
 				MainAxisSize:       widgets.MainAxisSizeMin,
 				ChildrenWidgets: []core.Widget{
-					widgets.TextOf("Captured Image", graphics.TextStyle{
+					widgets.Text{Content: "Captured Image", Style: graphics.TextStyle{
 						Color:      colors.OnSurface,
 						FontSize:   14,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(8),
-					widgets.TextOf(imageInfo, graphics.TextStyle{
+					widgets.Text{Content: imageInfo, Style: graphics.TextStyle{
 						Color:    colors.OnSurfaceVariant,
 						FontSize: 12,
-					}),
+					}},
 					widgets.VSpace(8),
-					widgets.TextOf("Path:", graphics.TextStyle{
+					widgets.Text{Content: "Path:", Style: graphics.TextStyle{
 						Color:      colors.OnSurfaceVariant,
 						FontSize:   12,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(4),
-					widgets.TextOf(path, graphics.TextStyle{
+					widgets.Text{Content: path, Style: graphics.TextStyle{
 						Color:    colors.OnSurface,
 						FontSize: 12,
-					}),
+					}},
 				},
 			},
 		),

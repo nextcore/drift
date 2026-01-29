@@ -6,23 +6,42 @@ import (
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
-// Checkbox displays a toggleable check control with theme-aware styling.
+// Checkbox displays a toggleable check control with customizable styling.
+//
+// # Styling Model
+//
+// Checkbox is explicit by default — all visual properties use their struct field
+// values directly. A zero value means zero, not "use theme default." For example:
+//
+//   - ActiveColor: 0 means transparent fill when checked
+//   - Size: 0 means zero size (not rendered)
+//   - BorderRadius: 0 means sharp corners
+//
+// For theme-styled checkboxes, use [theme.CheckboxOf] which pre-fills visual
+// properties from the current theme's [theme.CheckboxThemeData].
+//
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.Checkbox{
+//	    Value:       isChecked,
+//	    OnChanged:   func(v bool) { s.SetState(func() { s.isChecked = v }) },
+//	    ActiveColor: graphics.RGB(33, 150, 243),
+//	    CheckColor:  graphics.ColorWhite,
+//	    Size:        24,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.CheckboxOf(ctx, isChecked, onChanged)
+//	// Pre-filled with theme colors, size, border radius
 //
 // Checkbox is a controlled component - it displays the Value you provide and
 // calls OnChanged when tapped. To toggle the checkbox, update Value in your
 // state in response to OnChanged.
-//
-// Example:
-//
-//	Checkbox{
-//	    Value: isChecked,
-//	    OnChanged: func(checked bool) {
-//	        s.SetState(func() { s.isChecked = checked })
-//	    },
-//	}
 //
 // For form integration with validation, wrap in a [FormField]:
 //
@@ -36,95 +55,73 @@ import (
 //	        return Checkbox{Value: state.Value(), OnChanged: state.DidChange}
 //	    },
 //	}
-//
-// The checkbox automatically uses colors from the current [theme.CheckboxTheme].
-// Visual properties fall back to theme defaults when their value is zero and
-// they have not been explicitly set via a WithX method. Use the WithX methods
-// to set a value that should be used even when it equals zero (e.g.,
-// [Checkbox.WithBorderRadius](0) for sharp corners).
 type Checkbox struct {
 	// Value indicates whether the checkbox is checked.
 	Value bool
+
 	// OnChanged is called when the checkbox is toggled.
 	OnChanged func(bool)
+
 	// Disabled disables interaction when true.
 	Disabled bool
-	// Size controls the checkbox square size.
+
+	// Size controls the checkbox square size. Zero means zero size (not rendered).
 	Size float64
-	// BorderRadius controls the checkbox corner radius.
+
+	// BorderRadius controls the checkbox corner radius. Zero means sharp corners.
 	BorderRadius float64
-	// ActiveColor is the fill color when checked.
+
+	// ActiveColor is the fill color when checked. Zero means transparent.
 	ActiveColor graphics.Color
-	// CheckColor is the checkmark color.
+
+	// CheckColor is the checkmark color. Zero means transparent (invisible check).
 	CheckColor graphics.Color
-	// BorderColor is the outline color when unchecked.
+
+	// BorderColor is the outline color. Zero means no border.
 	BorderColor graphics.Color
-	// BackgroundColor is the fill color when unchecked.
+
+	// BackgroundColor is the fill color when unchecked. Zero means transparent.
 	BackgroundColor graphics.Color
-	// overrides tracks which fields were explicitly set via WithX methods.
-	overrides checkboxOverrides
-}
 
-type checkboxOverrides uint16
+	// DisabledActiveColor is the fill color when checked and disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledActiveColor graphics.Color
 
-const (
-	checkboxOverrideActiveColor     checkboxOverrides = 1 << iota
-	checkboxOverrideCheckColor
-	checkboxOverrideBorderColor
-	checkboxOverrideBackgroundColor
-	checkboxOverrideSize
-	checkboxOverrideBorderRadius
-)
-
-// CheckboxOf creates a checkbox with the given value and change handler.
-// This is a convenience helper equivalent to:
-//
-//	Checkbox{Value: value, OnChanged: onChanged}
-func CheckboxOf(value bool, onChanged func(bool)) Checkbox {
-	return Checkbox{Value: value, OnChanged: onChanged}
+	// DisabledCheckColor is the checkmark color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal colors.
+	DisabledCheckColor graphics.Color
 }
 
 // WithColors returns a copy of the checkbox with the specified active fill and
-// checkmark colors. The values are marked as explicitly set, bypassing theme
-// defaults even when zero.
+// checkmark colors.
 func (c Checkbox) WithColors(activeColor, checkColor graphics.Color) Checkbox {
 	c.ActiveColor = activeColor
 	c.CheckColor = checkColor
-	c.overrides |= checkboxOverrideActiveColor | checkboxOverrideCheckColor
 	return c
 }
 
 // WithSize returns a copy of the checkbox with the specified square size.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (c Checkbox) WithSize(size float64) Checkbox {
 	c.Size = size
-	c.overrides |= checkboxOverrideSize
 	return c
 }
 
 // WithBorderRadius returns a copy of the checkbox with the specified corner radius.
-// The value is marked as explicitly set, so even zero (sharp corners) will be
-// used instead of falling back to the theme default.
 func (c Checkbox) WithBorderRadius(radius float64) Checkbox {
 	c.BorderRadius = radius
-	c.overrides |= checkboxOverrideBorderRadius
 	return c
 }
 
 // WithBorderColor returns a copy of the checkbox with the specified outline color.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (c Checkbox) WithBorderColor(color graphics.Color) Checkbox {
 	c.BorderColor = color
-	c.overrides |= checkboxOverrideBorderColor
 	return c
 }
 
 // WithBackgroundColor returns a copy of the checkbox with the specified unchecked
-// fill color. The value is marked as explicitly set, bypassing theme defaults
-// even when zero.
+// fill color.
 func (c Checkbox) WithBackgroundColor(color graphics.Color) Checkbox {
 	c.BackgroundColor = color
-	c.overrides |= checkboxOverrideBackgroundColor
 	return c
 }
 
@@ -137,42 +134,40 @@ func (c Checkbox) Key() any {
 }
 
 func (c Checkbox) Build(ctx core.BuildContext) core.Widget {
-	themeData := theme.ThemeOf(ctx)
-	checkboxTheme := themeData.CheckboxThemeOf()
-
+	// Use field values directly — zero means zero.
 	activeColor := c.ActiveColor
-	if c.overrides&checkboxOverrideActiveColor == 0 && activeColor == 0 {
-		activeColor = checkboxTheme.ActiveColor
-	}
 	checkColor := c.CheckColor
-	if c.overrides&checkboxOverrideCheckColor == 0 && checkColor == 0 {
-		checkColor = checkboxTheme.CheckColor
-	}
 	borderColor := c.BorderColor
-	if c.overrides&checkboxOverrideBorderColor == 0 && borderColor == 0 {
-		borderColor = checkboxTheme.BorderColor
-	}
 	backgroundColor := c.BackgroundColor
-	if c.overrides&checkboxOverrideBackgroundColor == 0 && backgroundColor == 0 {
-		backgroundColor = checkboxTheme.BackgroundColor
-	}
 	size := c.Size
-	if c.overrides&checkboxOverrideSize == 0 && size == 0 {
-		size = checkboxTheme.Size
-	}
 	borderRadius := c.BorderRadius
-	if c.overrides&checkboxOverrideBorderRadius == 0 && borderRadius == 0 {
-		borderRadius = checkboxTheme.BorderRadius
-	}
 
 	enabled := !c.Disabled && c.OnChanged != nil
+
+	// Apply disabled styling when not enabled (either Disabled=true or OnChanged=nil).
+	// This ensures widgets with nil handlers also appear disabled.
+	useOpacityFallback := false
 	if !enabled {
-		activeColor = checkboxTheme.DisabledActiveColor
-		checkColor = checkboxTheme.DisabledCheckColor
-		// backgroundColor stays as-is for unchecked state
+		if c.DisabledActiveColor != 0 || c.DisabledCheckColor != 0 {
+			// At least one disabled color set - use explicit disabled styling
+			// Apply 50% alpha to any color without an explicit disabled variant
+			if c.DisabledActiveColor != 0 {
+				activeColor = c.DisabledActiveColor
+			} else {
+				activeColor = activeColor.WithAlpha(128)
+			}
+			if c.DisabledCheckColor != 0 {
+				checkColor = c.DisabledCheckColor
+			} else {
+				checkColor = checkColor.WithAlpha(128)
+			}
+		} else {
+			// No disabled colors set - use opacity fallback
+			useOpacityFallback = true
+		}
 	}
 
-	return checkboxRender{
+	var result core.Widget = checkboxRender{
 		value:           c.Value,
 		onChanged:       c.OnChanged,
 		enabled:         enabled,
@@ -183,6 +178,13 @@ func (c Checkbox) Build(ctx core.BuildContext) core.Widget {
 		borderColor:     borderColor,
 		backgroundColor: backgroundColor,
 	}
+
+	// Fall back to opacity if no disabled colors provided
+	if useOpacityFallback {
+		result = Opacity{Opacity: 0.5, ChildWidget: result}
+	}
+
+	return result
 }
 
 type checkboxRender struct {
@@ -249,9 +251,6 @@ func (r *renderCheckbox) update(c checkboxRender) {
 func (r *renderCheckbox) PerformLayout() {
 	constraints := r.Constraints()
 	size := r.size
-	if size == 0 {
-		size = 20
-	}
 	size = min(max(size, constraints.MinWidth), constraints.MaxWidth)
 	size = min(max(size, constraints.MinHeight), constraints.MaxHeight)
 	r.SetSize(graphics.Size{Width: size, Height: size})

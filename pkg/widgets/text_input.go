@@ -13,34 +13,48 @@ import (
 // TextInput is the lowest-level text input widget that embeds a native platform
 // text field with Skia-rendered chrome (background, border, focus styling).
 //
-// TextInput provides direct access to all text input configuration options including
-// keyboard type, input action, text capitalization, obscuring for passwords,
-// autocorrect, and multiline support. It handles focus management, gesture
-// recognition, and accessibility semantics automatically.
+// # Styling Model
 //
-// Visual properties (BackgroundColor, BorderColor, etc.) fall back to built-in
-// defaults when their value is zero and they have not been explicitly set via
-// a WithX method. Use the WithX methods to set a value that should be used even
-// when it equals zero (e.g., [TextInput.WithBorderRadius](0) for sharp corners,
-// or [TextInput.WithBorderWidth](0) to remove the border).
+// TextInput is fully explicit — all visual properties use their struct field
+// values directly. A zero value means zero (transparent, no border, no height).
+// TextInput provides NO defaults; callers must supply all visual properties.
 //
-// For most use cases, prefer [TextField] which adds labels, helper text, and
-// theme integration, or [TextFormField] which adds form validation support.
+//   - BackgroundColor: 0 means transparent
+//   - BorderColor: 0 means no border
+//   - Height: 0 means zero height (field won't be visible)
+//   - Style.FontSize: 0 means zero (text won't render)
+//   - Style.Color: 0 means transparent text
+//
+// # Recommended Usage
+//
+// For most use cases, prefer [TextField] which provides sensible defaults and
+// adds labels, helper text, and error display. Use [theme.TextFieldOf] for
+// theme-styled text fields, or [TextFormField] for form validation support.
+//
+// TextInput is intended as a building block for higher-level widgets, not for
+// direct use in application code.
+//
+// # Direct Usage (when needed)
+//
+// If you need TextInput directly, you must provide all visual properties:
+//
+//	widgets.TextInput{
+//	    Controller:       controller,
+//	    Placeholder:      "Enter text",
+//	    BackgroundColor:  graphics.ColorWhite,
+//	    BorderColor:      graphics.RGB(200, 200, 200),
+//	    FocusColor:       graphics.RGB(33, 150, 243),
+//	    BorderRadius:     8,
+//	    BorderWidth:      1,
+//	    Height:           44,
+//	    Padding:          layout.EdgeInsetsSymmetric(12, 8),
+//	    Style:            graphics.TextStyle{FontSize: 16, Color: graphics.ColorBlack},
+//	    PlaceholderColor: graphics.RGB(150, 150, 150),
+//	}
 //
 // The native text field handles all text editing, selection, and IME composition.
 // Skia renders the visual chrome (background, borders) while the platform view
 // handles the actual text rendering and cursor.
-//
-// Example:
-//
-//	controller := platform.NewTextEditingController("")
-//	TextInput{
-//	    Controller:   controller,
-//	    Placeholder:  "Enter text",
-//	    KeyboardType: platform.KeyboardTypeText,
-//	    OnChanged:    func(text string) { fmt.Println("Changed:", text) },
-//	    OnSubmitted:  func(text string) { fmt.Println("Submitted:", text) },
-//	}
 type TextInput struct {
 	// Controller manages the text content and selection.
 	Controller *platform.TextEditingController
@@ -88,113 +102,79 @@ type TextInput struct {
 	// Disabled controls whether the field rejects input.
 	Disabled bool
 
-	// Width of the text field (0 = expand to fill).
+	// Width of the text field. Zero expands to fill available width.
 	Width float64
 
-	// Height of the text field.
+	// Height of the text field. Zero means zero height (invisible).
 	Height float64
 
-	// Padding inside the text field.
+	// Padding inside the text field. Zero means no padding.
 	Padding layout.EdgeInsets
 
-	// BackgroundColor of the text field.
+	// BackgroundColor of the text field. Zero means transparent.
 	BackgroundColor graphics.Color
 
-	// BorderColor of the text field.
+	// BorderColor of the text field. Zero means no border.
 	BorderColor graphics.Color
 
-	// FocusColor of the text field outline.
+	// FocusColor of the text field outline when focused. Zero means no focus highlight.
 	FocusColor graphics.Color
 
-	// BorderRadius for rounded corners.
+	// BorderRadius for rounded corners. Zero means sharp corners.
 	BorderRadius float64
 
-	// BorderWidth for the border stroke.
+	// BorderWidth for the border stroke. Zero means no border.
 	BorderWidth float64
 
-	// PlaceholderColor is the color for placeholder text.
+	// PlaceholderColor is the color for placeholder text. Zero means transparent.
 	PlaceholderColor graphics.Color
-	// overrides tracks which fields were explicitly set via WithX methods.
-	overrides textInputOverrides
 }
 
-type textInputOverrides uint16
-
-const (
-	textInputOverrideBackgroundColor  textInputOverrides = 1 << iota
-	textInputOverrideBorderColor
-	textInputOverrideFocusColor
-	textInputOverridePlaceholderColor
-	textInputOverrideBorderRadius
-	textInputOverrideHeight
-	textInputOverridePadding
-	textInputOverrideBorderWidth
-)
-
 // WithBackgroundColor returns a copy with the specified background color.
-// The value is marked as explicitly set, bypassing defaults even when zero.
 func (n TextInput) WithBackgroundColor(c graphics.Color) TextInput {
 	n.BackgroundColor = c
-	n.overrides |= textInputOverrideBackgroundColor
 	return n
 }
 
 // WithBorderColor returns a copy with the specified border color.
-// The value is marked as explicitly set, bypassing defaults even when zero.
 func (n TextInput) WithBorderColor(c graphics.Color) TextInput {
 	n.BorderColor = c
-	n.overrides |= textInputOverrideBorderColor
 	return n
 }
 
 // WithFocusColor returns a copy with the specified focus outline color.
-// The value is marked as explicitly set, bypassing defaults even when zero.
 func (n TextInput) WithFocusColor(c graphics.Color) TextInput {
 	n.FocusColor = c
-	n.overrides |= textInputOverrideFocusColor
 	return n
 }
 
 // WithPlaceholderColor returns a copy with the specified placeholder text color.
-// The value is marked as explicitly set, bypassing defaults even when zero.
 func (n TextInput) WithPlaceholderColor(c graphics.Color) TextInput {
 	n.PlaceholderColor = c
-	n.overrides |= textInputOverridePlaceholderColor
 	return n
 }
 
 // WithBorderRadius returns a copy with the specified corner radius.
-// The value is marked as explicitly set, so even zero (sharp corners)
-// will be used instead of falling back to the default.
 func (n TextInput) WithBorderRadius(radius float64) TextInput {
 	n.BorderRadius = radius
-	n.overrides |= textInputOverrideBorderRadius
 	return n
 }
 
 // WithHeight returns a copy with the specified height.
-// The value is marked as explicitly set, bypassing defaults even when zero.
 func (n TextInput) WithHeight(height float64) TextInput {
 	n.Height = height
-	n.overrides |= textInputOverrideHeight
 	return n
 }
 
 // WithPadding returns a copy with the specified internal padding.
-// The value is marked as explicitly set, so even a zero [layout.EdgeInsets]
-// will be used instead of falling back to the default.
 func (n TextInput) WithPadding(padding layout.EdgeInsets) TextInput {
 	n.Padding = padding
-	n.overrides |= textInputOverridePadding
 	return n
 }
 
 // WithBorderWidth returns a copy with the specified border stroke width.
-// The value is marked as explicitly set, so even zero (no border)
-// will be used instead of falling back to the default.
 func (n TextInput) WithBorderWidth(width float64) TextInput {
 	n.BorderWidth = width
-	n.overrides |= textInputOverrideBorderWidth
 	return n
 }
 
@@ -320,46 +300,17 @@ func (s *textInputState) SetState(fn func()) {
 func (s *textInputState) Build(ctx core.BuildContext) core.Widget {
 	w := s.element.Widget().(TextInput)
 
-	// Default values (only when not explicitly set via WithX)
-	height := w.Height
-	if w.overrides&textInputOverrideHeight == 0 && height == 0 {
-		height = 44 // Standard text field height
-	}
-
-	padding := w.Padding
-	if w.overrides&textInputOverridePadding == 0 && padding == (layout.EdgeInsets{}) {
-		padding = layout.EdgeInsetsSymmetric(12, 8)
-	}
-
-	bgColor := w.BackgroundColor
-	if w.overrides&textInputOverrideBackgroundColor == 0 && bgColor == 0 {
-		bgColor = graphics.ColorWhite
-	}
-
-	borderColor := w.BorderColor
-	if w.overrides&textInputOverrideBorderColor == 0 && borderColor == 0 {
-		borderColor = graphics.Color(0xFFCCCCCC)
-	}
-
-	focusColor := w.FocusColor
-	if w.overrides&textInputOverrideFocusColor == 0 && focusColor == 0 {
-		focusColor = graphics.Color(0xFF007AFF)
-	}
-
-	borderWidth := w.BorderWidth
-	if w.overrides&textInputOverrideBorderWidth == 0 && borderWidth == 0 {
-		borderWidth = 1
-	}
-
+	// Fully explicit: zero means zero, no fallbacks.
+	// Callers (TextField, theme.TextFieldOf) must provide all visual values.
 	return textInputRender{
 		width:        w.Width,
-		height:       height,
-		padding:      padding,
-		bgColor:      bgColor,
-		borderColor:  borderColor,
-		focusColor:   focusColor,
+		height:       w.Height,
+		padding:      w.Padding,
+		bgColor:      w.BackgroundColor,
+		borderColor:  w.BorderColor,
+		focusColor:   w.FocusColor,
 		borderRadius: w.BorderRadius,
-		borderWidth:  borderWidth,
+		borderWidth:  w.BorderWidth,
 		state:        s,
 		config:       w,
 	}
@@ -428,48 +379,27 @@ func (s *textInputState) registerAsClient() {
 }
 
 func (s *textInputState) buildPlatformViewConfig(w TextInput) platform.TextInputViewConfig {
-	// Apply default padding to match Skia chrome
-	padding := w.Padding
-	if w.overrides&textInputOverridePadding == 0 && padding == (layout.EdgeInsets{}) {
-		padding = layout.EdgeInsetsSymmetric(12, 8)
+	// Fully explicit: use field values directly, no fallbacks.
+	// Callers (TextField, theme.TextFieldOf) must provide all visual values.
+	return platform.TextInputViewConfig{
+		FontFamily:       w.Style.FontFamily,
+		FontSize:         w.Style.FontSize,
+		FontWeight:       int(w.Style.FontWeight),
+		TextColor:        uint32(w.Style.Color),
+		PlaceholderColor: uint32(w.PlaceholderColor),
+		Multiline:        w.Multiline,
+		MaxLines:         w.MaxLines,
+		Obscure:          w.Obscure,
+		Autocorrect:      w.Autocorrect,
+		KeyboardType:     w.KeyboardType,
+		InputAction:      w.InputAction,
+		Capitalization:   w.Capitalization,
+		PaddingLeft:      w.Padding.Left,
+		PaddingTop:       w.Padding.Top,
+		PaddingRight:     w.Padding.Right,
+		PaddingBottom:    w.Padding.Bottom,
+		Placeholder:      w.Placeholder,
 	}
-
-	config := platform.TextInputViewConfig{
-		FontFamily:     w.Style.FontFamily,
-		FontSize:       w.Style.FontSize,
-		FontWeight:     int(w.Style.FontWeight),
-		Multiline:      w.Multiline,
-		MaxLines:       w.MaxLines,
-		Obscure:        w.Obscure,
-		Autocorrect:    w.Autocorrect,
-		KeyboardType:   w.KeyboardType,
-		InputAction:    w.InputAction,
-		Capitalization: w.Capitalization,
-		PaddingLeft:    padding.Left,
-		PaddingTop:     padding.Top,
-		PaddingRight:   padding.Right,
-		PaddingBottom:  padding.Bottom,
-		Placeholder:    w.Placeholder,
-	}
-
-	if config.FontSize == 0 {
-		config.FontSize = 16
-	}
-
-	// Convert colors to ARGB uint32
-	textColor := w.Style.Color
-	if textColor == 0 {
-		textColor = graphics.Color(0xFF000000) // black
-	}
-	config.TextColor = uint32(textColor)
-
-	placeholderColor := w.PlaceholderColor
-	if w.overrides&textInputOverridePlaceholderColor == 0 && placeholderColor == 0 {
-		placeholderColor = graphics.Color(0xFF999999)
-	}
-	config.PlaceholderColor = uint32(placeholderColor)
-
-	return config
 }
 
 func (s *textInputState) updatePlatformViewConfig(w TextInput) {
@@ -760,28 +690,30 @@ func (r *renderTextInput) Paint(ctx *layout.PaintContext) {
 		ctx.Canvas.DrawRect(graphics.RectFromLTWH(0, 0, size.Width, size.Height), bgPaint)
 	}
 
-	// Draw border
-	borderPaint := graphics.DefaultPaint()
-	borderPaint.Style = graphics.PaintStyleStroke
-	borderPaint.StrokeWidth = r.borderWidth
+	// Draw border only if borderWidth > 0
+	if r.borderWidth > 0 {
+		borderPaint := graphics.DefaultPaint()
+		borderPaint.Style = graphics.PaintStyleStroke
+		borderPaint.StrokeWidth = r.borderWidth
 
-	// Use focus color when focused, otherwise border color
-	if r.state != nil && r.state.focused {
-		borderPaint.Color = r.focusColor
-		borderPaint.StrokeWidth = 2 // Thicker border when focused
-	} else {
-		borderPaint.Color = r.borderColor
-	}
+		// Use focus color when focused, otherwise border color
+		if r.state != nil && r.state.focused && r.focusColor != 0 {
+			borderPaint.Color = r.focusColor
+			borderPaint.StrokeWidth = 2 // Thicker border when focused
+		} else {
+			borderPaint.Color = r.borderColor
+		}
 
-	halfStroke := borderPaint.StrokeWidth / 2
-	if r.borderRadius > 0 {
-		rrect := graphics.RRectFromRectAndRadius(
-			graphics.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth),
-			graphics.CircularRadius(r.borderRadius),
-		)
-		ctx.Canvas.DrawRRect(rrect, borderPaint)
-	} else {
-		ctx.Canvas.DrawRect(graphics.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth), borderPaint)
+		halfStroke := borderPaint.StrokeWidth / 2
+		if r.borderRadius > 0 {
+			rrect := graphics.RRectFromRectAndRadius(
+				graphics.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth),
+				graphics.CircularRadius(r.borderRadius),
+			)
+			ctx.Canvas.DrawRRect(rrect, borderPaint)
+		} else {
+			ctx.Canvas.DrawRect(graphics.RectFromLTWH(halfStroke, halfStroke, size.Width-borderPaint.StrokeWidth, size.Height-borderPaint.StrokeWidth), borderPaint)
+		}
 	}
 
 	// Native view handles text rendering - no Skia text drawing needed

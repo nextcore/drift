@@ -665,18 +665,18 @@ func (d defaultPlaceholder) Build(ctx core.BuildContext) core.Widget {
 						widgets.MainAxisAlignmentCenter,
 						widgets.CrossAxisAlignmentStart,
 						widgets.MainAxisSizeMin,
-						widgets.TextOf("Drift", graphics.TextStyle{
+						widgets.Text{Content: "Drift", Style: graphics.TextStyle{
 							Color:      colors.Primary,
 							FontSize:   48,
 							FontWeight: graphics.FontWeightBold,
-						}),
+						}},
 						widgets.VSpace(16),
-						widgets.TextOf("No app registered", textTheme.BodyLarge),
+						widgets.Text{Content: "No app registered", Style: textTheme.BodyLarge},
 						widgets.VSpace(8),
-						widgets.TextOf("Call drift.NewApp(...).Run() to set your root widget", graphics.TextStyle{
+						widgets.Text{Content: "Call drift.NewApp(...).Run() to set your root widget", Style: graphics.TextStyle{
 							Color:    colors.OnSurfaceVariant,
 							FontSize: 14,
-						}),
+						}},
 					),
 				),
 			},

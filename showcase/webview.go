@@ -14,12 +14,12 @@ func buildWebViewPage(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "WebView",
 		sectionTitle("Native WebView", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("This view renders a platform-native browser surface.", labelStyle(colors)),
+		widgets.Text{Content: "This view renders a platform-native browser surface.", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		widgets.TextOf("Load any HTTPS URL in the native layer.", graphics.TextStyle{
+		widgets.Text{Content: "Load any HTTPS URL in the native layer.", Style: graphics.TextStyle{
 			Color:    colors.OnSurfaceVariant,
 			FontSize: 13,
-		}),
+		}},
 		widgets.VSpace(16),
 		widgets.NativeWebView{
 			InitialURL: "https://www.google.com",

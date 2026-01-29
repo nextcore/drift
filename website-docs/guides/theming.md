@@ -18,7 +18,7 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
 
     return widgets.Container{
         Color:       colors.Surface,
-        ChildWidget: widgets.TextOf("Hello", textTheme.HeadlineLarge),
+        ChildWidget: widgets.Text{Content: "Hello", Style: textTheme.HeadlineLarge},
     }
 }
 ```
@@ -83,9 +83,9 @@ widgets.Container{
     ChildWidget: child,
 }
 
-widgets.TextOf("Error!", graphics.TextStyle{
+widgets.Text{Content: "Error!", Style: graphics.TextStyle{
     Color: colors.Error,
-})
+}}
 ```
 
 ## Text Theme
@@ -115,8 +115,8 @@ Usage:
 ```go
 textTheme := theme.TextThemeOf(ctx)
 
-widgets.TextOf("Welcome", textTheme.HeadlineLarge)
-widgets.TextOf("Body content", textTheme.BodyMedium)
+widgets.Text{Content: "Welcome", Style: textTheme.HeadlineLarge}
+widgets.Text{Content: "Body content", Style: textTheme.BodyMedium}
 ```
 
 ## Custom Themes
@@ -200,6 +200,116 @@ theme.Theme{
             },
         },
     },
+}
+```
+
+## Themed Widget Constructors
+
+Most Drift widgets are **explicit by default** — zero values mean zero, not "use theme default."
+For theme-styled widgets, use the themed constructors in `pkg/theme`.
+
+When using explicit widgets, you must provide the visual properties you want rendered.
+If you omit colors, sizes, or text styles, the widget may render transparently or with zero size.
+In particular, explicit `TextField`/`TextInput`, `Dropdown`, `DatePicker`, and `TimePicker`
+require you to set their colors, sizes, and text styles.
+
+### Available Constructors
+
+| Constructor | Returns | Theme Data Used |
+|------------|---------|-----------------|
+| `theme.TextOf(ctx, content, style)` | `widgets.Text` | Wrap enabled by default |
+| `theme.ButtonOf(ctx, label, onTap)` | `widgets.Button` | `ButtonThemeData` |
+| `theme.CheckboxOf(ctx, value, onChanged)` | `widgets.Checkbox` | `CheckboxThemeData` |
+| `theme.DropdownOf[T](ctx, value, items, onChanged)` | `widgets.Dropdown[T]` | `DropdownThemeData` |
+| `theme.TextFieldOf(ctx, controller)` | `widgets.TextField` | `TextFieldThemeData` |
+| `theme.ToggleOf(ctx, value, onChanged)` | `widgets.Toggle` | `SwitchThemeData` |
+| `theme.RadioOf[T](ctx, value, groupValue, onChanged)` | `widgets.Radio[T]` | `RadioThemeData` |
+| `theme.TabBarOf(ctx, tabs, selectedIndex, onChanged)` | `widgets.TabBar` | `TabBarThemeData` |
+| `theme.DatePickerOf(ctx, value, onChanged)` | `widgets.DatePicker` | `ColorScheme` |
+| `theme.TimePickerOf(ctx, hour, minute, onChanged)` | `widgets.TimePicker` | `ColorScheme` |
+| `theme.IconOf(ctx, glyph)` | `widgets.Icon` | `ColorScheme` |
+| `theme.CircularProgressIndicatorOf(ctx, value)` | `widgets.CircularProgressIndicator` | `ColorScheme` |
+| `theme.LinearProgressIndicatorOf(ctx, value)` | `widgets.LinearProgressIndicator` | `ColorScheme` |
+
+### Usage
+
+```go
+func (s *myState) Build(ctx core.BuildContext) core.Widget {
+    return widgets.Column{
+        ChildrenWidgets: []core.Widget{
+            // Themed button - reads colors, padding, etc. from theme
+            theme.ButtonOf(ctx, "Save", s.onSave),
+
+            widgets.VSpace(16),
+
+            // Themed checkbox
+            theme.CheckboxOf(ctx, s.accepted.Get(), func(v bool) {
+                s.accepted.Set(v)
+            }),
+
+            widgets.VSpace(16),
+
+            // Themed with override
+            theme.ButtonOf(ctx, "Custom", s.onCustom).
+                WithBorderRadius(0),  // zero is honored
+        },
+    }
+}
+```
+
+### When to Use What
+
+| Pattern | When to Use |
+|---------|-------------|
+| `theme.XxxOf(ctx, ...)` | Most apps — consistent theme styling |
+| Struct literal | Full control over all properties |
+| `.WithX()` | Override specific theme values |
+
+### Explicit Widgets
+
+For widgets without themed constructors (like layout widgets), pull theme values manually:
+
+```go
+_, colors, textTheme := theme.UseTheme(ctx)
+
+widgets.Container{
+    Color:   colors.Surface,
+    Padding: layout.EdgeInsetsAll(16),
+    ChildWidget: widgets.Text{
+        Content: "Hello",
+        Style:   textTheme.BodyLarge,
+    },
+}
+
+widgets.DecoratedBox{
+    Color:        colors.SurfaceVariant,
+    BorderRadius: 8,
+    ChildWidget:  content,
+}
+```
+
+## Disabled Styling
+
+Widgets support **theme-controlled disabled colors**:
+
+- **Themed widgets** (`theme.XxxOf`) automatically use disabled colors from theme data
+- **Explicit widgets** without disabled colors fall back to 0.5 opacity
+
+```go
+// Themed: uses theme disabled colors
+btn := theme.ButtonOf(ctx, "Submit", onSubmit)
+btn.Disabled = true  // uses DisabledBackgroundColor, DisabledForegroundColor
+
+// Explicit without disabled colors: falls back to 0.5 opacity
+widgets.Button{Label: "Submit", OnTap: onSubmit, Disabled: true}
+
+// Explicit with custom disabled colors
+widgets.Button{
+    Label:             "Submit",
+    Disabled:          true,
+    Color:             colors.Primary,
+    DisabledColor:     colors.SurfaceVariant,
+    DisabledTextColor: colors.OnSurfaceVariant,
 }
 ```
 

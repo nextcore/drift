@@ -8,7 +8,6 @@ import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // DropdownItem represents a selectable value for a dropdown.
@@ -25,32 +24,42 @@ type DropdownItem[T any] struct {
 
 // Dropdown displays a button that opens a menu of selectable items.
 //
+// # Styling Model
+//
+// Dropdown is explicit by default — all visual properties use their struct field
+// values directly. A zero value means zero, not "use theme default." For example:
+//
+//   - BackgroundColor: 0 means transparent background
+//   - BorderRadius: 0 means sharp corners
+//   - Height: 0 means zero height (not rendered)
+//
+// For theme-styled dropdowns, use [theme.DropdownOf] which pre-fills visual
+// properties from the current theme's [theme.DropdownThemeData].
+//
+// # Creation Patterns
+//
+// Explicit with struct literal (full control):
+//
+//	widgets.Dropdown[string]{
+//	    Value:           selectedCountry,
+//	    Items:           countryItems,
+//	    OnChanged:       func(v string) { s.SetState(func() { s.selectedCountry = v }) },
+//	    BackgroundColor: graphics.ColorWhite,
+//	    BorderColor:     graphics.RGB(200, 200, 200),
+//	    BorderRadius:    8,
+//	    Height:          48,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.DropdownOf(ctx, selectedCountry, countryItems, onChanged)
+//	// Pre-filled with theme colors, border radius, height, item padding
+//
 // Dropdown is a generic widget where T is the type of the selection value.
 // When an item is selected, OnChanged is called with the selected item's Value.
 //
-// Example:
-//
-//	Dropdown[string]{
-//	    Value: selectedCountry,
-//	    Hint:  "Select a country",
-//	    Items: []widgets.DropdownItem[string]{
-//	        {Value: "us", Label: "United States"},
-//	        {Value: "ca", Label: "Canada"},
-//	        {Value: "mx", Label: "Mexico"},
-//	    },
-//	    OnChanged: func(value string) {
-//	        s.SetState(func() { s.selectedCountry = value })
-//	    },
-//	}
-//
 // Each [DropdownItem] can have a custom ChildWidget instead of a text Label.
 // Items can be individually disabled by setting Disabled: true.
-//
-// The dropdown uses colors from the current [theme.DropdownTheme] by default.
-// Visual properties fall back to theme defaults when their value is zero and
-// they have not been explicitly set via a WithX method. Use the WithX methods
-// to set a value that should be used even when it equals zero (e.g.,
-// [Dropdown.WithBorderRadius](0) for sharp corners).
 type Dropdown[T any] struct {
 	// Value is the current selected value.
 	Value T
@@ -64,93 +73,75 @@ type Dropdown[T any] struct {
 	Disabled bool
 	// Width sets a fixed width (0 uses layout constraints).
 	Width float64
-	// Height sets a fixed height (0 uses default).
+	// Height sets a fixed height. Zero means zero height (not rendered).
 	Height float64
-	// BorderRadius sets the corner radius.
+	// BorderRadius sets the corner radius. Zero means sharp corners.
 	BorderRadius float64
-	// BackgroundColor sets the trigger background.
+	// BackgroundColor sets the trigger background. Zero means transparent.
 	BackgroundColor graphics.Color
-	// BorderColor sets the trigger border color.
+	// BorderColor sets the trigger border color. Zero means no border.
 	BorderColor graphics.Color
-	// MenuBackgroundColor sets the menu background.
+	// MenuBackgroundColor sets the menu background. Zero means transparent.
 	MenuBackgroundColor graphics.Color
-	// MenuBorderColor sets the menu border color.
+	// MenuBorderColor sets the menu border color. Zero means no border.
 	MenuBorderColor graphics.Color
 	// TextStyle sets the text style for labels.
 	TextStyle graphics.TextStyle
-	// ItemPadding sets padding for each menu item.
+	// ItemPadding sets padding for each menu item. Zero means no padding.
 	ItemPadding layout.EdgeInsets
-	// overrides tracks which fields were explicitly set via WithX methods.
-	overrides dropdownOverrides
+	// SelectedItemColor is the background for the currently selected item.
+	SelectedItemColor graphics.Color
+
+	// DisabledTextColor is the text color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal styling.
+	DisabledTextColor graphics.Color
 }
 
-type dropdownOverrides uint16
-
-const (
-	dropdownOverrideBackgroundColor     dropdownOverrides = 1 << iota
-	dropdownOverrideBorderColor
-	dropdownOverrideMenuBackgroundColor
-	dropdownOverrideMenuBorderColor
-	dropdownOverrideBorderRadius
-	dropdownOverrideHeight
-	dropdownOverrideItemPadding
-)
-
 // WithBackgroundColor returns a copy with the specified trigger background color.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (d Dropdown[T]) WithBackgroundColor(c graphics.Color) Dropdown[T] {
 	d.BackgroundColor = c
-	d.overrides |= dropdownOverrideBackgroundColor
 	return d
 }
 
 // WithBorderColor returns a copy with the specified trigger border color.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (d Dropdown[T]) WithBorderColor(c graphics.Color) Dropdown[T] {
 	d.BorderColor = c
-	d.overrides |= dropdownOverrideBorderColor
 	return d
 }
 
 // WithMenuBackgroundColor returns a copy with the specified menu panel background color.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (d Dropdown[T]) WithMenuBackgroundColor(c graphics.Color) Dropdown[T] {
 	d.MenuBackgroundColor = c
-	d.overrides |= dropdownOverrideMenuBackgroundColor
 	return d
 }
 
 // WithMenuBorderColor returns a copy with the specified menu panel border color.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (d Dropdown[T]) WithMenuBorderColor(c graphics.Color) Dropdown[T] {
 	d.MenuBorderColor = c
-	d.overrides |= dropdownOverrideMenuBorderColor
 	return d
 }
 
 // WithBorderRadius returns a copy with the specified corner radius.
-// The value is marked as explicitly set, so even zero (sharp corners)
-// will be used instead of falling back to the theme default.
 func (d Dropdown[T]) WithBorderRadius(radius float64) Dropdown[T] {
 	d.BorderRadius = radius
-	d.overrides |= dropdownOverrideBorderRadius
 	return d
 }
 
 // WithHeight returns a copy with the specified item row height.
-// The value is marked as explicitly set, bypassing theme defaults even when zero.
 func (d Dropdown[T]) WithHeight(height float64) Dropdown[T] {
 	d.Height = height
-	d.overrides |= dropdownOverrideHeight
 	return d
 }
 
 // WithItemPadding returns a copy with the specified menu item padding.
-// The value is marked as explicitly set, so even a zero [layout.EdgeInsets]
-// will be used instead of falling back to the theme default.
 func (d Dropdown[T]) WithItemPadding(padding layout.EdgeInsets) Dropdown[T] {
 	d.ItemPadding = padding
-	d.overrides |= dropdownOverrideItemPadding
+	return d
+}
+
+// WithHint returns a copy with the specified hint text shown when no selection matches.
+func (d Dropdown[T]) WithHint(hint string) Dropdown[T] {
+	d.Hint = hint
 	return d
 }
 
@@ -259,51 +250,29 @@ func (s *dropdownState[T]) isExpanded() bool {
 
 func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 	w := s.element.Widget().(Dropdown[T])
-	themeData, colors, textTheme := theme.UseTheme(ctx)
-	dropdownTheme := themeData.DropdownThemeOf()
 
+	// Use field values directly — zero means zero
 	textStyle := w.TextStyle
-	if textStyle.FontSize == 0 {
-		textStyle = textTheme.BodyMedium
-	}
-	if textStyle.Color == 0 {
-		textStyle.Color = dropdownTheme.TextColor
-	}
-
 	backgroundColor := w.BackgroundColor
-	if w.overrides&dropdownOverrideBackgroundColor == 0 && backgroundColor == 0 {
-		backgroundColor = dropdownTheme.BackgroundColor
-	}
 	borderColor := w.BorderColor
-	if w.overrides&dropdownOverrideBorderColor == 0 && borderColor == 0 {
-		borderColor = dropdownTheme.BorderColor
-	}
 	menuBackgroundColor := w.MenuBackgroundColor
-	if w.overrides&dropdownOverrideMenuBackgroundColor == 0 && menuBackgroundColor == 0 {
-		menuBackgroundColor = dropdownTheme.MenuBackgroundColor
-	}
 	menuBorderColor := w.MenuBorderColor
-	if w.overrides&dropdownOverrideMenuBorderColor == 0 && menuBorderColor == 0 {
-		menuBorderColor = dropdownTheme.MenuBorderColor
-	}
 	borderRadius := w.BorderRadius
-	if w.overrides&dropdownOverrideBorderRadius == 0 && borderRadius == 0 {
-		borderRadius = dropdownTheme.BorderRadius
-	}
 	itemPadding := w.ItemPadding
-	if w.overrides&dropdownOverrideItemPadding == 0 && itemPadding == (layout.EdgeInsets{}) {
-		itemPadding = dropdownTheme.ItemPadding
-	}
 	itemHeight := w.Height
-	if w.overrides&dropdownOverrideHeight == 0 && itemHeight == 0 {
-		itemHeight = dropdownTheme.Height
-	}
+	selectedItemColor := w.SelectedItemColor
 
 	enabled := !w.Disabled && w.OnChanged != nil
+
+	// Apply disabled styling when not enabled (either Disabled=true or OnChanged=nil).
+	// This ensures widgets with nil handlers also appear disabled.
+	useOpacityFallback := false
 	if !enabled {
-		textStyle.Color = dropdownTheme.DisabledTextColor
-		backgroundColor = colors.SurfaceVariant
-		borderColor = dropdownTheme.BorderColor
+		if w.DisabledTextColor != 0 {
+			textStyle.Color = w.DisabledTextColor
+		} else {
+			useOpacityFallback = true
+		}
 	}
 
 	selectedLabel := ""
@@ -330,9 +299,6 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 		width = math.MaxFloat64
 	}
 	iconSize := textStyle.FontSize
-	if iconSize == 0 {
-		iconSize = textTheme.BodyMedium.FontSize
-	}
 	contentPadding := layout.EdgeInsetsOnly(itemPadding.Left, 0, itemPadding.Right, 0)
 
 	toggle := func() {
@@ -363,12 +329,17 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 		},
 	}
 
-	triggerBox := DecoratedBox{
+	var triggerBox core.Widget = DecoratedBox{
 		Color:        backgroundColor,
 		BorderColor:  borderColor,
 		BorderWidth:  1,
 		BorderRadius: borderRadius,
 		ChildWidget:  trigger,
+	}
+
+	// Fall back to opacity if no disabled text color provided
+	if useOpacityFallback {
+		triggerBox = Opacity{Opacity: 0.5, ChildWidget: triggerBox}
 	}
 
 	if !s.expanded {
@@ -385,7 +356,7 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 		}
 		itemBackground := graphics.ColorTransparent
 		if reflect.DeepEqual(item.Value, w.Value) {
-			itemBackground = dropdownTheme.SelectedItemColor
+			itemBackground = selectedItemColor
 		}
 		menuItems = append(menuItems, GestureDetector{
 			OnTap: func(value T, enabled bool) func() {

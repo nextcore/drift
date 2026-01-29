@@ -130,7 +130,14 @@ func TestButton_Tap(t *testing.T) {
     tester := drifttest.NewWidgetTesterWithT(t)
 
     tapped := false
-    tester.PumpWidget(widgets.ButtonOf("Click", func() { tapped = true }))
+    tester.PumpWidget(widgets.Button{
+        Label:     "Click",
+        OnTap:     func() { tapped = true },
+        Color:     graphics.RGB(33, 150, 243),
+        TextColor: graphics.ColorWhite,
+        FontSize:  16,
+        Haptic:    true,
+    })
 
     if err := tester.Tap(drifttest.ByText("Click")); err != nil {
         t.Fatalf("Tap failed: %v", err)

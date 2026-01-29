@@ -13,13 +13,13 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 	logo := loadGoLogo()
 
 	return demoPage(ctx, "Decorations",
-		widgets.TextOf("Decorations", textTheme.TitleLarge),
+		widgets.Text{Content: "Decorations", Style: textTheme.TitleLarge},
 		widgets.VSpace(8),
-		widgets.TextOf("Rounded corners and borders for any widget.", labelStyle(colors)),
+		widgets.Text{Content: "Rounded corners and borders for any widget.", Style: labelStyle(colors)},
 		widgets.VSpace(24),
 		sectionTitle("ClipRRect", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Clip images or content with rounded corners.", labelStyle(colors)),
+		widgets.Text{Content: "Clip images or content with rounded corners.", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		widgets.ClipRRect{
 			Radius: 16,
@@ -33,7 +33,7 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(24),
 		sectionTitle("DecoratedBox", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Paint fills, gradients, and borders behind content.", labelStyle(colors)),
+		widgets.Text{Content: "Paint fills, gradients, and borders behind content.", Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		widgets.DecoratedBox{
 			Color:        colors.SurfaceVariant,
@@ -45,16 +45,16 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					widgets.MainAxisAlignmentStart,
 					widgets.CrossAxisAlignmentStart,
 					widgets.MainAxisSizeMin,
-					widgets.TextOf("Card title", graphics.TextStyle{
+					widgets.Text{Content: "Card title", Style: graphics.TextStyle{
 						Color:      colors.OnSurface,
 						FontSize:   16,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 					widgets.VSpace(8),
-					widgets.TextOf("Use border radius for cards and panels.", graphics.TextStyle{
+					widgets.Text{Content: "Use border radius for cards and panels.", Style: graphics.TextStyle{
 						Color:    colors.OnSurfaceVariant,
 						FontSize: 14,
-					}).WithWrap(true),
+					}},
 				),
 			),
 		},
@@ -73,18 +73,18 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 				Width:  240,
 				Height: 52,
 				ChildWidget: widgets.Center{
-					ChildWidget: widgets.TextOf("Gradient surface", graphics.TextStyle{
+					ChildWidget: widgets.Text{Content: "Gradient surface", Style: graphics.TextStyle{
 						Color:      colors.OnPrimary,
 						FontSize:   14,
 						FontWeight: graphics.FontWeightBold,
-					}),
+					}},
 				},
 			},
 		},
 		widgets.VSpace(24),
 		sectionTitle("Drop Shadows", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Material elevation levels 1-5 using BoxShadowElevation.", labelStyle(colors)),
+		widgets.Text{Content: "Material elevation levels 1-5 using BoxShadowElevation.", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 		widgets.RowOf(
 			widgets.MainAxisAlignmentStart,
@@ -101,10 +101,10 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Width:  72,
 					Height: 72,
 					ChildWidget: widgets.Center{
-						ChildWidget: widgets.TextOf("1", graphics.TextStyle{
+						ChildWidget: widgets.Text{Content: "1", Style: graphics.TextStyle{
 							Color:    colors.OnSurface,
 							FontSize: 14,
-						}),
+						}},
 					},
 				},
 			},
@@ -120,10 +120,10 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Width:  72,
 					Height: 72,
 					ChildWidget: widgets.Center{
-						ChildWidget: widgets.TextOf("2", graphics.TextStyle{
+						ChildWidget: widgets.Text{Content: "2", Style: graphics.TextStyle{
 							Color:    colors.OnSurface,
 							FontSize: 14,
-						}),
+						}},
 					},
 				},
 			},
@@ -139,10 +139,10 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Width:  72,
 					Height: 72,
 					ChildWidget: widgets.Center{
-						ChildWidget: widgets.TextOf("3", graphics.TextStyle{
+						ChildWidget: widgets.Text{Content: "3", Style: graphics.TextStyle{
 							Color:    colors.OnSurface,
 							FontSize: 14,
-						}),
+						}},
 					},
 				},
 			},
@@ -158,10 +158,10 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Width:  72,
 					Height: 72,
 					ChildWidget: widgets.Center{
-						ChildWidget: widgets.TextOf("5", graphics.TextStyle{
+						ChildWidget: widgets.Text{Content: "5", Style: graphics.TextStyle{
 							Color:    colors.OnSurface,
 							FontSize: 14,
-						}),
+						}},
 					},
 				},
 			},
@@ -169,7 +169,7 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(24),
 		sectionTitle("Backdrop Blur", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Frosted glass effect over content.", labelStyle(colors)),
+		widgets.Text{Content: "Frosted glass effect over content.", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 		widgets.SizedBox{
 			Width:  280,
@@ -196,11 +196,11 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 								widgets.DecoratedBox{
 									Color: graphics.RGBA(255, 255, 255, 77),
 									ChildWidget: widgets.Center{
-										ChildWidget: widgets.TextOf("Frosted Glass", graphics.TextStyle{
+										ChildWidget: widgets.Text{Content: "Frosted Glass", Style: graphics.TextStyle{
 											Color:      graphics.RGBA(10, 10, 10, 90),
 											FontSize:   14,
 											FontWeight: graphics.FontWeightBold,
-										}),
+										}},
 									},
 								},
 							),
@@ -212,13 +212,13 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(24),
 		sectionTitle("Text Shadows", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Drop shadows for text elements.", labelStyle(colors)),
+		widgets.Text{Content: "Drop shadows for text elements.", Style: labelStyle(colors)},
 		widgets.VSpace(16),
 		widgets.ColumnOf(
 			widgets.MainAxisAlignmentStart,
 			widgets.CrossAxisAlignmentStart,
 			widgets.MainAxisSizeMin,
-			widgets.TextOf("Hard Shadow", graphics.TextStyle{
+			widgets.Text{Content: "Hard Shadow", Style: graphics.TextStyle{
 				Color:      colors.OnSurface,
 				FontSize:   24,
 				FontWeight: graphics.FontWeightBold,
@@ -226,9 +226,9 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Color:  colors.Primary.WithAlpha(80),
 					Offset: graphics.Offset{X: 2, Y: 2},
 				},
-			}),
+			}},
 			widgets.VSpace(16),
-			widgets.TextOf("Soft Shadow", graphics.TextStyle{
+			widgets.Text{Content: "Soft Shadow", Style: graphics.TextStyle{
 				Color:      colors.OnSurface,
 				FontSize:   24,
 				FontWeight: graphics.FontWeightBold,
@@ -237,9 +237,9 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Offset:     graphics.Offset{X: 2, Y: 3},
 					BlurRadius: 4,
 				},
-			}),
+			}},
 			widgets.VSpace(16),
-			widgets.TextOf("Glow Effect", graphics.TextStyle{
+			widgets.Text{Content: "Glow Effect", Style: graphics.TextStyle{
 				Color:      colors.Primary,
 				FontSize:   24,
 				FontWeight: graphics.FontWeightBold,
@@ -248,7 +248,7 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 					Offset:     graphics.Offset{X: 0, Y: 0},
 					BlurRadius: 8,
 				},
-			}),
+			}},
 		),
 		widgets.VSpace(40),
 	)

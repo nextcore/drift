@@ -8,6 +8,26 @@ import (
 
 // Text displays a string with a single style.
 //
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.Text{
+//	    Content: "Hello, Drift",
+//	    Style:   graphics.TextStyle{Color: colors.OnSurface, FontSize: 16},
+//	    Wrap:    true,
+//	}
+//
+// Using text styles from theme:
+//
+//	_, _, textTheme := theme.UseTheme(ctx)
+//	widgets.Text{Content: "Title", Style: textTheme.HeadlineLarge}
+//
+// Themed with wrapping (using [theme.TextOf]):
+//
+//	theme.TextOf(ctx, "Welcome", textTheme.HeadlineMedium)
+//	// Returns Text with Wrap: true (text wraps by default)
+//
 // # Text Wrapping and Line Limits
 //
 // The Wrap and MaxLines fields control how text flows and truncates:
@@ -42,14 +62,6 @@ type Text struct {
 	// Wrap enables text wrapping at the constraint width.
 	// When false, text renders on a single line.
 	Wrap bool
-}
-
-// TextOf creates a styled text widget with wrapping enabled.
-// This is a convenience helper equivalent to:
-//
-//	Text{Content: content, Style: style, Wrap: true}
-func TextOf(content string, style graphics.TextStyle) Text {
-	return Text{Content: content, Style: style, Wrap: true}
 }
 
 func (t Text) CreateElement() core.Element {

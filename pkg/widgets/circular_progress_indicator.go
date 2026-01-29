@@ -9,26 +9,48 @@ import (
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
 // CircularProgressIndicator displays a circular progress indicator.
 // When Value is nil, it shows an indeterminate animation.
 // When Value is set, it shows determinate progress from 0.0 to 1.0.
+//
+// # Styling Model
+//
+// CircularProgressIndicator is explicit by default — zero values mean zero
+// (no color). For theme-styled indicators, use [theme.CircularProgressIndicatorOf]
+// which pre-fills Color from Primary and TrackColor from SurfaceVariant.
+//
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.CircularProgressIndicator{
+//	    Value:       nil, // indeterminate
+//	    Color:       colors.Primary,
+//	    TrackColor:  colors.SurfaceVariant,
+//	    Size:        36,
+//	    StrokeWidth: 4,
+//	}
+//
+// Themed (reads from current theme):
+//
+//	theme.CircularProgressIndicatorOf(ctx, nil)  // indeterminate
+//	theme.CircularProgressIndicatorOf(ctx, &progress)  // determinate
 type CircularProgressIndicator struct {
 	// Value is the progress value (0.0 to 1.0). Nil means indeterminate.
 	Value *float64
 
-	// Color is the indicator color. Uses theme primary color if not set.
+	// Color is the indicator color. Zero means transparent (invisible).
 	Color graphics.Color
 
-	// TrackColor is the background track color. Uses theme surface variant if not set.
+	// TrackColor is the background track color. Zero means no track.
 	TrackColor graphics.Color
 
-	// StrokeWidth is the thickness of the indicator. Default: 4.0
+	// StrokeWidth is the thickness of the indicator. Zero means zero stroke (invisible).
 	StrokeWidth float64
 
-	// Size is the diameter of the indicator. Default: 36.0
+	// Size is the diameter of the indicator. Zero means zero size (not rendered).
 	Size float64
 }
 
@@ -112,28 +134,12 @@ func (s *circularProgressState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 
 func (s *circularProgressState) Build(ctx core.BuildContext) core.Widget {
 	w := s.Element().Widget().(CircularProgressIndicator)
-	themeData, _, _ := theme.UseTheme(ctx)
 
-	// Apply defaults
+	// Use field values directly — zero means zero
 	size := w.Size
-	if size == 0 {
-		size = 36
-	}
-
 	strokeWidth := w.StrokeWidth
-	if strokeWidth == 0 {
-		strokeWidth = 4
-	}
-
 	color := w.Color
-	if color == 0 {
-		color = themeData.ColorScheme.Primary
-	}
-
 	trackColor := w.TrackColor
-	if trackColor == 0 {
-		trackColor = themeData.ColorScheme.SurfaceVariant
-	}
 
 	// Calculate animation values for indeterminate mode
 	var rotationRad, sweepRad float64

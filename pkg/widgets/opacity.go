@@ -8,6 +8,15 @@ import (
 
 // Opacity applies transparency to its child widget.
 //
+// # Creation Pattern
+//
+// Use struct literal:
+//
+//	widgets.Opacity{
+//	    Opacity:     0.5,
+//	    ChildWidget: content,
+//	}
+//
 // The Opacity value should be between 0.0 (fully transparent) and 1.0 (fully opaque).
 // When Opacity is 0.0, the child is not painted at all.
 // When Opacity is 1.0, the child is painted normally without any performance overhead.
@@ -20,15 +29,6 @@ type Opacity struct {
 	Opacity float64
 	// ChildWidget is the widget to which opacity is applied.
 	ChildWidget core.Widget
-}
-
-// OpacityOf creates an opacity widget with the given opacity value and child.
-// The opacity value should be between 0.0 (fully transparent) and 1.0 (fully opaque).
-// This is a convenience helper equivalent to:
-//
-//	Opacity{Opacity: opacity, ChildWidget: child}
-func OpacityOf(opacity float64, child core.Widget) Opacity {
-	return Opacity{Opacity: opacity, ChildWidget: child}
 }
 
 func (o Opacity) CreateElement() core.Element {

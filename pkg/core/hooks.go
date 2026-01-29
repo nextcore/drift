@@ -49,7 +49,7 @@ func UseListenable(base *StateBase, listenable Listenable) {
 //
 //	func (s *myState) Build(ctx core.BuildContext) core.Widget {
 //	    // Use .Value() in Build to read the current value
-//	    return widgets.TextOf(fmt.Sprintf("Count: %d", s.counter.Value()), ...)
+//	    return widgets.Text{Content: fmt.Sprintf("Count: %d", s.counter.Value()), ...}
 //	}
 func UseObservable[T any](base *StateBase, obs *Observable[T]) {
 	unsub := obs.AddListener(func(T) {
@@ -85,7 +85,7 @@ func UseObservable[T any](base *StateBase, obs *Observable[T]) {
 //	func (s *myState) Build(ctx core.BuildContext) core.Widget {
 //	    return widgets.GestureDetector{
 //	        OnTap: func() { s.count.Set(s.count.Get() + 1) },
-//	        Child: widgets.TextOf(fmt.Sprintf("Count: %d", s.count.Get()), ...),
+//	        Child: widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Get()), ...},
 //	    }
 //	}
 type ManagedState[T any] struct {

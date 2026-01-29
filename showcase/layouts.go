@@ -16,11 +16,11 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		// Row section
 		sectionTitle("Row Layout", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Horizontal arrangement with MainAxisAlignment:", labelStyle(colors)),
+		widgets.Text{Content: "Horizontal arrangement with MainAxisAlignment:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 
 		// Row - Start
-		widgets.TextOf("Start:", labelStyle(colors)),
+		widgets.Text{Content: "Start:", Style: labelStyle(colors)},
 		widgets.VSpace(4),
 		layoutContainer(
 			widgets.RowOf(
@@ -36,7 +36,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 
 		// Row - Center
-		widgets.TextOf("Center:", labelStyle(colors)),
+		widgets.Text{Content: "Center:", Style: labelStyle(colors)},
 		widgets.VSpace(4),
 		layoutContainer(
 			widgets.RowOf(
@@ -52,7 +52,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 
 		// Row - SpaceBetween
-		widgets.TextOf("SpaceBetween:", labelStyle(colors)),
+		widgets.Text{Content: "SpaceBetween:", Style: labelStyle(colors)},
 		widgets.VSpace(4),
 		layoutContainer(
 			widgets.RowOf(
@@ -68,7 +68,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 
 		// Row - SpaceEvenly
-		widgets.TextOf("SpaceEvenly:", labelStyle(colors)),
+		widgets.Text{Content: "SpaceEvenly:", Style: labelStyle(colors)},
 		widgets.VSpace(4),
 		layoutContainer(
 			widgets.RowOf(
@@ -86,7 +86,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		// Column section
 		sectionTitle("Column Layout", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Vertical arrangement:", labelStyle(colors)),
+		widgets.Text{Content: "Vertical arrangement:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.Container{
 			Color: colors.SurfaceVariant,
@@ -108,7 +108,7 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 		// Stack section
 		sectionTitle("Stack Layout", colors),
 		widgets.VSpace(12),
-		widgets.TextOf("Overlay widgets on top of each other:", labelStyle(colors)),
+		widgets.Text{Content: "Overlay widgets on top of each other:", Style: labelStyle(colors)},
 		widgets.VSpace(8),
 		widgets.SizedBox{
 			Width:  200,
@@ -119,10 +119,10 @@ func buildLayoutsPage(ctx core.BuildContext) core.Widget {
 					widgets.Container{Color: colors.Primary, Width: 200, Height: 120},
 					widgets.Container{Color: colors.Secondary, Width: 140, Height: 80},
 					widgets.Container{Color: colors.Error, Width: 80, Height: 40},
-					widgets.TextOf("Stacked", graphics.TextStyle{
+					widgets.Text{Content: "Stacked", Style: graphics.TextStyle{
 						Color:    colors.OnError,
 						FontSize: 14,
-					}),
+					}},
 				},
 			},
 		},
@@ -143,10 +143,10 @@ func colorBox(color graphics.Color, label string) core.Widget {
 	return widgets.Container{
 		Color: color,
 		ChildWidget: widgets.PaddingAll(12,
-			widgets.TextOf(label, graphics.TextStyle{
+			widgets.Text{Content: label, Style: graphics.TextStyle{
 				Color:    graphics.ColorWhite,
 				FontSize: 14,
-			}),
+			}},
 		),
 	}
 }

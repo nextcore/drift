@@ -6,100 +6,102 @@ import (
 	"github.com/go-drift/drift/pkg/platform"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
-	"github.com/go-drift/drift/pkg/theme"
 )
 
-// Button is a tappable button widget with theme-aware styling and haptic feedback.
+// Button is a tappable button widget with customizable styling and haptic feedback.
 //
-// Button uses colors from the current [theme.ButtonTheme] by default. Override
-// individual properties using the struct fields or fluent WithX methods.
-// Visual properties fall back to theme defaults when their value is zero and
-// they have not been explicitly set via a WithX method. Use the WithX methods
-// to set a value that should be used even when it equals zero (e.g.,
-// [Button.WithBorderRadius](0) for sharp corners).
+// # Styling Model
 //
-// Example using struct literal:
+// Button is explicit by default — all visual properties (Color, TextColor, Padding,
+// FontSize, BorderRadius) use their struct field values directly. A zero value
+// means zero, not "use theme default." For example:
 //
-//	Button{
-//	    Label:    "Submit",
-//	    OnTap:    handleSubmit,
-//	    Color:    colors.Primary,
-//	    Disabled: !isValid,
+//   - Color: 0 means transparent background
+//   - Padding: zero EdgeInsets means no padding
+//   - BorderRadius: 0 means sharp corners
+//
+// For theme-styled buttons, use [theme.ButtonOf] which pre-fills visual properties
+// from the current theme's [theme.ButtonThemeData].
+//
+// # Creation Patterns
+//
+// Struct literal (full control):
+//
+//	widgets.Button{
+//	    Label:        "Submit",
+//	    OnTap:        handleSubmit,
+//	    Color:        graphics.RGB(33, 150, 243),
+//	    TextColor:    graphics.ColorWhite,
+//	    Padding:      layout.EdgeInsetsSymmetric(24, 14),
+//	    BorderRadius: 8,
+//	    Haptic:       true,
 //	}
 //
-// Example using XxxOf helper:
+// Themed (reads from current theme):
 //
-//	ButtonOf("Submit", handleSubmit).
-//	    WithColor(colors.Primary, colors.OnPrimary).
-//	    WithPadding(layout.EdgeInsetsSymmetric(32, 16)).
-//	    WithDisabled(!isValid)
+//	theme.ButtonOf(ctx, "Submit", handleSubmit)
+//	// Pre-filled with theme colors, padding, font size, border radius
+//
+// Themed with overrides:
+//
+//	theme.ButtonOf(ctx, "Submit", handleSubmit).
+//	    WithBorderRadius(0).  // explicit zero for sharp corners
+//	    WithPadding(layout.EdgeInsetsAll(20))
+//
+// # Automatic Features
 //
 // The button automatically provides:
 //   - Visual feedback on press (opacity change)
-//   - Haptic feedback on tap (configurable via Haptic field)
+//   - Haptic feedback on tap (when Haptic is true)
 //   - Accessibility support (label announced by screen readers)
-//   - Disabled state styling
+//   - Disabled state handling (when Disabled is true)
 type Button struct {
 	// Label is the text displayed on the button.
 	Label string
-	// OnTap is called when the button is tapped.
+
+	// OnTap is called when the button is tapped. Ignored when Disabled is true.
 	OnTap func()
-	// Disabled disables the button when true.
+
+	// Disabled prevents interaction and applies disabled styling when true.
 	Disabled bool
-	// Color is the background color. Falls back to the theme's background color
-	// when zero and not explicitly set via [Button.WithColor].
+
+	// Color is the background color. Zero means transparent.
 	Color graphics.Color
-	// Gradient is the optional background gradient.
+
+	// Gradient is an optional background gradient that replaces Color when set.
+	// Ignored when Disabled is true.
 	Gradient *graphics.Gradient
-	// TextColor is the label color. Falls back to the theme's foreground color
-	// when zero and not explicitly set via [Button.WithColor].
+
+	// TextColor is the label text color. Zero means transparent (invisible text).
 	TextColor graphics.Color
-	// FontSize is the label font size. Falls back to the theme's font size
-	// when zero and not explicitly set via [Button.WithFontSize].
+
+	// FontSize is the label font size in logical pixels. Zero means no text rendered.
 	FontSize float64
-	// Padding is the button padding. Falls back to the theme's padding
-	// when zero and not explicitly set via [Button.WithPadding].
+
+	// Padding is the space between the button edge and label.
+	// Zero means no padding.
 	Padding layout.EdgeInsets
-	// BorderRadius is the corner radius. Falls back to the theme's border radius
-	// when zero and not explicitly set via [Button.WithBorderRadius].
+
+	// BorderRadius is the corner radius in logical pixels.
+	// Zero means sharp corners.
 	BorderRadius float64
-	// Haptic enables haptic feedback on tap. Defaults to true.
+
+	// Haptic enables haptic feedback on tap when true.
 	Haptic bool
-	// overrides tracks which fields were explicitly set via WithX methods.
-	overrides buttonOverrides
-}
 
-type buttonOverrides uint16
+	// DisabledColor is the background color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal Color.
+	DisabledColor graphics.Color
 
-const (
-	buttonOverrideColor        buttonOverrides = 1 << iota
-	buttonOverrideTextColor
-	buttonOverrideFontSize
-	buttonOverridePadding
-	buttonOverrideBorderRadius
-)
-
-// ButtonOf creates a button with the given label and tap handler.
-// Haptic feedback is enabled by default for better touch response.
-//
-// This is a convenience helper equivalent to:
-//
-//	Button{Label: label, OnTap: onTap, Haptic: true}
-func ButtonOf(label string, onTap func()) Button {
-	return Button{
-		Label:  label,
-		OnTap:  onTap,
-		Haptic: true,
-	}
+	// DisabledTextColor is the text color when disabled.
+	// If zero, falls back to 0.5 opacity on the normal TextColor.
+	DisabledTextColor graphics.Color
 }
 
 // WithColor returns a copy of the button with the specified background and text colors.
-// The values are marked as explicitly set, so even zero values (e.g., transparent)
-// will be used instead of falling back to theme defaults.
 func (b Button) WithColor(bg, text graphics.Color) Button {
 	b.Color = bg
 	b.TextColor = text
-	b.overrides |= buttonOverrideColor | buttonOverrideTextColor
 	return b
 }
 
@@ -110,20 +112,14 @@ func (b Button) WithGradient(gradient *graphics.Gradient) Button {
 }
 
 // WithPadding returns a copy of the button with the specified padding.
-// The value is marked as explicitly set, so even a zero [layout.EdgeInsets]
-// will be used instead of falling back to the theme default.
 func (b Button) WithPadding(padding layout.EdgeInsets) Button {
 	b.Padding = padding
-	b.overrides |= buttonOverridePadding
 	return b
 }
 
 // WithFontSize returns a copy of the button with the specified label font size.
-// The value is marked as explicitly set, so even zero will be used instead of
-// falling back to the theme default.
 func (b Button) WithFontSize(size float64) Button {
 	b.FontSize = size
-	b.overrides |= buttonOverrideFontSize
 	return b
 }
 
@@ -140,11 +136,8 @@ func (b Button) WithDisabled(disabled bool) Button {
 }
 
 // WithBorderRadius returns a copy of the button with the specified corner radius.
-// The value is marked as explicitly set, so even zero (sharp corners) will be
-// used instead of falling back to the theme default.
 func (b Button) WithBorderRadius(radius float64) Button {
 	b.BorderRadius = radius
-	b.overrides |= buttonOverrideBorderRadius
 	return b
 }
 
@@ -157,35 +150,38 @@ func (b Button) Key() any {
 }
 
 func (b Button) Build(ctx core.BuildContext) core.Widget {
-	// Get button theme for defaults
-	buttonTheme := theme.ThemeOf(ctx).ButtonThemeOf()
-
-	// Apply defaults from theme (only when not explicitly set via WithX)
+	// Use field values directly — zero means zero
 	color := b.Color
-	if b.overrides&buttonOverrideColor == 0 && color == 0 {
-		color = buttonTheme.BackgroundColor
-	}
 	textColor := b.TextColor
-	if b.overrides&buttonOverrideTextColor == 0 && textColor == 0 {
-		textColor = buttonTheme.ForegroundColor
-	}
 	padding := b.Padding
-	if b.overrides&buttonOverridePadding == 0 && padding == (layout.EdgeInsets{}) {
-		padding = buttonTheme.Padding
-	}
 	fontSize := b.FontSize
-	if b.overrides&buttonOverrideFontSize == 0 && fontSize == 0 {
-		fontSize = buttonTheme.FontSize
-	}
 	borderRadius := b.BorderRadius
-	if b.overrides&buttonOverrideBorderRadius == 0 && borderRadius == 0 {
-		borderRadius = buttonTheme.BorderRadius
-	}
 
-	// Handle disabled state
+	// Disabled state handling:
+	// - If DisabledColor/DisabledTextColor are set: use those colors directly
+	// - If neither is set: wrap the entire button in an Opacity widget (0.5 alpha)
+	//
+	// When useOpacityFallback is true, we keep the original colors unchanged here
+	// and the Opacity wrapper (applied later) handles the visual fade effect.
+	useOpacityFallback := false
 	if b.Disabled {
-		color = buttonTheme.DisabledBackgroundColor
-		textColor = buttonTheme.DisabledForegroundColor
+		if b.DisabledColor != 0 || b.DisabledTextColor != 0 {
+			// At least one disabled color set — use explicit disabled styling.
+			// Apply 50% alpha to any color without an explicit disabled variant.
+			if b.DisabledColor != 0 {
+				color = b.DisabledColor
+			} else {
+				color = color.WithAlpha(128)
+			}
+			if b.DisabledTextColor != 0 {
+				textColor = b.DisabledTextColor
+			} else {
+				textColor = textColor.WithAlpha(128)
+			}
+		} else {
+			// No disabled colors set — use opacity fallback on the entire widget.
+			useOpacityFallback = true
+		}
 	}
 
 	var onTap func()
@@ -209,7 +205,9 @@ func (b Button) Build(ctx core.BuildContext) core.Widget {
 	}
 
 	var box core.Widget
-	if b.Gradient != nil && !b.Disabled {
+	if b.Gradient != nil {
+		// Use gradient for normal and disabled states. When disabled with opacity
+		// fallback, the gradient is preserved and the opacity wrapper handles the fade.
 		box = DecoratedBox{
 			Gradient:     b.Gradient,
 			BorderRadius: borderRadius,
@@ -221,6 +219,14 @@ func (b Button) Build(ctx core.BuildContext) core.Widget {
 			Color:        color,
 			BorderRadius: borderRadius,
 			ChildWidget:  content,
+		}
+	}
+
+	// Fall back to opacity if no disabled colors provided
+	if useOpacityFallback {
+		box = Opacity{
+			Opacity:     0.5,
+			ChildWidget: box,
 		}
 	}
 
