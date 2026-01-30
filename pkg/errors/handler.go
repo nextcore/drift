@@ -58,8 +58,12 @@ func ReportPanic(err *PanicError) {
 	}
 }
 
-// ReportBuildError sends a build error to the global handler.
-func ReportBuildError(err *BuildError) {
+// ReportBoundaryError sends a boundary error to the global handler.
+// This is called automatically when an [ErrorBoundary] catches a panic,
+// or when the engine's global panic recovery captures an error.
+// Use this to report errors to your logging/analytics infrastructure
+// by implementing a custom [ErrorHandler].
+func ReportBoundaryError(err *BoundaryError) {
 	if err == nil {
 		return
 	}
@@ -67,7 +71,7 @@ func ReportBuildError(err *BuildError) {
 		err.Timestamp = time.Now()
 	}
 	if h := getHandler(); h != nil {
-		h.HandleBuildError(err)
+		h.HandleBoundaryError(err)
 	}
 }
 

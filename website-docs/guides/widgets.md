@@ -238,7 +238,9 @@ Themed widgets use disabled colors from theme data. Explicit widgets without
 
 | Widget | Purpose |
 |--------|---------|
-| `ErrorBoundary` | Catch and recover from build errors |
+| `ErrorBoundary` | Catch panics and display fallback UI |
+| `ErrorWidget` | Inline error display (default fallback) |
+| `DebugErrorScreen` | Full-screen error display (debug mode) |
 
 ## Custom Stateless Widgets
 
@@ -297,44 +299,85 @@ func (s *counterState) Build(ctx core.BuildContext) core.Widget {
 
 ## Error Boundaries
 
-Catch and recover from errors in a widget subtree:
+Error boundaries catch panics and display fallback UI instead of crashing your app.
+
+### Debug vs Production Behavior
+
+**Debug mode** (`core.DebugMode = true`): Uncaught panics anywhere in the app automatically display a full-screen `DebugErrorScreen` with detailed error information and stack traces. This helps during development.
+
+**Production mode** (`core.DebugMode = false`): Uncaught panics crash the app. Use `ErrorBoundary` to catch panics and show graceful fallback UI.
+
+### Basic Usage
 
 ```go
 widgets.ErrorBoundary{
     ChildWidget: riskyWidget,
-    FallbackBuilder: func(err *errors.BuildError) core.Widget {
+    FallbackBuilder: func(err *errors.BoundaryError) core.Widget {
         return widgets.Text{Content: "Something went wrong"}
     },
-    OnError: func(err *errors.BuildError) {
+    OnError: func(err *errors.BoundaryError) {
         log.Printf("Widget error: %v", err)
     },
 }
 ```
 
-Error boundaries prevent a single widget's error from crashing your entire app. They catch panics during the build phase and display a fallback UI instead.
+ErrorBoundary catches panics during:
+- **Build**: widget `Build()` methods
+- **Layout**: render object layout
+- **Paint**: render object painting
+- **HitTest**: hit testing for pointer events
+
+### Scoped Error Handling
+
+Wrap specific subtrees to isolate failures while keeping the rest of the app running:
+
+```go
+widgets.Column{
+    ChildrenWidgets: []core.Widget{
+        HeaderWidget{},  // Keeps working
+        widgets.ErrorBoundary{
+            ChildWidget: RiskyWidget{},  // Isolated failure
+            FallbackBuilder: func(err *errors.BoundaryError) core.Widget {
+                return widgets.Text{Content: "Failed to load"}
+            },
+        },
+        FooterWidget{},  // Keeps working
+    },
+}
+```
+
+### Global Error Handling (Production)
+
+Wrap your entire app to provide custom error UI in production:
+
+```go
+func main() {
+    drift.NewApp(widgets.ErrorBoundary{
+        ChildWidget: MyApp{},
+        FallbackBuilder: func(err *errors.BoundaryError) core.Widget {
+            return MyCustomErrorScreen{Error: err}
+        },
+    }).Run()
+}
+```
+
+### Programmatic Control
+
+Access the boundary's state from descendant widgets:
+
+```go
+state := widgets.ErrorBoundaryOf(ctx)
+if state != nil && state.HasError() {
+    state.Reset()  // Clear error and retry rendering
+}
+```
 
 ### When to Use Error Boundaries
 
-- Around third-party widgets
-- Around complex widget subtrees
-- At screen boundaries
-- Around widgets that depend on external data
-
-```go
-// Wrap each screen in an error boundary
-func buildHomeScreen(ctx core.BuildContext) core.Widget {
-    return widgets.ErrorBoundary{
-        ChildWidget: HomeContent{},
-        FallbackBuilder: func(err *errors.BuildError) core.Widget {
-            return widgets.Column{
-                ChildrenWidgets: []core.Widget{
-                    widgets.Text{Content: "Failed to load home screen"},
-                    theme.ButtonOf(ctx, "Retry", func() { /* Trigger rebuild */ }),
-                },
-            }
-        },
-    }
-}
+- **Production apps**: Wrap your root widget to prevent crashes
+- **Third-party widgets**: Isolate untrusted code
+- **Complex subtrees**: Contain failures to specific sections
+- **External data dependencies**: Handle network/parsing failures gracefully
 ```
 
 ## Lists and Scrolling

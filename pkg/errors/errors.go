@@ -105,12 +105,23 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("failed to parse %s from channel %s: got %T", e.DataType, e.Channel, e.Got)
 }
 
-// BuildError represents a failure during widget build.
-type BuildError struct {
-	// Widget is the type name of the widget that failed.
+// BoundaryError represents a failure caught by an ErrorBoundary or the global
+// panic recovery in the engine. This is a unified error type that covers all phases.
+//
+// Possible Phase values:
+//   - "build": panic during widget Build()
+//   - "layout": panic during RenderObject layout
+//   - "paint": panic during RenderObject paint
+//   - "hittest": panic during hit testing
+//   - "frame": panic during frame processing (dispatch callbacks, animations, etc.)
+//   - "pointer": panic during pointer/gesture event handling
+type BoundaryError struct {
+	// Phase is the phase where the error occurred.
+	Phase string
+	// Widget is the type name of the widget that failed (for build errors).
 	Widget string
-	// Element is the element type (StatelessElement, StatefulElement, etc.).
-	Element string
+	// RenderObject is the type name of the render object that failed (for layout/paint/hittest errors).
+	RenderObject string
 	// Recovered is the panic value (nil for regular errors).
 	Recovered any
 	// Err is the underlying error (nil for panics).
@@ -121,17 +132,31 @@ type BuildError struct {
 	Timestamp time.Time
 }
 
-func (e *BuildError) Error() string {
+func (e *BoundaryError) Error() string {
+	typeName := e.Widget
+	if typeName == "" {
+		typeName = e.RenderObject
+	}
 	if e.Recovered != nil {
-		return fmt.Sprintf("panic in %s.Build(): %v", e.Widget, e.Recovered)
+		if typeName != "" {
+			return fmt.Sprintf("panic in %s (%s): %v", typeName, e.Phase, e.Recovered)
+		}
+		// No type info - just show the panic message (it should be self-explanatory)
+		return fmt.Sprintf("%v", e.Recovered)
 	}
 	if e.Err != nil {
-		return fmt.Sprintf("error in %s.Build(): %v", e.Widget, e.Err)
+		if typeName != "" {
+			return fmt.Sprintf("error in %s (%s): %v", typeName, e.Phase, e.Err)
+		}
+		return fmt.Sprintf("%v", e.Err)
 	}
-	return fmt.Sprintf("unknown error in %s.Build()", e.Widget)
+	if typeName != "" {
+		return fmt.Sprintf("unknown error in %s (%s)", typeName, e.Phase)
+	}
+	return "unknown error"
 }
 
-func (e *BuildError) Unwrap() error {
+func (e *BoundaryError) Unwrap() error {
 	return e.Err
 }
 
@@ -141,6 +166,7 @@ type ErrorHandler interface {
 	HandleError(err *DriftError)
 	// HandlePanic is called when a panic is recovered.
 	HandlePanic(err *PanicError)
-	// HandleBuildError is called when a widget build fails.
-	HandleBuildError(err *BuildError)
+	// HandleBoundaryError is called when an ErrorBoundary catches an error
+	// or a panic is caught by global recovery.
+	HandleBoundaryError(err *BoundaryError)
 }

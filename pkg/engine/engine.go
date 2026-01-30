@@ -201,6 +201,10 @@ func RestartApp() {
 	// Dispatch runs inside Paint() which already holds frameLock,
 	// so we don't need to acquire it here.
 	Dispatch(func() {
+		// Clear captured error and reset error screen state
+		app.capturedError.Store(nil)
+		app.errorScreenMounted = false
+
 		// Unmount existing tree
 		if app.root != nil {
 			app.root.Unmount()
@@ -230,6 +234,10 @@ type appRunner struct {
 	// Semantics deferral state for animation optimization
 	semanticsDeferred   bool      // true if we skipped a semantics flush
 	semanticsDeferredAt time.Time // when we first started deferring
+
+	// Error recovery state (atomic for safe access from HandlePointer without lock)
+	capturedError      atomic.Pointer[errors.BoundaryError]
+	errorScreenMounted bool // true once we've transitioned to the error screen
 
 	// Diagnostics state
 	diagnosticsConfig  *DiagnosticsConfig
@@ -343,20 +351,46 @@ func (a *appRunner) flushSemanticsIfNeeded(pipeline *layout.PipelineOwner, scale
 }
 
 func (a *appRunner) Paint(canvas graphics.Canvas, size graphics.Size) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panicErr := &errors.PanicError{
-				Value:      r,
-				StackTrace: errors.CaptureStack(),
-				Timestamp:  time.Now(),
-			}
-			errors.ReportPanic(panicErr)
-			err = fmt.Errorf("panic during paint: %v", r)
-		}
-	}()
-
 	frameLock.Lock()
 	defer frameLock.Unlock()
+
+	// In debug mode, recover panics and show error screen
+	// In prod mode, let panics crash the app (unless user adds ErrorBoundary)
+	// Note: This defer is set up after Lock(), so it runs before Unlock()
+	if core.DebugMode {
+		defer func() {
+			if r := recover(); r != nil {
+				err := &errors.BoundaryError{
+					Phase:      "frame",
+					Recovered:  r,
+					StackTrace: errors.CaptureStack(),
+					Timestamp:  time.Now(),
+				}
+				a.capturedError.Store(err)
+				errors.ReportBoundaryError(err)
+				// Unmount broken tree
+				if a.root != nil {
+					a.root.Unmount()
+					a.root = nil
+				}
+				a.rootRender = nil
+				// Request new frame to render error screen
+				a.pendingFrameRequest.Store(true)
+			}
+		}()
+	}
+
+	// If an error was captured (e.g., from HandlePointer) and we still have the OLD tree,
+	// unmount it. HandlePointer can't safely unmount due to lock concerns, so we do it here.
+	// Note: We only unmount if the tree still exists AND we have an error. Once we've
+	// remounted with the error screen (root becomes non-nil again), we don't unmount again.
+	// The errorScreenMounted flag tracks whether we've already transitioned to the error screen.
+	if a.capturedError.Load() != nil && a.root != nil && !a.errorScreenMounted {
+		a.root.Unmount()
+		a.root = nil
+		a.rootRender = nil
+		a.errorScreenMounted = true
+	}
 
 	// Track frame timing for diagnostics
 	now := time.Now()
@@ -444,7 +478,23 @@ func (a *appRunner) Paint(canvas graphics.Canvas, size graphics.Size) (err error
 }
 
 func (a *appRunner) HandlePointer(event PointerEvent) {
-	defer errors.Recover("engine.HandlePointer")
+	// In debug mode, recover panics and show error screen
+	// In prod mode, let panics crash the app (unless user adds ErrorBoundary)
+	if core.DebugMode {
+		defer func() {
+			if r := recover(); r != nil {
+				err := &errors.BoundaryError{
+					Phase:      "pointer",
+					Recovered:  r,
+					StackTrace: errors.CaptureStack(),
+					Timestamp:  time.Now(),
+				}
+				a.capturedError.Store(err)
+				errors.ReportBoundaryError(err)
+				a.pendingFrameRequest.Store(true)
+			}
+		}()
+	}
 
 	pointerID := event.PointerID
 	var handlers []layout.PointerHandler
@@ -594,8 +644,14 @@ func (e engineApp) Build(ctx core.BuildContext) core.Widget {
 	var diagnosticsConfig *DiagnosticsConfig
 	if e.runner != nil {
 		scale = e.runner.deviceScale
-		child = e.runner.userApp
 		diagnosticsConfig = e.runner.diagnosticsConfig
+
+		// If we have a captured error (debug mode only), show error screen
+		if err := e.runner.capturedError.Load(); err != nil {
+			child = widgets.DebugErrorScreen{Error: err}
+		} else {
+			child = e.runner.userApp
+		}
 	}
 	if child == nil {
 		child = defaultPlaceholder{}

@@ -833,10 +833,10 @@ func ExampleAnimatedOpacity() {
 // This example shows error boundary for catching widget errors.
 func ExampleErrorBoundary() {
 	boundary := widgets.ErrorBoundary{
-		OnError: func(err *drifterrors.BuildError) {
+		OnError: func(err *drifterrors.BoundaryError) {
 			fmt.Printf("Widget error: %v\n", err)
 		},
-		FallbackBuilder: func(err *drifterrors.BuildError) core.Widget {
+		FallbackBuilder: func(err *drifterrors.BoundaryError) core.Widget {
 			return widgets.Container{
 				Padding:     layout.EdgeInsetsAll(16),
 				Color:       graphics.RGBA(255, 0, 0, 32),

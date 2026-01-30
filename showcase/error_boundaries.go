@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/errors"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
 )
@@ -179,8 +179,7 @@ func (s *errorBoundariesState) buildBoundaryDemo(colors theme.ColorScheme) core.
 	}
 
 	return widgets.ErrorBoundary{
-		WidgetKey: s.boundaryKey, // Changing key resets the boundary state
-		OnError: func(err *errors.BuildError) {
+		OnError: func(err *errors.BoundaryError) {
 			// Log the error (in production, send to analytics)
 			_ = err // Logged automatically by the framework
 		},
@@ -191,7 +190,7 @@ func (s *errorBoundariesState) buildBoundaryDemo(colors theme.ColorScheme) core.
 // buildCustomFallbackDemo shows an ErrorBoundary with custom fallback UI.
 func (s *errorBoundariesState) buildCustomFallbackDemo(colors theme.ColorScheme) core.Widget {
 	return widgets.ErrorBoundary{
-		FallbackBuilder: func(err *errors.BuildError) core.Widget {
+		FallbackBuilder: func(err *errors.BoundaryError) core.Widget {
 			return widgets.Container{
 				Color:   colors.ErrorContainer,
 				Padding: layout.EdgeInsetsAll(16),

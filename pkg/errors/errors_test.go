@@ -195,48 +195,59 @@ func TestSetHandlerNil(t *testing.T) {
 	}
 }
 
-func TestBuildErrorString(t *testing.T) {
-	// Test with panic value
-	err := &BuildError{
-		Widget:    "*widgets.Counter",
-		Element:   "*core.StatefulElement",
-		Recovered: "nil pointer dereference",
-		Timestamp: time.Now(),
+func TestBoundaryErrorString(t *testing.T) {
+	// Test with panic value in layout phase
+	err := &BoundaryError{
+		Phase:        "layout",
+		RenderObject: "*widgets.renderFlex",
+		Recovered:    "nil pointer dereference",
+		Timestamp:    time.Now(),
 	}
 	got := err.Error()
-	want := "panic in *widgets.Counter.Build(): nil pointer dereference"
+	want := "panic in *widgets.renderFlex (layout): nil pointer dereference"
 	if got != want {
-		t.Errorf("BuildError.Error() = %q, want %q", got, want)
+		t.Errorf("BoundaryError.Error() = %q, want %q", got, want)
 	}
 
-	// Test with error
-	err2 := &BuildError{
+	// Test with widget name in build phase
+	err2 := &BoundaryError{
+		Phase:     "build",
 		Widget:    "*widgets.Counter",
-		Element:   "*core.StatefulElement",
-		Err:       &ParseError{Channel: "test", DataType: "Test", Got: nil},
+		Recovered: "test panic",
 		Timestamp: time.Now(),
 	}
 	got2 := err2.Error()
-	if !contains(got2, "error in *widgets.Counter.Build()") {
-		t.Errorf("BuildError.Error() = %q, should contain 'error in'", got2)
+	want2 := "panic in *widgets.Counter (build): test panic"
+	if got2 != want2 {
+		t.Errorf("BoundaryError.Error() = %q, want %q", got2, want2)
 	}
 
-	// Test unknown error
-	err3 := &BuildError{
-		Widget:  "*widgets.Counter",
-		Element: "*core.StatefulElement",
+	// Test with error (not panic)
+	err3 := &BoundaryError{
+		Phase:  "paint",
+		Widget: "*widgets.Custom",
+		Err:    &ParseError{Channel: "test", DataType: "Test", Got: nil},
 	}
 	got3 := err3.Error()
-	want3 := "unknown error in *widgets.Counter.Build()"
-	if got3 != want3 {
-		t.Errorf("BuildError.Error() = %q, want %q", got3, want3)
+	if !contains(got3, "error in *widgets.Custom (paint)") {
+		t.Errorf("BoundaryError.Error() = %q, should contain 'error in'", got3)
+	}
+
+	// Test unknown type - no Widget/RenderObject/Recovered/Err
+	err4 := &BoundaryError{
+		Phase: "hittest",
+	}
+	got4 := err4.Error()
+	want4 := "unknown error"
+	if got4 != want4 {
+		t.Errorf("BoundaryError.Error() = %q, want %q", got4, want4)
 	}
 }
 
-func TestReportBuildError(t *testing.T) {
-	var capturedErr *BuildError
+func TestReportBoundaryError(t *testing.T) {
+	var capturedErr *BoundaryError
 	handler := &testHandler{
-		onBuildError: func(err *BuildError) {
+		onBoundaryError: func(err *BoundaryError) {
 			capturedErr = err
 		},
 	}
@@ -245,17 +256,17 @@ func TestReportBuildError(t *testing.T) {
 	SetHandler(handler)
 	defer SetHandler(oldHandler)
 
-	ReportBuildError(&BuildError{
-		Widget:    "*widgets.Test",
-		Element:   "*core.StatelessElement",
-		Recovered: "test panic",
+	ReportBoundaryError(&BoundaryError{
+		Phase:        "layout",
+		RenderObject: "*widgets.renderTest",
+		Recovered:    "test panic",
 	})
 
 	if capturedErr == nil {
-		t.Error("expected build error to be captured")
+		t.Error("expected boundary error to be captured")
 	}
-	if capturedErr.Widget != "*widgets.Test" {
-		t.Errorf("Widget = %q, want %q", capturedErr.Widget, "*widgets.Test")
+	if capturedErr.Phase != "layout" {
+		t.Errorf("Phase = %q, want %q", capturedErr.Phase, "layout")
 	}
 	if capturedErr.Timestamp.IsZero() {
 		t.Error("expected Timestamp to be set")
@@ -263,9 +274,9 @@ func TestReportBuildError(t *testing.T) {
 }
 
 type testHandler struct {
-	onError      func(*DriftError)
-	onPanic      func(*PanicError)
-	onBuildError func(*BuildError)
+	onError         func(*DriftError)
+	onPanic         func(*PanicError)
+	onBoundaryError func(*BoundaryError)
 }
 
 func (h *testHandler) HandleError(err *DriftError) {
@@ -280,9 +291,9 @@ func (h *testHandler) HandlePanic(err *PanicError) {
 	}
 }
 
-func (h *testHandler) HandleBuildError(err *BuildError) {
-	if h.onBuildError != nil {
-		h.onBuildError(err)
+func (h *testHandler) HandleBoundaryError(err *BoundaryError) {
+	if h.onBoundaryError != nil {
+		h.onBoundaryError(err)
 	}
 }
 

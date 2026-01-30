@@ -63,11 +63,11 @@ func (s *testState) Build(ctx BuildContext) Widget {
 // testErrorHandler captures errors for testing.
 type testErrorHandler struct {
 	errors.LogHandler
-	buildErrors []*errors.BuildError
+	boundaryErrors []*errors.BoundaryError
 }
 
-func (h *testErrorHandler) HandleBuildError(err *errors.BuildError) {
-	h.buildErrors = append(h.buildErrors, err)
+func (h *testErrorHandler) HandleBoundaryError(err *errors.BoundaryError) {
+	h.boundaryErrors = append(h.boundaryErrors, err)
 }
 
 func TestStatelessElement_BuildPanic_ReportsError(t *testing.T) {
@@ -85,19 +85,19 @@ func TestStatelessElement_BuildPanic_ReportsError(t *testing.T) {
 	element := NewStatelessElement(widget, owner)
 	element.Mount(nil, nil)
 
-	if len(handler.buildErrors) != 1 {
-		t.Fatalf("expected 1 build error, got %d", len(handler.buildErrors))
+	if len(handler.boundaryErrors) != 1 {
+		t.Fatalf("expected 1 boundary error, got %d", len(handler.boundaryErrors))
 	}
 
-	err := handler.buildErrors[0]
+	err := handler.boundaryErrors[0]
 	if err.Recovered != "test panic in stateless build" {
 		t.Errorf("expected panic value 'test panic in stateless build', got %v", err.Recovered)
 	}
 	if err.Widget == "" {
 		t.Error("expected Widget type to be set")
 	}
-	if err.Element == "" {
-		t.Error("expected Element type to be set")
+	if err.Phase != "build" {
+		t.Errorf("expected Phase 'build', got %q", err.Phase)
 	}
 	if err.StackTrace == "" {
 		t.Error("expected StackTrace to be captured")
@@ -123,11 +123,11 @@ func TestStatefulElement_BuildPanic_ReportsError(t *testing.T) {
 	element := NewStatefulElement(widget, owner)
 	element.Mount(nil, nil)
 
-	if len(handler.buildErrors) != 1 {
-		t.Fatalf("expected 1 build error, got %d", len(handler.buildErrors))
+	if len(handler.boundaryErrors) != 1 {
+		t.Fatalf("expected 1 boundary error, got %d", len(handler.boundaryErrors))
 	}
 
-	err := handler.buildErrors[0]
+	err := handler.boundaryErrors[0]
 	if err.Recovered != "test panic in stateful build" {
 		t.Errorf("expected panic value 'test panic in stateful build', got %v", err.Recovered)
 	}
@@ -136,7 +136,7 @@ func TestStatefulElement_BuildPanic_ReportsError(t *testing.T) {
 func TestSafeBuild_ReturnsErrorPlaceholder_WhenNoBuilder(t *testing.T) {
 	// Temporarily clear the error widget builder
 	oldBuilder := GetErrorWidgetBuilder()
-	SetErrorWidgetBuilder(func(err *errors.BuildError) Widget {
+	SetErrorWidgetBuilder(func(err *errors.BoundaryError) Widget {
 		return nil // Force fallback to errorPlaceholder
 	})
 	defer SetErrorWidgetBuilder(oldBuilder)
@@ -167,14 +167,14 @@ func TestSafeBuild_ReturnsErrorPlaceholder_WhenNoBuilder(t *testing.T) {
 }
 
 func TestSafeBuild_UsesCustomBuilder(t *testing.T) {
-	var capturedErr *errors.BuildError
+	var capturedErr *errors.BoundaryError
 	customWidget := testStatelessWidget{
 		buildFn: func(ctx BuildContext) Widget {
 			return nil
 		},
 	}
 
-	SetErrorWidgetBuilder(func(err *errors.BuildError) Widget {
+	SetErrorWidgetBuilder(func(err *errors.BoundaryError) Widget {
 		capturedErr = err
 		return customWidget
 	})
@@ -204,7 +204,7 @@ func TestSafeBuild_UsesCustomBuilder(t *testing.T) {
 
 func TestErrorPlaceholder_BuildReturnsNil(t *testing.T) {
 	placeholder := errorPlaceholder{
-		err: &errors.BuildError{Widget: "test"},
+		err: &errors.BoundaryError{Phase: "build", Widget: "test"},
 	}
 
 	built := placeholder.Build(nil)
@@ -214,7 +214,7 @@ func TestErrorPlaceholder_BuildReturnsNil(t *testing.T) {
 }
 
 func TestSetErrorWidgetBuilder_NilRestoresDefault(t *testing.T) {
-	SetErrorWidgetBuilder(func(err *errors.BuildError) Widget {
+	SetErrorWidgetBuilder(func(err *errors.BoundaryError) Widget {
 		return testStatelessWidget{}
 	})
 
@@ -227,7 +227,7 @@ func TestSetErrorWidgetBuilder_NilRestoresDefault(t *testing.T) {
 	}
 
 	// Default builder returns nil
-	result := builder(&errors.BuildError{})
+	result := builder(&errors.BoundaryError{Phase: "build"})
 	if result != nil {
 		t.Errorf("expected default builder to return nil, got %v", result)
 	}
@@ -276,8 +276,8 @@ func TestStatelessElement_NormalBuild_NoError(t *testing.T) {
 	if !buildCalled {
 		t.Error("expected build to be called")
 	}
-	if len(handler.buildErrors) != 0 {
-		t.Errorf("expected no build errors, got %d", len(handler.buildErrors))
+	if len(handler.boundaryErrors) != 0 {
+		t.Errorf("expected no boundary errors, got %d", len(handler.boundaryErrors))
 	}
 }
 
@@ -305,8 +305,8 @@ func TestStatefulElement_NormalBuild_NoError(t *testing.T) {
 	if !buildCalled {
 		t.Error("expected build to be called")
 	}
-	if len(handler.buildErrors) != 0 {
-		t.Errorf("expected no build errors, got %d", len(handler.buildErrors))
+	if len(handler.boundaryErrors) != 0 {
+		t.Errorf("expected no boundary errors, got %d", len(handler.boundaryErrors))
 	}
 }
 

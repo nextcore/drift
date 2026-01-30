@@ -88,14 +88,14 @@ func (e *elementBase) findRenderParent() *RenderObjectElement {
 // If the build panics, it reports the error and returns an error widget.
 func (e *elementBase) safeBuild(buildFn func() Widget) Widget {
 	var built Widget
-	var buildErr *errors.BuildError
+	var buildErr *errors.BoundaryError
 
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
-				buildErr = &errors.BuildError{
+				buildErr = &errors.BoundaryError{
+					Phase:      "build",
 					Widget:     reflect.TypeOf(e.widget).String(),
-					Element:    reflect.TypeOf(e.self).String(),
 					Recovered:  r,
 					StackTrace: errors.CaptureStack(),
 					Timestamp:  time.Now(),
@@ -107,7 +107,7 @@ func (e *elementBase) safeBuild(buildFn func() Widget) Widget {
 
 	if buildErr != nil {
 		// Report to global error handler
-		errors.ReportBuildError(buildErr)
+		errors.ReportBoundaryError(buildErr)
 
 		// Find nearest error boundary in ancestors
 		if boundary := e.findErrorBoundary(); boundary != nil {
@@ -148,7 +148,7 @@ func (e *elementBase) findErrorBoundary() ErrorBoundaryCapture {
 // errorPlaceholder is a minimal fallback widget shown when build fails
 // and no error widget builder is configured.
 type errorPlaceholder struct {
-	err *errors.BuildError
+	err *errors.BoundaryError
 }
 
 func (p errorPlaceholder) CreateElement() Element {

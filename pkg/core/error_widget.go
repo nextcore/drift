@@ -7,9 +7,9 @@ import (
 )
 
 // ErrorWidgetBuilder creates a fallback widget when a widget build fails.
-// The builder receives the build error and should return a widget to display
+// The builder receives the boundary error and should return a widget to display
 // in place of the failed widget.
-type ErrorWidgetBuilder func(err *errors.BuildError) Widget
+type ErrorWidgetBuilder func(err *errors.BoundaryError) Widget
 
 var (
 	errorWidgetBuilder ErrorWidgetBuilder = DefaultErrorWidgetBuilder
@@ -39,7 +39,7 @@ func GetErrorWidgetBuilder() ErrorWidgetBuilder {
 // The actual error widget implementation is in pkg/widgets to avoid
 // circular dependencies. This default returns nil, which signals
 // the framework to use the widgets.ErrorWidget if available.
-func DefaultErrorWidgetBuilder(err *errors.BuildError) Widget {
+func DefaultErrorWidgetBuilder(err *errors.BoundaryError) Widget {
 	// Return nil to signal that the default ErrorWidget should be used.
 	// The element.safeBuild() will check for nil and use a minimal
 	// fallback if the widgets package hasn't registered a better default.
@@ -47,9 +47,9 @@ func DefaultErrorWidgetBuilder(err *errors.BuildError) Widget {
 }
 
 // ErrorBoundaryCapture is implemented by error boundary elements to capture
-// build errors from descendant widgets.
+// errors from descendant widgets.
 type ErrorBoundaryCapture interface {
-	// CaptureError captures a build error from a descendant widget.
+	// CaptureError captures an error from a descendant widget.
 	// Returns true if the error was captured and handled.
-	CaptureError(err *errors.BuildError) bool
+	CaptureError(err *errors.BoundaryError) bool
 }

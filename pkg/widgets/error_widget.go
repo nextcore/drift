@@ -3,25 +3,34 @@ package widgets
 import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/errors"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 func init() {
 	// Register the default error widget builder
-	core.SetErrorWidgetBuilder(func(err *errors.BuildError) core.Widget {
+	core.SetErrorWidgetBuilder(func(err *errors.BoundaryError) core.Widget {
 		return ErrorWidget{Error: err}
 	})
 }
 
-// ErrorWidget displays error information when a widget build fails.
-// It shows a red background with error details in debug mode,
-// or a minimal error indicator in release mode.
+// ErrorWidget displays inline error information when a widget fails.
+// Unlike [DebugErrorScreen] which takes over the entire screen, ErrorWidget
+// renders as a compact red box that can be embedded in layouts.
+//
+// It shows a red background with:
+//   - "Something went wrong" message
+//   - Detailed error text (in debug mode or when Verbose is true)
+//   - Restart button to recover the app
+//
+// This is the default fallback widget used by [ErrorBoundary] when no
+// FallbackBuilder is provided.
 type ErrorWidget struct {
-	// Error is the build error that occurred.
-	Error *errors.BuildError
+	// Error is the boundary error that occurred. If nil, shows "Unknown error".
+	Error *errors.BoundaryError
 	// Verbose overrides DebugMode for this widget instance.
-	// If not explicitly set, defaults to core.DebugMode.
+	// When true, shows detailed error messages. When false, shows generic text.
+	// If nil (default), uses core.DebugMode.
 	Verbose *bool
 }
 

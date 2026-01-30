@@ -45,12 +45,12 @@ func (h *LogHandler) HandlePanic(err *PanicError) {
 	}
 }
 
-// HandleBuildError logs a BuildError to stderr.
-func (h *LogHandler) HandleBuildError(err *BuildError) {
+// HandleBoundaryError logs a BoundaryError to stderr.
+func (h *LogHandler) HandleBoundaryError(err *BoundaryError) {
 	if err == nil {
 		return
 	}
-	fmt.Fprintf(os.Stderr, "[drift build error] %s\n", err.Error())
+	fmt.Fprintf(os.Stderr, "[drift boundary error] %s\n", err.Error())
 	if h.Verbose && err.StackTrace != "" {
 		fmt.Fprintf(os.Stderr, "Stack trace:\n%s\n", err.StackTrace)
 	}
