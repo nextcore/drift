@@ -3,6 +3,7 @@ package widgets
 import (
 	"image"
 	"math"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -11,8 +12,7 @@ import (
 )
 
 // TestFlex_UnboundedConstraints verifies that Flex with Expanded children
-// in unbounded constraints produces safe sizes/offsets (no Inf/NaN) and
-// doesn't panic during paint or hit test.
+// in unbounded constraints panics with a helpful error message.
 func TestFlex_UnboundedConstraints(t *testing.T) {
 	// Create a Row with an Expanded child
 	flex := &renderFlex{
@@ -38,47 +38,23 @@ func TestFlex_UnboundedConstraints(t *testing.T) {
 		MinHeight: 0,
 		MaxHeight: 100,
 	}
+
+	// Should panic with helpful error message
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for Expanded in unbounded Row")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "Expanded/Flexible used in Row with unbounded width") {
+			t.Errorf("panic message should mention Row and unbounded width, got: %s", msg)
+		}
+	}()
+
 	flex.Layout(unboundedConstraints, false)
-
-	// Verify error flag is set
-	if !flex.hasUnboundedFlexError {
-		t.Error("expected hasUnboundedFlexError to be true")
-	}
-
-	// Verify size is finite and reasonable
-	size := flex.Size()
-	if math.IsInf(size.Width, 0) || math.IsNaN(size.Width) {
-		t.Errorf("width should be finite, got %v", size.Width)
-	}
-	if math.IsInf(size.Height, 0) || math.IsNaN(size.Height) {
-		t.Errorf("height should be finite, got %v", size.Height)
-	}
-	if size.Width <= 0 || size.Height <= 0 {
-		t.Errorf("size should be positive, got %v x %v", size.Width, size.Height)
-	}
-
-	// Verify paint doesn't panic
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("Paint panicked: %v", r)
-			}
-		}()
-		canvas := &mockCanvas{}
-		ctx := &layout.PaintContext{Canvas: canvas}
-		flex.Paint(ctx)
-	}()
-
-	// Verify hit test doesn't panic and returns valid result
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("HitTest panicked: %v", r)
-			}
-		}()
-		result := &layout.HitTestResult{}
-		flex.HitTest(graphics.Offset{X: 10, Y: 10}, result)
-	}()
 }
 
 // TestFlex_UnboundedVertical tests Column with Expanded in unbounded vertical constraints.
@@ -101,21 +77,105 @@ func TestFlex_UnboundedVertical(t *testing.T) {
 		MinHeight: 0,
 		MaxHeight: math.MaxFloat64,
 	}
+
+	// Should panic with helpful error message
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for Expanded in unbounded Column")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "Expanded/Flexible used in Column with unbounded height") {
+			t.Errorf("panic message should mention Column and unbounded height, got: %s", msg)
+		}
+	}()
+
 	flex.Layout(unboundedConstraints, false)
-
-	if !flex.hasUnboundedFlexError {
-		t.Error("expected hasUnboundedFlexError to be true for vertical unbounded")
-	}
-
-	size := flex.Size()
-	if math.IsInf(size.Width, 0) || math.IsNaN(size.Width) ||
-		math.IsInf(size.Height, 0) || math.IsNaN(size.Height) {
-		t.Errorf("size should be finite, got %v x %v", size.Width, size.Height)
-	}
 }
 
-// TestFlex_BoundedConstraints_NoError verifies no error flag when constraints are bounded.
-func TestFlex_BoundedConstraints_NoError(t *testing.T) {
+// TestFlex_CrossAxisStretch_UnboundedHeight tests Row with CrossAxisStretch in unbounded height.
+func TestFlex_CrossAxisStretch_UnboundedHeight(t *testing.T) {
+	flex := &renderFlex{
+		direction:      AxisHorizontal,
+		crossAlignment: CrossAxisAlignmentStretch,
+	}
+	flex.SetSelf(flex)
+
+	child := &mockFixedChild{width: 50, height: 30}
+	child.SetSelf(child)
+
+	flex.SetChildren([]layout.RenderObject{child})
+
+	// Unbounded height (simulating inside vertical ScrollView)
+	unboundedConstraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  200,
+		MinHeight: 0,
+		MaxHeight: math.MaxFloat64,
+	}
+
+	// Should panic with helpful error message
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for CrossAxisStretch in Row with unbounded height")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "CrossAxisAlignmentStretch used in Row with unbounded height") {
+			t.Errorf("panic message should mention Row and unbounded height, got: %s", msg)
+		}
+	}()
+
+	flex.Layout(unboundedConstraints, false)
+}
+
+// TestFlex_CrossAxisStretch_UnboundedWidth tests Column with CrossAxisStretch in unbounded width.
+func TestFlex_CrossAxisStretch_UnboundedWidth(t *testing.T) {
+	flex := &renderFlex{
+		direction:      AxisVertical,
+		crossAlignment: CrossAxisAlignmentStretch,
+	}
+	flex.SetSelf(flex)
+
+	child := &mockFixedChild{width: 50, height: 30}
+	child.SetSelf(child)
+
+	flex.SetChildren([]layout.RenderObject{child})
+
+	// Unbounded width
+	unboundedConstraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  math.MaxFloat64,
+		MinHeight: 0,
+		MaxHeight: 200,
+	}
+
+	// Should panic with helpful error message
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for CrossAxisStretch in Column with unbounded width")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "CrossAxisAlignmentStretch used in Column with unbounded width") {
+			t.Errorf("panic message should mention Column and unbounded width, got: %s", msg)
+		}
+	}()
+
+	flex.Layout(unboundedConstraints, false)
+}
+
+// TestFlex_BoundedConstraints_NoPanic verifies no panic when constraints are bounded.
+func TestFlex_BoundedConstraints_NoPanic(t *testing.T) {
 	flex := &renderFlex{
 		direction: AxisHorizontal,
 		axisSize:  MainAxisSizeMax,
@@ -134,10 +194,20 @@ func TestFlex_BoundedConstraints_NoError(t *testing.T) {
 		MinHeight: 0,
 		MaxHeight: 100,
 	}
+
+	// Should NOT panic with bounded constraints
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unexpected panic with bounded constraints: %v", r)
+		}
+	}()
+
 	flex.Layout(boundedConstraints, false)
 
-	if flex.hasUnboundedFlexError {
-		t.Error("expected hasUnboundedFlexError to be false for bounded constraints")
+	// Verify reasonable size
+	size := flex.Size()
+	if size.Width <= 0 || size.Height <= 0 {
+		t.Errorf("expected positive size, got %v x %v", size.Width, size.Height)
 	}
 }
 

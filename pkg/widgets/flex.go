@@ -2,7 +2,6 @@ package widgets
 
 import (
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/go-drift/drift/pkg/core"
@@ -300,15 +299,11 @@ func (c Column) UpdateRenderObject(ctx core.BuildContext, renderObject layout.Re
 
 type renderFlex struct {
 	layout.RenderBoxBase
-	children                 []layout.RenderBox
-	direction                Axis
-	alignment                MainAxisAlignment
-	crossAlignment           CrossAxisAlignment
-	axisSize                 MainAxisSize
-	hasUnboundedFlexError    bool
-	hasUnboundedStretchError bool
-	unboundedFlexWarned      bool // one-shot flag to avoid log spam
-	unboundedStretchWarned   bool // one-shot flag to avoid log spam
+	children       []layout.RenderBox
+	direction      Axis
+	alignment      MainAxisAlignment
+	crossAlignment CrossAxisAlignment
+	axisSize       MainAxisSize
 }
 
 func (r *renderFlex) SetChildren(children []layout.RenderObject) {
@@ -365,35 +360,29 @@ func (r *renderFlex) PerformLayout() {
 	maxMain := r.mainAxis(maxSize)
 	maxCross := r.crossAxis(maxSize)
 
-	// Reset error flags at start - we'll set whichever applies based on current constraints
-	r.hasUnboundedFlexError = false
-	r.hasUnboundedStretchError = false
-
 	// Check for CrossAxisAlignmentStretch with unbounded cross axis
 	if r.crossAlignment == CrossAxisAlignmentStretch && maxCross == math.MaxFloat64 {
-		if !r.unboundedStretchWarned {
-			crossAxisName := "height"
-			if r.direction == AxisVertical {
-				crossAxisName = "width"
-			}
-			log.Printf("WARNING: CrossAxisAlignmentStretch used with unbounded %s. "+
-				"Children cannot stretch to fill infinite space. "+
-				"Use CrossAxisAlignmentStart/Center/End instead, or constrain the %s.",
-				crossAxisName, crossAxisName)
-			r.unboundedStretchWarned = true
+		crossAxisName := "height"
+		containerType := "Row"
+		if r.direction == AxisVertical {
+			crossAxisName = "width"
+			containerType = "Column"
 		}
-		r.hasUnboundedStretchError = true
-
-		// Short-circuit: use safe fallback size and skip child layout (they won't be painted)
-		// Main axis may still be bounded, use it if available; cross axis uses min or safe default
-		fallbackMain := maxMain
-		if fallbackMain == math.MaxFloat64 {
-			fallbackMain = math.Max(r.mainAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 200)
-		}
-		fallbackCross := math.Max(r.crossAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 50)
-		size := constraints.Constrain(r.makeSize(fallbackMain, fallbackCross))
-		r.SetSize(size)
-		return
+		panic(fmt.Sprintf(
+			"CrossAxisAlignmentStretch used in %s with unbounded %s.\n\n"+
+				"Children cannot stretch to fill infinite space. This happens when:\n"+
+				"- The %s is inside a ScrollView (which has unbounded %s)\n"+
+				"- The %s is a direct child of another flex without constrained %s\n\n"+
+				"Solutions:\n"+
+				"- Use CrossAxisAlignmentStart, CrossAxisAlignmentCenter, or CrossAxisAlignmentEnd instead\n"+
+				"- Wrap the %s in a SizedBox or Container with a fixed %s\n"+
+				"- Ensure the parent provides bounded %s constraints",
+			containerType, crossAxisName,
+			containerType, crossAxisName,
+			containerType, crossAxisName,
+			containerType, crossAxisName,
+			crossAxisName,
+		))
 	}
 
 	mainSize := 0.0
@@ -417,24 +406,27 @@ func (r *renderFlex) PerformLayout() {
 
 	// Check for flex children with unbounded main axis
 	if totalFlex > 0 && maxMain == math.MaxFloat64 {
-		if !r.unboundedFlexWarned {
-			log.Printf("WARNING: Flex children (Expanded/Flexible) used with unbounded %s axis. "+
-				"Flex children cannot flex in unbounded constraints. "+
-				"Consider using fixed-size widgets instead.", r.direction.String())
-			r.unboundedFlexWarned = true
+		containerType := "Row"
+		mainAxisName := "width"
+		if r.direction == AxisVertical {
+			containerType = "Column"
+			mainAxisName = "height"
 		}
-		r.hasUnboundedFlexError = true
-
-		// Short-circuit: use safe fallback size and skip flex child layout
-		// Use minimum constraints or a safe default for the error box
-		fallbackMain := math.Max(r.mainAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 200)
-		fallbackCross := crossSize
-		if fallbackCross == 0 {
-			fallbackCross = 50
-		}
-		size := constraints.Constrain(r.makeSize(fallbackMain, fallbackCross))
-		r.SetSize(size)
-		return
+		panic(fmt.Sprintf(
+			"Expanded/Flexible used in %s with unbounded %s.\n\n"+
+				"Flex children need a finite main axis to divide space. This happens when:\n"+
+				"- The %s is inside a ScrollView (which has unbounded %s)\n"+
+				"- The %s has MainAxisSizeMin and no constrained %s from parent\n\n"+
+				"Solutions:\n"+
+				"- Remove Expanded/Flexible and use fixed-size widgets instead\n"+
+				"- Set MainAxisSizeMax on the %s and ensure parent provides bounded %s\n"+
+				"- Wrap the %s in a SizedBox or Container with a fixed %s",
+			containerType, mainAxisName,
+			containerType, mainAxisName,
+			containerType, mainAxisName,
+			containerType, mainAxisName,
+			containerType, mainAxisName,
+		))
 	}
 
 	remaining := max(maxMain-mainSize, 0)
@@ -568,55 +560,14 @@ func (r *renderFlex) computeSpacing(freeSpace float64) (spacing, offset float64)
 }
 
 func (r *renderFlex) Paint(ctx *layout.PaintContext) {
-	if r.hasUnboundedFlexError || r.hasUnboundedStretchError {
-		r.paintErrorBox(ctx)
-		return
-	}
 	for _, child := range r.children {
 		ctx.PaintChild(child, getChildOffset(child))
-	}
-}
-
-func (r *renderFlex) paintErrorBox(ctx *layout.PaintContext) {
-	size := r.Size()
-
-	// Draw bright pink background to indicate error
-	paint := graphics.DefaultPaint()
-	paint.Color = graphics.RGBA(255, 0, 127, 255) // Bright pink #ff007f
-	paint.Style = graphics.PaintStyleFill
-	ctx.Canvas.DrawRect(graphics.RectFromLTWH(0, 0, size.Width, size.Height), paint)
-
-	// Draw error text with wrapping (not cached - error boxes are not performance critical)
-	var errorMsg string
-	if r.hasUnboundedFlexError {
-		errorMsg = fmt.Sprintf("FLEX ERROR: Expanded in unbounded %s", r.direction.String())
-	} else if r.hasUnboundedStretchError {
-		crossAxis := "height"
-		if r.direction == AxisVertical {
-			crossAxis = "width"
-		}
-		errorMsg = fmt.Sprintf("FLEX ERROR: CrossAxisStretch in unbounded %s", crossAxis)
-	}
-	textStyle := graphics.TextStyle{
-		FontSize: 14,
-		Color:    graphics.ColorBlack,
-	}
-	maxWidth := size.Width - 16 // 8px padding on each side
-	if maxWidth > 0 {
-		if textLayout, err := graphics.LayoutTextWithConstraints(errorMsg, textStyle, graphics.DefaultFontManager(), maxWidth); err == nil {
-			ctx.Canvas.DrawText(textLayout, graphics.Offset{X: 8, Y: 8})
-		}
 	}
 }
 
 func (r *renderFlex) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
 	if !withinBounds(position, r.Size()) {
 		return false
-	}
-	// Skip children when in error state - they may have stale offsets
-	if r.hasUnboundedFlexError || r.hasUnboundedStretchError {
-		result.Add(r)
-		return true
 	}
 	for i := len(r.children) - 1; i >= 0; i-- {
 		child := r.children[i]
