@@ -146,7 +146,7 @@ type DashPattern struct {
 // Use DefaultPaint for a basic opaque white fill.
 type Paint struct {
 	Color    Color
-	Gradient *Gradient // If set, overrides Color for the fill
+	Gradient *Gradient // If set, overrides Color
 
 	// GradientBounds optionally specifies the bounds to use for resolving
 	// gradient Alignment coordinates. If nil, the shape's drawing bounds are used.

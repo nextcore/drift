@@ -2,8 +2,8 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // DecoratedBox paints a background, border, and shadow behind its child.
@@ -26,24 +26,28 @@ type DecoratedBox struct {
 	ChildWidget core.Widget // Child widget to display inside the decoration
 
 	// Background
-	Color    graphics.Color    // Background fill color
+	Color    graphics.Color     // Background fill color
 	Gradient *graphics.Gradient // Background gradient; overrides Color if set
 
 	// Border
-	BorderColor  graphics.Color            // Border stroke color; transparent = no border
-	BorderWidth  float64                    // Border stroke width in pixels; 0 = no border
-	BorderRadius float64                    // Corner radius for rounded rectangles; 0 = sharp corners
+	BorderColor  graphics.Color        // Border stroke color; transparent = no border
+	BorderWidth  float64               // Border stroke width in pixels; 0 = no border
+	BorderRadius float64               // Corner radius for rounded rectangles; 0 = sharp corners
 	BorderDash   *graphics.DashPattern // Dash pattern for border; nil = solid line
+	// BorderGradient applies a gradient to the border stroke. When set, overrides
+	// BorderColor. Requires BorderWidth > 0 to be visible. Works with BorderDash
+	// for dashed gradient borders.
+	BorderGradient *graphics.Gradient
 
 	// Effects
 	Shadow *graphics.BoxShadow // Drop shadow drawn behind the box; nil = no shadow
 
-	// Overflow controls whether gradients extend beyond widget bounds.
+	// Overflow controls whether background gradients extend beyond widget bounds.
 	// Defaults to OverflowClip, confining gradients strictly within bounds
 	// (clipped to rounded shape if BorderRadius > 0). Set to OverflowVisible
 	// for glow effects where the gradient should extend beyond the widget.
-	// Only affects gradients; shadows overflow naturally and solid colors
-	// never overflow.
+	// Only affects background gradients; border gradients, shadows, and solid
+	// colors are not affected.
 	Overflow Overflow
 }
 
@@ -66,14 +70,15 @@ func (d DecoratedBox) CreateRenderObject(ctx core.BuildContext) layout.RenderObj
 	}
 	box := &renderDecoratedBox{
 		painter: decorationPainter{
-			color:        color,
-			gradient:     d.Gradient,
-			borderColor:  d.BorderColor,
-			borderWidth:  d.BorderWidth,
-			borderRadius: d.BorderRadius,
-			borderDash:   d.BorderDash,
-			shadow:       d.Shadow,
-			overflow:     d.Overflow,
+			color:          color,
+			gradient:       d.Gradient,
+			borderColor:    d.BorderColor,
+			borderWidth:    d.BorderWidth,
+			borderRadius:   d.BorderRadius,
+			borderDash:     d.BorderDash,
+			borderGradient: d.BorderGradient,
+			shadow:         d.Shadow,
+			overflow:       d.Overflow,
 		},
 	}
 	box.SetSelf(box)
@@ -87,14 +92,15 @@ func (d DecoratedBox) UpdateRenderObject(ctx core.BuildContext, renderObject lay
 			color = graphics.ColorWhite
 		}
 		box.painter = decorationPainter{
-			color:        color,
-			gradient:     d.Gradient,
-			borderColor:  d.BorderColor,
-			borderWidth:  d.BorderWidth,
-			borderRadius: d.BorderRadius,
-			borderDash:   d.BorderDash,
-			shadow:       d.Shadow,
-			overflow:     d.Overflow,
+			color:          color,
+			gradient:       d.Gradient,
+			borderColor:    d.BorderColor,
+			borderWidth:    d.BorderWidth,
+			borderRadius:   d.BorderRadius,
+			borderDash:     d.BorderDash,
+			borderGradient: d.BorderGradient,
+			shadow:         d.Shadow,
+			overflow:       d.Overflow,
 		}
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
@@ -154,4 +160,3 @@ func (r *renderDecoratedBox) HitTest(position graphics.Offset, result *layout.Hi
 	result.Add(r)
 	return true
 }
-

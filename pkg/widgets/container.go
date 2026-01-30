@@ -66,13 +66,17 @@ type Container struct {
 	BorderWidth  float64               // Border stroke width in pixels; 0 = no border
 	BorderRadius float64               // Corner radius for rounded rectangles; 0 = sharp corners
 	BorderDash   *graphics.DashPattern // Dash pattern for border; nil = solid line
+	// BorderGradient applies a gradient to the border stroke. When set, overrides
+	// BorderColor. Requires BorderWidth > 0 to be visible. Works with BorderDash
+	// for dashed gradient borders.
+	BorderGradient *graphics.Gradient
 
-	// Overflow controls whether gradients extend beyond container bounds.
+	// Overflow controls whether background gradients extend beyond container bounds.
 	// Defaults to OverflowClip, confining gradients strictly within bounds
 	// (clipped to rounded shape if BorderRadius > 0). Set to OverflowVisible
 	// for glow effects where the gradient should extend beyond the widget.
-	// Only affects gradients; shadows overflow naturally and solid colors
-	// never overflow.
+	// Only affects background gradients; border gradients, shadows, and solid
+	// colors are not affected.
 	Overflow Overflow
 }
 
@@ -120,6 +124,13 @@ func (c Container) WithBorder(color graphics.Color, width float64) Container {
 	return c
 }
 
+// WithBorderGradient returns a copy with the specified border gradient.
+// The gradient overrides BorderColor when both are set.
+func (c Container) WithBorderGradient(gradient *graphics.Gradient) Container {
+	c.BorderGradient = gradient
+	return c
+}
+
 func (c Container) CreateElement() core.Element {
 	return core.NewRenderObjectElement(c, nil)
 }
@@ -143,14 +154,15 @@ func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject
 		height:    c.Height,
 		alignment: c.Alignment,
 		painter: decorationPainter{
-			color:        color,
-			gradient:     c.Gradient,
-			borderColor:  c.BorderColor,
-			borderWidth:  c.BorderWidth,
-			borderRadius: c.BorderRadius,
-			borderDash:   c.BorderDash,
-			shadow:       c.Shadow,
-			overflow:     c.Overflow,
+			color:          color,
+			gradient:       c.Gradient,
+			borderColor:    c.BorderColor,
+			borderWidth:    c.BorderWidth,
+			borderRadius:   c.BorderRadius,
+			borderDash:     c.BorderDash,
+			borderGradient: c.BorderGradient,
+			shadow:         c.Shadow,
+			overflow:       c.Overflow,
 		},
 	}
 	box.SetSelf(box)
@@ -168,14 +180,15 @@ func (c Container) UpdateRenderObject(ctx core.BuildContext, renderObject layout
 		box.height = c.Height
 		box.alignment = c.Alignment
 		box.painter = decorationPainter{
-			color:        color,
-			gradient:     c.Gradient,
-			borderColor:  c.BorderColor,
-			borderWidth:  c.BorderWidth,
-			borderRadius: c.BorderRadius,
-			borderDash:   c.BorderDash,
-			shadow:       c.Shadow,
-			overflow:     c.Overflow,
+			color:          color,
+			gradient:       c.Gradient,
+			borderColor:    c.BorderColor,
+			borderWidth:    c.BorderWidth,
+			borderRadius:   c.BorderRadius,
+			borderDash:     c.BorderDash,
+			borderGradient: c.BorderGradient,
+			shadow:         c.Shadow,
+			overflow:       c.Overflow,
 		}
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()

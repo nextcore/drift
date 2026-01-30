@@ -606,6 +606,42 @@ graphics.NewRadialGradient(
 )
 ```
 
+### Gradient Borders
+
+Apply gradients to borders using `BorderGradient`:
+
+```go
+widgets.DecoratedBox{
+    BorderWidth:  3,
+    BorderRadius: 12,
+    BorderGradient: graphics.NewLinearGradient(
+        graphics.AlignTopLeft,
+        graphics.AlignBottomRight,
+        []graphics.GradientStop{
+            {Position: 0, Color: colors.Primary},
+            {Position: 1, Color: colors.Secondary},
+        },
+    ),
+    ChildWidget: content,
+}
+
+// Dashed gradient border
+widgets.Container{
+    BorderWidth:  2,
+    BorderRadius: 8,
+    BorderDash:   &graphics.DashPattern{Intervals: []float64{8, 4}},
+    BorderGradient: graphics.NewLinearGradient(
+        graphics.AlignCenterLeft,
+        graphics.AlignCenterRight,
+        stops,
+    ),
+    Padding:     layout.EdgeInsetsAll(16),
+    ChildWidget: child,
+}
+```
+
+When both `BorderColor` and `BorderGradient` are set, the gradient takes precedence.
+
 ### Container vs DecoratedBox
 
 | Feature | Container | DecoratedBox |
@@ -618,6 +654,7 @@ graphics.NewRadialGradient(
 | Shadow | ✓ | ✓ |
 | BorderRadius | ✓ | ✓ |
 | BorderColor/Width | ✓ | ✓ |
+| BorderGradient | ✓ | ✓ |
 | BorderDash | ✓ | ✓ |
 
 Container and DecoratedBox share the same painting implementation internally.

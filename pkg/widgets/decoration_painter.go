@@ -7,14 +7,15 @@ import (
 
 // decorationPainter provides shared painting logic for Container and DecoratedBox.
 type decorationPainter struct {
-	color        graphics.Color
-	gradient     *graphics.Gradient
-	borderColor  graphics.Color
-	borderWidth  float64
-	borderRadius float64
-	borderDash   *graphics.DashPattern
-	shadow       *graphics.BoxShadow
-	overflow     Overflow
+	color          graphics.Color
+	gradient       *graphics.Gradient
+	borderColor    graphics.Color
+	borderWidth    float64
+	borderRadius   float64
+	borderDash     *graphics.DashPattern
+	borderGradient *graphics.Gradient
+	shadow         *graphics.BoxShadow
+	overflow       Overflow
 }
 
 // paint draws the decoration (shadow, background, border) within the given rect.
@@ -58,9 +59,14 @@ func (p *decorationPainter) paint(ctx *layout.PaintContext, rect graphics.Rect) 
 	}
 
 	// Draw border
-	if p.borderWidth > 0 && p.borderColor != graphics.ColorTransparent {
+	if p.borderWidth > 0 && (p.borderColor != graphics.ColorTransparent || p.borderGradient != nil) {
 		borderPaint := graphics.DefaultPaint()
-		borderPaint.Color = p.borderColor
+		borderColor := p.borderColor
+		if p.borderGradient != nil && borderColor == graphics.ColorTransparent {
+			borderColor = graphics.ColorWhite
+		}
+		borderPaint.Color = borderColor
+		borderPaint.Gradient = p.borderGradient
 		borderPaint.Style = graphics.PaintStyleStroke
 		borderPaint.StrokeWidth = p.borderWidth
 		borderPaint.Dash = p.borderDash
