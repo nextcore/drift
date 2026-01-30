@@ -329,34 +329,34 @@ widgets.Padding{
 Combines decoration, sizing, padding, and alignment:
 
 ```go
-// Struct literal (preferred)
+// Rounded card with padding (shrink-wraps to content)
 widgets.Container{
-    Color:       colors.Surface,
-    Padding:     layout.EdgeInsetsAll(20),
-    Alignment:   layout.AlignmentCenter,
-    ChildWidget: child,
-}
-
-// For rounded corners, wrap with DecoratedBox or ClipRRect
-widgets.DecoratedBox{
     Color:        colors.Surface,
-    BorderRadius: 8,
-    ChildWidget: widgets.Padding{
-        EdgeInsets:  layout.EdgeInsetsAll(20),
-        ChildWidget: child,
-    },
+    BorderRadius: 12,
+    Padding:      layout.EdgeInsetsAll(20),
+    ChildWidget:  content,
 }
 
-// Struct literal
+// Bordered box
+widgets.Container{
+    BorderColor:  colors.Outline,
+    BorderWidth:  1,
+    BorderRadius: 8,
+    Padding:      layout.EdgeInsetsAll(12),
+    ChildWidget:  child,
+}
+
+// Fixed-size with centered child
 widgets.Container{
     Color:       colors.Surface,
-    Padding:     layout.EdgeInsetsAll(20),
-    Alignment:   layout.AlignmentCenter,
     Width:       200,
     Height:      100,
+    Alignment:   layout.AlignmentCenter,  // Centers child within 200x100
     ChildWidget: child,
 }
 ```
+
+Alignment positions the child within the content area (after padding). When Container shrink-wraps to child+padding, alignment has no visible effect. When the container is larger than its content (via Width/Height or parent constraints), alignment controls child positioning.
 
 ## Center
 
@@ -370,6 +370,19 @@ widgets.Center{
 // Helper function
 widgets.Centered(widgets.Text{Content: "Centered"})
 ```
+
+## Align
+
+Position a child within available space using any alignment:
+
+```go
+widgets.Align{
+    Alignment:   layout.AlignmentBottomRight,
+    ChildWidget: widgets.Text{Content: "Bottom right"},
+}
+```
+
+Align expands to fill available space, then positions the child. Center is equivalent to `Align{Alignment: layout.AlignmentCenter}`.
 
 ## SafeArea
 
@@ -447,6 +460,26 @@ widgets.DecoratedBox{
     ChildWidget: content,
 }
 ```
+
+### Container vs DecoratedBox
+
+| Feature | Container | DecoratedBox |
+|---------|-----------|--------------|
+| **Purpose** | Layout + decoration | Decoration only |
+| Padding | ✓ | ✗ |
+| Width/Height | ✓ | ✗ |
+| Alignment | ✓ | ✗ |
+| Color/Gradient | ✓ | ✓ |
+| Shadow | ✓ | ✓ |
+| BorderRadius | ✓ | ✓ |
+| BorderColor/Width | ✓ | ✓ |
+| BorderDash | ✓ | ✓ |
+
+Container and DecoratedBox share the same painting implementation internally.
+
+**Use Container** for most cases — it handles layout and decoration together.
+
+**Use DecoratedBox** when you want decoration without any layout behavior (child sizes to parent constraints).
 
 ## ClipRRect
 

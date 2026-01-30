@@ -19,7 +19,9 @@ import (
 //   - [OverflowClip] (default): gradient confined to bounds (or rounded shape)
 //   - [OverflowVisible]: gradient can overflow, useful for glows
 //
-// For simpler use cases without borders or rounded corners, see [Container].
+// For combined layout and decoration (padding, sizing, alignment), use [Container]
+// which composes DecoratedBox internally. Use DecoratedBox directly when you need
+// decoration without any layout behavior.
 type DecoratedBox struct {
 	ChildWidget core.Widget // Child widget to display inside the decoration
 
@@ -63,14 +65,16 @@ func (d DecoratedBox) CreateRenderObject(ctx core.BuildContext) layout.RenderObj
 		color = graphics.ColorWhite
 	}
 	box := &renderDecoratedBox{
-		color:        color,
-		gradient:     d.Gradient,
-		borderColor:  d.BorderColor,
-		borderWidth:  d.BorderWidth,
-		borderRadius: d.BorderRadius,
-		borderDash:   d.BorderDash,
-		shadow:       d.Shadow,
-		overflow:     d.Overflow,
+		painter: decorationPainter{
+			color:        color,
+			gradient:     d.Gradient,
+			borderColor:  d.BorderColor,
+			borderWidth:  d.BorderWidth,
+			borderRadius: d.BorderRadius,
+			borderDash:   d.BorderDash,
+			shadow:       d.Shadow,
+			overflow:     d.Overflow,
+		},
 	}
 	box.SetSelf(box)
 	return box
@@ -82,14 +86,16 @@ func (d DecoratedBox) UpdateRenderObject(ctx core.BuildContext, renderObject lay
 		if d.Gradient != nil && color == graphics.ColorTransparent {
 			color = graphics.ColorWhite
 		}
-		box.color = color
-		box.gradient = d.Gradient
-		box.borderColor = d.BorderColor
-		box.borderWidth = d.BorderWidth
-		box.borderRadius = d.BorderRadius
-		box.borderDash = d.BorderDash
-		box.shadow = d.Shadow
-		box.overflow = d.Overflow
+		box.painter = decorationPainter{
+			color:        color,
+			gradient:     d.Gradient,
+			borderColor:  d.BorderColor,
+			borderWidth:  d.BorderWidth,
+			borderRadius: d.BorderRadius,
+			borderDash:   d.BorderDash,
+			shadow:       d.Shadow,
+			overflow:     d.Overflow,
+		}
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 	}
@@ -97,15 +103,8 @@ func (d DecoratedBox) UpdateRenderObject(ctx core.BuildContext, renderObject lay
 
 type renderDecoratedBox struct {
 	layout.RenderBoxBase
-	child        layout.RenderBox
-	color        graphics.Color
-	gradient     *graphics.Gradient
-	borderColor  graphics.Color
-	borderWidth  float64
-	borderRadius float64
-	borderDash   *graphics.DashPattern
-	shadow       *graphics.BoxShadow
-	overflow     Overflow
+	child   layout.RenderBox
+	painter decorationPainter
 }
 
 func (r *renderDecoratedBox) SetChild(child layout.RenderObject) {
@@ -138,51 +137,8 @@ func (r *renderDecoratedBox) Paint(ctx *layout.PaintContext) {
 		return
 	}
 	rect := graphics.RectFromLTWH(0, 0, size.Width, size.Height)
-	if r.shadow != nil {
-		r.drawShadow(ctx, rect, *r.shadow)
-	}
-	if r.color != graphics.ColorTransparent || r.gradient != nil {
-		paint := graphics.DefaultPaint()
-		paint.Color = r.color
-		paint.Gradient = r.gradient
+	r.painter.paint(ctx, rect)
 
-		if r.overflow == OverflowClip {
-			ctx.Canvas.Save()
-			if r.borderRadius > 0 {
-				rrect := graphics.RRectFromRectAndRadius(rect, graphics.CircularRadius(r.borderRadius))
-				ctx.Canvas.ClipRRect(rrect)
-			} else {
-				ctx.Canvas.ClipRect(rect)
-			}
-			r.drawShape(ctx, rect, paint)
-			ctx.Canvas.Restore()
-		} else if r.gradient != nil {
-			// OverflowVisible with gradient: draw expanded rect for overflow,
-			// then draw the normal shape on top for rounded corners in-bounds.
-			// Note: This doubles gradient paint work when borderRadius > 0.
-			// Use OverflowClip if performance is critical for large gradients.
-			// To reduce the double-draw cost, the next step would be a shader/Skia
-			// change to let a gradient draw beyond bounds without re-drawing the
-			// in-bounds area.
-			drawRect := r.gradient.Bounds(rect)
-			ctx.Canvas.DrawRect(drawRect, paint)
-			if r.borderRadius > 0 {
-				rrect := graphics.RRectFromRectAndRadius(rect, graphics.CircularRadius(r.borderRadius))
-				ctx.Canvas.DrawRRect(rrect, paint)
-			}
-		} else {
-			// No gradient: use normal shape (respects border radius)
-			r.drawShape(ctx, rect, paint)
-		}
-	}
-	if r.borderWidth > 0 && r.borderColor != graphics.ColorTransparent {
-		borderPaint := graphics.DefaultPaint()
-		borderPaint.Color = r.borderColor
-		borderPaint.Style = graphics.PaintStyleStroke
-		borderPaint.StrokeWidth = r.borderWidth
-		borderPaint.Dash = r.borderDash
-		r.drawShape(ctx, rect, borderPaint)
-	}
 	if r.child != nil {
 		ctx.PaintChild(r.child, getChildOffset(r.child))
 	}
@@ -199,20 +155,3 @@ func (r *renderDecoratedBox) HitTest(position graphics.Offset, result *layout.Hi
 	return true
 }
 
-func (r *renderDecoratedBox) drawShape(ctx *layout.PaintContext, rect graphics.Rect, paint graphics.Paint) {
-	if r.borderRadius > 0 {
-		rrect := graphics.RRectFromRectAndRadius(rect, graphics.CircularRadius(r.borderRadius))
-		ctx.Canvas.DrawRRect(rrect, paint)
-		return
-	}
-	ctx.Canvas.DrawRect(rect, paint)
-}
-
-func (r *renderDecoratedBox) drawShadow(ctx *layout.PaintContext, rect graphics.Rect, shadow graphics.BoxShadow) {
-	if r.borderRadius > 0 {
-		rrect := graphics.RRectFromRectAndRadius(rect, graphics.CircularRadius(r.borderRadius))
-		ctx.Canvas.DrawRRectShadow(rrect, shadow)
-		return
-	}
-	ctx.Canvas.DrawRectShadow(rect, shadow)
-}

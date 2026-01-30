@@ -2,49 +2,55 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // Container is a convenience widget that combines common painting, positioning,
 // and sizing operations into a single widget.
 //
 // Container applies decorations in this order:
-//  1. Shadow (drawn behind the container)
-//  2. Background color or gradient
-//  3. Child widget (positioned according to Alignment within the padded area)
+//  1. Shadow (drawn behind the container, respects BorderRadius)
+//  2. Background color or gradient (clipped to BorderRadius)
+//  3. Border stroke (if BorderWidth > 0)
+//  4. Child widget (positioned according to Alignment within the padded area)
 //
 // # Sizing Behavior
 //
 // Without explicit Width/Height, Container sizes to fit its child plus padding.
 // With Width and/or Height set, Container uses those dimensions (constrained by
-// parent constraints) and positions the child using Alignment.
+// parent constraints). In both cases, Alignment positions the child within the
+// available content area (after padding).
 //
 // # Common Patterns
 //
-//	// Colored box with padding
+//	// Rounded card with padding
 //	Container{
-//	    Color:   graphics.ColorBlue,
-//	    Padding: layout.EdgeInsetsAll(16),
-//	    ChildWidget: Text{Content: "Hello"},
+//	    Color:        colors.Surface,
+//	    BorderRadius: 12,
+//	    Padding:      layout.EdgeInsetsAll(16),
+//	    ChildWidget:  content,
+//	}
+//
+//	// Bordered box
+//	Container{
+//	    BorderColor:  colors.Outline,
+//	    BorderWidth:  1,
+//	    BorderRadius: 8,
+//	    Padding:      layout.EdgeInsetsAll(12),
+//	    ChildWidget:  Text{Content: "Hello"},
 //	}
 //
 //	// Fixed-size centered child
 //	Container{
-//	    Width:     200,
-//	    Height:    100,
-//	    Alignment: layout.AlignmentCenter,
+//	    Width:       200,
+//	    Height:      100,
+//	    Alignment:   layout.AlignmentCenter,
 //	    ChildWidget: icon,
 //	}
 //
-//	// Gradient background with shadow
-//	Container{
-//	    Gradient: &graphics.Gradient{...},
-//	    Shadow:   &graphics.BoxShadow{BlurRadius: 8, Color: shadowColor},
-//	    ChildWidget: content,
-//	}
-//
-// For more complex decorations (borders, border radius, clipping), use [DecoratedBox].
+// Container supports all [DecoratedBox] features. For decoration without layout
+// behavior (no padding, sizing, or alignment), use DecoratedBox directly.
 type Container struct {
 	ChildWidget core.Widget
 	Padding     layout.EdgeInsets
@@ -53,12 +59,20 @@ type Container struct {
 	Color       graphics.Color
 	Gradient    *graphics.Gradient
 	Alignment   layout.Alignment
-	Shadow *graphics.BoxShadow
+	Shadow      *graphics.BoxShadow
+
+	// Border
+	BorderColor  graphics.Color        // Border stroke color; transparent = no border
+	BorderWidth  float64               // Border stroke width in pixels; 0 = no border
+	BorderRadius float64               // Corner radius for rounded rectangles; 0 = sharp corners
+	BorderDash   *graphics.DashPattern // Dash pattern for border; nil = solid line
+
 	// Overflow controls whether gradients extend beyond container bounds.
-	// Defaults to OverflowClip, confining gradients strictly within bounds.
-	// Set to OverflowVisible for glow effects where the gradient should
-	// extend beyond the widget. Only affects gradients; shadows overflow
-	// naturally and solid colors never overflow.
+	// Defaults to OverflowClip, confining gradients strictly within bounds
+	// (clipped to rounded shape if BorderRadius > 0). Set to OverflowVisible
+	// for glow effects where the gradient should extend beyond the widget.
+	// Only affects gradients; shadows overflow naturally and solid colors
+	// never overflow.
 	Overflow Overflow
 }
 
@@ -93,6 +107,19 @@ func (c Container) WithGradient(gradient *graphics.Gradient) Container {
 	return c
 }
 
+// WithBorderRadius returns a copy of the container with the specified corner radius.
+func (c Container) WithBorderRadius(radius float64) Container {
+	c.BorderRadius = radius
+	return c
+}
+
+// WithBorder returns a copy of the container with the specified border color and width.
+func (c Container) WithBorder(color graphics.Color, width float64) Container {
+	c.BorderColor = color
+	c.BorderWidth = width
+	return c
+}
+
 func (c Container) CreateElement() core.Element {
 	return core.NewRenderObjectElement(c, nil)
 }
@@ -114,11 +141,17 @@ func (c Container) CreateRenderObject(ctx core.BuildContext) layout.RenderObject
 		padding:   c.Padding,
 		width:     c.Width,
 		height:    c.Height,
-		color:     color,
-		gradient:  c.Gradient,
 		alignment: c.Alignment,
-		shadow:    c.Shadow,
-		overflow:  c.Overflow,
+		painter: decorationPainter{
+			color:        color,
+			gradient:     c.Gradient,
+			borderColor:  c.BorderColor,
+			borderWidth:  c.BorderWidth,
+			borderRadius: c.BorderRadius,
+			borderDash:   c.BorderDash,
+			shadow:       c.Shadow,
+			overflow:     c.Overflow,
+		},
 	}
 	box.SetSelf(box)
 	return box
@@ -133,11 +166,17 @@ func (c Container) UpdateRenderObject(ctx core.BuildContext, renderObject layout
 		box.padding = c.Padding
 		box.width = c.Width
 		box.height = c.Height
-		box.color = color
-		box.gradient = c.Gradient
 		box.alignment = c.Alignment
-		box.shadow = c.Shadow
-		box.overflow = c.Overflow
+		box.painter = decorationPainter{
+			color:        color,
+			gradient:     c.Gradient,
+			borderColor:  c.BorderColor,
+			borderWidth:  c.BorderWidth,
+			borderRadius: c.BorderRadius,
+			borderDash:   c.BorderDash,
+			shadow:       c.Shadow,
+			overflow:     c.Overflow,
+		}
 		box.MarkNeedsLayout()
 		box.MarkNeedsPaint()
 	}
@@ -149,11 +188,8 @@ type renderContainer struct {
 	padding   layout.EdgeInsets
 	width     float64
 	height    float64
-	color     graphics.Color
-	gradient  *graphics.Gradient
 	alignment layout.Alignment
-	shadow    *graphics.BoxShadow
-	overflow  Overflow
+	painter   decorationPainter
 }
 
 func (r *renderContainer) SetChild(child layout.RenderObject) {
@@ -187,7 +223,7 @@ func (r *renderContainer) PerformLayout() {
 	}
 	var childSize graphics.Size
 	if r.child != nil {
-		r.child.Layout(childConstraints, true) // true: we read child.Size()
+		r.child.Layout(childConstraints, true)
 		childSize = r.child.Size()
 	}
 
@@ -217,28 +253,13 @@ func (r *renderContainer) PerformLayout() {
 }
 
 func (r *renderContainer) Paint(ctx *layout.PaintContext) {
-	widgetRect := graphics.RectFromLTWH(0, 0, r.Size().Width, r.Size().Height)
-	if r.shadow != nil {
-		ctx.Canvas.DrawRectShadow(widgetRect, *r.shadow)
+	size := r.Size()
+	if size.Width <= 0 || size.Height <= 0 {
+		return
 	}
-	if r.color != graphics.ColorTransparent || r.gradient != nil {
-		paint := graphics.DefaultPaint()
-		paint.Color = r.color
-		paint.Gradient = r.gradient
+	rect := graphics.RectFromLTWH(0, 0, size.Width, size.Height)
+	r.painter.paint(ctx, rect)
 
-		if r.overflow == OverflowClip {
-			ctx.Canvas.Save()
-			ctx.Canvas.ClipRect(widgetRect)
-			ctx.Canvas.DrawRect(widgetRect, paint)
-			ctx.Canvas.Restore()
-		} else {
-			drawRect := widgetRect
-			if r.gradient != nil {
-				drawRect = r.gradient.Bounds(widgetRect)
-			}
-			ctx.Canvas.DrawRect(drawRect, paint)
-		}
-	}
 	if r.child != nil {
 		ctx.PaintChild(r.child, getChildOffset(r.child))
 	}

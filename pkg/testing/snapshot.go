@@ -43,7 +43,7 @@ type RenderNode struct {
 var propertyWhitelist = map[string][]string{
 	"RenderFlex":           {"direction", "alignment", "crossAlignment"},
 	"RenderPadding":        {"padding"},
-	"RenderContainer":      {"color", "padding", "width", "height"},
+	"RenderContainer":      {"painter.color", "padding", "width", "height"},
 	"RenderText":           {"text", "maxLines"},
 	"RenderConstrainedBox": {"minWidth", "maxWidth", "minHeight", "maxHeight"},
 	"RenderSizedBox":       {"width", "height"},
@@ -184,6 +184,37 @@ func renderTypeName(ro layout.RenderObject) string {
 	return name
 }
 
+// getFieldByPath navigates a dot-separated path like "painter.color" through
+// nested structs. Returns an invalid Value if the path doesn't exist.
+func getFieldByPath(v reflect.Value, path string) reflect.Value {
+	parts := strings.Split(path, ".")
+	for _, part := range parts {
+		if part == "" {
+			return reflect.Value{}
+		}
+		if v.Kind() == reflect.Ptr {
+			if v.IsNil() {
+				return reflect.Value{}
+			}
+			v = v.Elem()
+		}
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}
+		}
+		field := v.FieldByName(part)
+		if !field.IsValid() {
+			// Try exported version (capitalize first letter)
+			exported := strings.ToUpper(part[:1]) + part[1:]
+			field = v.FieldByName(exported)
+		}
+		if !field.IsValid() {
+			return reflect.Value{}
+		}
+		v = field
+	}
+	return v
+}
+
 func captureProperties(ro layout.RenderObject, typeName string) map[string]any {
 	whitelist, ok := propertyWhitelist[typeName]
 	if !ok {
@@ -196,18 +227,18 @@ func captureProperties(ro layout.RenderObject, typeName string) map[string]any {
 		v = v.Elem()
 	}
 
-	for _, fieldName := range whitelist {
-		field := v.FieldByName(fieldName)
-		if !field.IsValid() {
-			// Try exported version (capitalize first letter)
-			exported := strings.ToUpper(fieldName[:1]) + fieldName[1:]
-			field = v.FieldByName(exported)
-		}
+	for _, fieldPath := range whitelist {
+		field := getFieldByPath(v, fieldPath)
 		if !field.IsValid() {
 			continue
 		}
+		// Use the last component of the path as the property name
+		propName := fieldPath
+		if idx := strings.LastIndex(fieldPath, "."); idx >= 0 {
+			propName = fieldPath[idx+1:]
+		}
 		if val := serializeFieldValue(field); val != nil {
-			props[fieldName] = val
+			props[propName] = val
 		}
 	}
 
