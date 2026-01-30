@@ -1,6 +1,8 @@
 package widgets
 
 import (
+	"math"
+
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
@@ -72,10 +74,36 @@ func (r *renderAlign) VisitChildren(visitor func(layout.RenderObject)) {
 
 func (r *renderAlign) PerformLayout() {
 	constraints := r.Constraints()
-	size := constraints.Constrain(graphics.Size{Width: constraints.MaxWidth, Height: constraints.MaxHeight})
+
+	// Handle unbounded constraints by measuring child first
+	targetWidth := constraints.MaxWidth
+	targetHeight := constraints.MaxHeight
+	childAlreadyLaidOut := false
+
+	if r.child != nil && (targetWidth == math.MaxFloat64 || targetHeight == math.MaxFloat64) {
+		// Measure child with loose constraints to get intrinsic size
+		r.child.Layout(layout.Loose(graphics.Size{Width: targetWidth, Height: targetHeight}), true)
+		childSize := r.child.Size()
+		if targetWidth == math.MaxFloat64 {
+			targetWidth = childSize.Width
+		}
+		if targetHeight == math.MaxFloat64 {
+			targetHeight = childSize.Height
+		}
+		// If both dimensions were unbounded, child is already laid out with correct constraints
+		if constraints.MaxWidth == math.MaxFloat64 && constraints.MaxHeight == math.MaxFloat64 {
+			childAlreadyLaidOut = true
+		}
+	}
+
+	size := constraints.Constrain(graphics.Size{Width: targetWidth, Height: targetHeight})
 	r.SetSize(size)
+
 	if r.child != nil {
-		r.child.Layout(layout.Loose(size), true)
+		// Only re-layout if constraints changed from initial measurement
+		if !childAlreadyLaidOut {
+			r.child.Layout(layout.Loose(size), true)
+		}
 		childSize := r.child.Size()
 		offset := r.alignment.WithinRect(
 			graphics.RectFromLTWH(0, 0, size.Width, size.Height),
