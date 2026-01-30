@@ -1470,6 +1470,15 @@ void drift_skia_canvas_draw_rect_shadow(
     }
     auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
     sk_canvas->save();
+
+    // For external styles (Outer=0, Normal=1, Solid=2), clip out the original box
+    // bounds so shadow never appears inside the box area.
+    // Inner (3) is for inset shadows and should draw inside only.
+    if (blur_style != 3) {
+        SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
+        sk_canvas->clipRect(origRect, SkClipOp::kDifference, true);
+    }
+
     sk_canvas->translate(dx, dy);
     sk_canvas->drawRect(rect, paint);
     sk_canvas->restore();
@@ -1509,6 +1518,18 @@ void drift_skia_canvas_draw_rrect_shadow(
     }
     auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
     sk_canvas->save();
+
+    // For external styles (Outer=0, Normal=1, Solid=2), clip out the original box
+    // bounds so shadow never appears inside the box area.
+    // Inner (3) is for inset shadows and should draw inside only.
+    if (blur_style != 3) {
+        SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
+        SkVector origRadii[4] = {{rx1, ry1}, {rx2, ry2}, {rx3, ry3}, {rx4, ry4}};
+        SkRRect origRRect;
+        origRRect.setRectRadii(origRect, origRadii);
+        sk_canvas->clipRRect(origRRect, SkClipOp::kDifference, true);
+    }
+
     sk_canvas->translate(dx, dy);
     sk_canvas->drawRRect(rrect, paint);
     sk_canvas->restore();
