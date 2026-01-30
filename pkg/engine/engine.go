@@ -117,8 +117,33 @@ func SetShowLayoutBounds(show bool) {
 // SetDiagnostics configures the diagnostics overlays.
 // Pass nil to disable all diagnostics.
 func SetDiagnostics(config *DiagnosticsConfig) {
+	// Determine port changes outside the lock to avoid blocking frame/paint
+	frameLock.Lock()
+	oldPort := 0
+	if app.diagnosticsConfig != nil {
+		oldPort = app.diagnosticsConfig.DebugServerPort
+	}
+	frameLock.Unlock()
+
+	newPort := 0
+	if config != nil {
+		newPort = config.DebugServerPort
+	}
+
+	// Start/stop debug server outside frameLock (shutdown can block up to 2s)
+	if oldPort != newPort {
+		stopDebugServer()
+		if newPort > 0 {
+			if _, err := startDebugServer(newPort); err != nil {
+				fmt.Printf("debug server failed to start on port %d: %v\n", newPort, err)
+			}
+		}
+	}
+
+	// Now update diagnostics state under lock
 	frameLock.Lock()
 	defer frameLock.Unlock()
+
 	app.diagnosticsConfig = config
 	if config != nil {
 		app.showLayoutBounds = config.ShowLayoutBounds

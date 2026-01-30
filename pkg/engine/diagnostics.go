@@ -35,6 +35,10 @@ type DiagnosticsConfig struct {
 	// TargetFrameTime is the target frame duration for coloring the graph.
 	// Defaults to 16.67ms (60fps) if zero.
 	TargetFrameTime time.Duration
+	// DebugServerPort enables an HTTP debug server on the specified port.
+	// 0 = disabled, >0 = port number (e.g., 9999).
+	// The server exposes /tree (render tree JSON) and /health endpoints.
+	DebugServerPort int
 }
 
 // DefaultDiagnosticsConfig returns a DiagnosticsConfig with sensible defaults.
