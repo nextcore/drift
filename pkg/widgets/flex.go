@@ -206,9 +206,6 @@ func (r Row) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 
 func (r Row) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if flex, ok := renderObject.(*renderFlex); ok {
-		if flex.direction != AxisHorizontal {
-			flex.errorTextLayout = nil // invalidate cached error text
-		}
 		flex.direction = AxisHorizontal
 		flex.alignment = r.MainAxisAlignment
 		flex.crossAlignment = r.CrossAxisAlignment
@@ -292,9 +289,6 @@ func (c Column) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 
 func (c Column) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if flex, ok := renderObject.(*renderFlex); ok {
-		if flex.direction != AxisVertical {
-			flex.errorTextLayout = nil // invalidate cached error text
-		}
 		flex.direction = AxisVertical
 		flex.alignment = c.MainAxisAlignment
 		flex.crossAlignment = c.CrossAxisAlignment
@@ -306,14 +300,15 @@ func (c Column) UpdateRenderObject(ctx core.BuildContext, renderObject layout.Re
 
 type renderFlex struct {
 	layout.RenderBoxBase
-	children              []layout.RenderBox
-	direction             Axis
-	alignment             MainAxisAlignment
-	crossAlignment        CrossAxisAlignment
-	axisSize              MainAxisSize
-	hasUnboundedFlexError bool
-	unboundedFlexWarned   bool                 // one-shot flag to avoid log spam
-	errorTextLayout       *graphics.TextLayout // cached error text layout
+	children                 []layout.RenderBox
+	direction                Axis
+	alignment                MainAxisAlignment
+	crossAlignment           CrossAxisAlignment
+	axisSize                 MainAxisSize
+	hasUnboundedFlexError    bool
+	hasUnboundedStretchError bool
+	unboundedFlexWarned      bool // one-shot flag to avoid log spam
+	unboundedStretchWarned   bool // one-shot flag to avoid log spam
 }
 
 func (r *renderFlex) SetChildren(children []layout.RenderObject) {
@@ -368,6 +363,38 @@ func (r *renderFlex) PerformLayout() {
 	constraints := r.Constraints()
 	maxSize := graphics.Size{Width: constraints.MaxWidth, Height: constraints.MaxHeight}
 	maxMain := r.mainAxis(maxSize)
+	maxCross := r.crossAxis(maxSize)
+
+	// Reset error flags at start - we'll set whichever applies based on current constraints
+	r.hasUnboundedFlexError = false
+	r.hasUnboundedStretchError = false
+
+	// Check for CrossAxisAlignmentStretch with unbounded cross axis
+	if r.crossAlignment == CrossAxisAlignmentStretch && maxCross == math.MaxFloat64 {
+		if !r.unboundedStretchWarned {
+			crossAxisName := "height"
+			if r.direction == AxisVertical {
+				crossAxisName = "width"
+			}
+			log.Printf("WARNING: CrossAxisAlignmentStretch used with unbounded %s. "+
+				"Children cannot stretch to fill infinite space. "+
+				"Use CrossAxisAlignmentStart/Center/End instead, or constrain the %s.",
+				crossAxisName, crossAxisName)
+			r.unboundedStretchWarned = true
+		}
+		r.hasUnboundedStretchError = true
+
+		// Short-circuit: use safe fallback size and skip child layout (they won't be painted)
+		// Main axis may still be bounded, use it if available; cross axis uses min or safe default
+		fallbackMain := maxMain
+		if fallbackMain == math.MaxFloat64 {
+			fallbackMain = math.Max(r.mainAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 200)
+		}
+		fallbackCross := math.Max(r.crossAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 50)
+		size := constraints.Constrain(r.makeSize(fallbackMain, fallbackCross))
+		r.SetSize(size)
+		return
+	}
 
 	mainSize := 0.0
 	crossSize := 0.0
@@ -389,7 +416,6 @@ func (r *renderFlex) PerformLayout() {
 	}
 
 	// Check for flex children with unbounded main axis
-	r.hasUnboundedFlexError = false
 	if totalFlex > 0 && maxMain == math.MaxFloat64 {
 		if !r.unboundedFlexWarned {
 			log.Printf("WARNING: Flex children (Expanded/Flexible) used with unbounded %s axis. "+
@@ -401,10 +427,7 @@ func (r *renderFlex) PerformLayout() {
 
 		// Short-circuit: use safe fallback size and skip flex child layout
 		// Use minimum constraints or a safe default for the error box
-		fallbackMain := math.Max(constraints.MinWidth, 200)
-		if r.direction == AxisVertical {
-			fallbackMain = math.Max(constraints.MinHeight, 50)
-		}
+		fallbackMain := math.Max(r.mainAxis(graphics.Size{Width: constraints.MinWidth, Height: constraints.MinHeight}), 200)
 		fallbackCross := crossSize
 		if fallbackCross == 0 {
 			fallbackCross = 50
@@ -545,7 +568,7 @@ func (r *renderFlex) computeSpacing(freeSpace float64) (spacing, offset float64)
 }
 
 func (r *renderFlex) Paint(ctx *layout.PaintContext) {
-	if r.hasUnboundedFlexError {
+	if r.hasUnboundedFlexError || r.hasUnboundedStretchError {
 		r.paintErrorBox(ctx)
 		return
 	}
@@ -558,22 +581,31 @@ func (r *renderFlex) paintErrorBox(ctx *layout.PaintContext) {
 	size := r.Size()
 
 	// Draw bright pink background to indicate error
-	ctx.Canvas.DrawRect(graphics.RectFromLTWH(0, 0, size.Width, size.Height), graphics.Paint{
-		Color: graphics.RGBA(255, 0, 127, 255), // Bright pink #ff007f
-		Style: graphics.PaintStyleFill,
-	})
+	paint := graphics.DefaultPaint()
+	paint.Color = graphics.RGBA(255, 0, 127, 255) // Bright pink #ff007f
+	paint.Style = graphics.PaintStyleFill
+	ctx.Canvas.DrawRect(graphics.RectFromLTWH(0, 0, size.Width, size.Height), paint)
 
-	// Draw cached black error text
-	if r.errorTextLayout == nil {
-		errorMsg := fmt.Sprintf("FLEX ERROR: Expanded in unbounded %s", r.direction.String())
-		textStyle := graphics.TextStyle{
-			FontSize: 14,
-			Color:    graphics.ColorBlack,
+	// Draw error text with wrapping (not cached - error boxes are not performance critical)
+	var errorMsg string
+	if r.hasUnboundedFlexError {
+		errorMsg = fmt.Sprintf("FLEX ERROR: Expanded in unbounded %s", r.direction.String())
+	} else if r.hasUnboundedStretchError {
+		crossAxis := "height"
+		if r.direction == AxisVertical {
+			crossAxis = "width"
 		}
-		r.errorTextLayout, _ = graphics.LayoutText(errorMsg, textStyle, graphics.DefaultFontManager())
+		errorMsg = fmt.Sprintf("FLEX ERROR: CrossAxisStretch in unbounded %s", crossAxis)
 	}
-	if r.errorTextLayout != nil {
-		ctx.Canvas.DrawText(r.errorTextLayout, graphics.Offset{X: 8, Y: 8})
+	textStyle := graphics.TextStyle{
+		FontSize: 14,
+		Color:    graphics.ColorBlack,
+	}
+	maxWidth := size.Width - 16 // 8px padding on each side
+	if maxWidth > 0 {
+		if textLayout, err := graphics.LayoutTextWithConstraints(errorMsg, textStyle, graphics.DefaultFontManager(), maxWidth); err == nil {
+			ctx.Canvas.DrawText(textLayout, graphics.Offset{X: 8, Y: 8})
+		}
 	}
 }
 
@@ -582,7 +614,7 @@ func (r *renderFlex) HitTest(position graphics.Offset, result *layout.HitTestRes
 		return false
 	}
 	// Skip children when in error state - they may have stale offsets
-	if r.hasUnboundedFlexError {
+	if r.hasUnboundedFlexError || r.hasUnboundedStretchError {
 		result.Add(r)
 		return true
 	}
