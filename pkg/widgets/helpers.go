@@ -2,8 +2,8 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // getChildOffset extracts the offset from a child's parent data.

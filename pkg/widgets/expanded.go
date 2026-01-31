@@ -2,8 +2,8 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // Expanded makes its child fill all remaining space along the main axis of a

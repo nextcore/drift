@@ -30,12 +30,12 @@ type Snapshot struct {
 
 // RenderNode represents a node in the serialized render tree.
 type RenderNode struct {
-	ID         string            `json:"id"`
-	Type       string            `json:"type"`
-	Size       [2]float64        `json:"size"`
-	Offset     [2]float64        `json:"offset"`
-	Properties map[string]any    `json:"props,omitempty"`
-	Children   []*RenderNode     `json:"children,omitempty"`
+	ID         string         `json:"id"`
+	Type       string         `json:"type"`
+	Size       [2]float64     `json:"size"`
+	Offset     [2]float64     `json:"offset"`
+	Properties map[string]any `json:"props,omitempty"`
+	Children   []*RenderNode  `json:"children,omitempty"`
 }
 
 // propertyWhitelist defines which properties to serialize per render type.

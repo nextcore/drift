@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/go-drift/drift/pkg/gestures"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 func TestScrollView_VerticalScrollRejectsHorizontal(t *testing.T) {

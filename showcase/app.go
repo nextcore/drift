@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/engine"
+	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/navigation"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
 )
@@ -232,11 +232,11 @@ func pageScaffold(ctx core.BuildContext, title string, content core.Widget) core
 										nav.Pop(nil)
 									}
 								},
-								Color:        colors.SurfaceVariant,
-								TextColor:    colors.OnSurfaceVariant,
-								Padding:      layout.EdgeInsetsSymmetric(16, 10),
-								FontSize:     14,
-								Haptic:       true,
+								Color:     colors.SurfaceVariant,
+								TextColor: colors.OnSurfaceVariant,
+								Padding:   layout.EdgeInsetsSymmetric(16, 10),
+								FontSize:  14,
+								Haptic:    true,
 							},
 							widgets.HSpace(16),
 							widgets.Text{Content: title, Style: textTheme.HeadlineMedium},

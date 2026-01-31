@@ -2,9 +2,9 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
+	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/semantics"
 )
 
@@ -218,10 +218,10 @@ func (s *timePickerState) buildDefaultField(ctx core.BuildContext, w TimePicker)
 			}
 		},
 		ChildWidget: Semantics{
-			Hint:   "Double tap to open time picker",
-			Role:   semantics.SemanticsRoleButton,
-			Flags:  semantics.SemanticsHasEnabledState | boolToFlag(!w.Disabled, semantics.SemanticsIsEnabled),
-			OnTap:  func() { s.showPicker() },
+			Hint:  "Double tap to open time picker",
+			Role:  semantics.SemanticsRoleButton,
+			Flags: semantics.SemanticsHasEnabledState | boolToFlag(!w.Disabled, semantics.SemanticsIsEnabled),
+			OnTap: func() { s.showPicker() },
 			ChildWidget: Column{
 				MainAxisSize:       MainAxisSizeMin,
 				CrossAxisAlignment: CrossAxisAlignmentStart,

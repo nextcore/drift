@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // DiagnosticsHUDDataSource provides frame timing data to the HUD.

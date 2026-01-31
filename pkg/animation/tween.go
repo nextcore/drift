@@ -1,8 +1,8 @@
 package animation
 
 import (
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // Tween interpolates between Begin and End values based on animation progress.

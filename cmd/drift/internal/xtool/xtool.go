@@ -12,10 +12,10 @@ import (
 
 // Config holds the xtool SDK configuration for iOS cross-compilation.
 type Config struct {
-	XtoolPath  string // Path to xtool binary
-	SDKPath    string // Path to iPhoneOS.sdk
-	ClangPath  string // Path to xtool's clang
-	ZsignPath  string // Path to zsign for code signing (optional)
+	XtoolPath string // Path to xtool binary
+	SDKPath   string // Path to iPhoneOS.sdk
+	ClangPath string // Path to xtool's clang
+	ZsignPath string // Path to zsign for code signing (optional)
 }
 
 // Detect locates xtool and the iOS SDK, returning a configuration for cross-compilation.

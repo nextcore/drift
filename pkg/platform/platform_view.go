@@ -88,7 +88,7 @@ type PlatformViewRegistry struct {
 	geometryCache map[int64]viewGeometryCache
 
 	// Track views for culling detection (views not painted should be hidden)
-	viewsAtFrameStart    map[int64]struct{}
+	viewsAtFrameStart     map[int64]struct{}
 	viewsUpdatedThisFrame map[int64]struct{}
 
 	// Stats for monitoring

@@ -16,9 +16,9 @@ type CapturedMedia struct {
 
 // CameraResult represents a result from camera/gallery operations.
 type CameraResult struct {
-	Type      string           // "capture" or "gallery"
-	Media     *CapturedMedia   // For capture results
-	MediaList []CapturedMedia  // For gallery results
+	Type      string          // "capture" or "gallery"
+	Media     *CapturedMedia  // For capture results
+	MediaList []CapturedMedia // For gallery results
 	Cancelled bool
 }
 

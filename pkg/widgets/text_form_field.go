@@ -2,9 +2,9 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
+	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/graphics"
 )
 
 // TextFormField is a form-aware text input that wraps [TextField] and integrates
@@ -222,12 +222,12 @@ func (t TextFormField) CreateState() core.State {
 // textFormFieldState manages form field state and implements formFieldState interface.
 type textFormFieldState struct {
 	formFieldStateBase
-	controller         *platform.TextEditingController // Internal controller if not provided
-	currentController  *platform.TextEditingController // The controller we're currently listening to
-	unsubscribe        func()                          // Unsubscribe from controller listener
-	initialText        string                          // Captured once in InitState (or when controller changes)
-	value              string                          // Current value
-	resetting          bool                            // True during Reset() to suppress listener
+	controller        *platform.TextEditingController // Internal controller if not provided
+	currentController *platform.TextEditingController // The controller we're currently listening to
+	unsubscribe       func()                          // Unsubscribe from controller listener
+	initialText       string                          // Captured once in InitState (or when controller changes)
+	value             string                          // Current value
+	resetting         bool                            // True during Reset() to suppress listener
 }
 
 // SetElement stores the element for rebuilds.

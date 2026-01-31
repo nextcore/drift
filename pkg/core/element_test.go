@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/go-drift/drift/pkg/errors"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // testStatelessWidget is a simple stateless widget for testing.
@@ -360,7 +360,7 @@ func (r *mockRenderObject) HitTest(position graphics.Offset, result *layout.HitT
 
 // testMultiChildWidget is a render object widget with multiple children.
 type testMultiChildWidget struct {
-	key         any
+	key          any
 	childWidgets []Widget
 }
 
@@ -376,7 +376,8 @@ func (w testMultiChildWidget) CreateRenderObject(ctx BuildContext) layout.Render
 	return &mockRenderObject{id: "multi"}
 }
 
-func (w testMultiChildWidget) UpdateRenderObject(ctx BuildContext, renderObject layout.RenderObject) {}
+func (w testMultiChildWidget) UpdateRenderObject(ctx BuildContext, renderObject layout.RenderObject) {
+}
 
 func (w testMultiChildWidget) Children() []Widget {
 	return w.childWidgets
@@ -400,7 +401,8 @@ func (w testSingleChildWidget) CreateRenderObject(ctx BuildContext) layout.Rende
 	return &mockRenderObject{id: "single"}
 }
 
-func (w testSingleChildWidget) UpdateRenderObject(ctx BuildContext, renderObject layout.RenderObject) {}
+func (w testSingleChildWidget) UpdateRenderObject(ctx BuildContext, renderObject layout.RenderObject) {
+}
 
 func (w testSingleChildWidget) Child() Widget {
 	return w.childWidget

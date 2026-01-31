@@ -57,16 +57,16 @@ type RenderBoxBase struct {
 	parentData           any
 	owner                *PipelineOwner
 	self                 RenderObject
-	parent               RenderObject           // parent reference for tree walking
-	depth                int                    // tree depth (root = 0)
-	relayoutBoundary     RenderObject           // cached nearest relayout boundary
-	needsLayout          bool                   // local dirty flag
-	constraints          Constraints            // last received constraints
-	repaintBoundary      RenderObject           // cached nearest repaint boundary
-	needsPaint           bool                   // local dirty flag for paint
+	parent               RenderObject          // parent reference for tree walking
+	depth                int                   // tree depth (root = 0)
+	relayoutBoundary     RenderObject          // cached nearest relayout boundary
+	needsLayout          bool                  // local dirty flag
+	constraints          Constraints           // last received constraints
+	repaintBoundary      RenderObject          // cached nearest repaint boundary
+	needsPaint           bool                  // local dirty flag for paint
 	layer                *graphics.DisplayList // cached paint output for boundaries
-	semanticsBoundary    RenderObject           // cached nearest semantics boundary
-	needsSemanticsUpdate bool                   // local dirty flag for semantics
+	semanticsBoundary    RenderObject          // cached nearest semantics boundary
+	needsSemanticsUpdate bool                  // local dirty flag for semantics
 }
 
 // Size returns the current size of the render box.

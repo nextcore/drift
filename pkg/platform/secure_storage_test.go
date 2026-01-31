@@ -47,10 +47,10 @@ func TestSecureStorageOptionsToArgs(t *testing.T) {
 		{
 			name: "all options",
 			opts: &SecureStorageOptions{
-				KeychainAccessibility:    AccessibleAfterFirstUnlock,
-				RequireBiometric: true,
-				BiometricPrompt:  "Please authenticate",
-				Service:          "myservice",
+				KeychainAccessibility: AccessibleAfterFirstUnlock,
+				RequireBiometric:      true,
+				BiometricPrompt:       "Please authenticate",
+				Service:               "myservice",
 			},
 			wantKeys: []string{"accessibility", "requireBiometric", "biometricPrompt", "service"},
 		},

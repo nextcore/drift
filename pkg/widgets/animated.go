@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-drift/drift/pkg/animation"
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // AnimatedContainer is a Container that animates changes to its properties.

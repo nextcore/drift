@@ -48,13 +48,13 @@ type TextInputViewClient interface {
 // TextInputView is a platform view for text input.
 type TextInputView struct {
 	basePlatformView
-	config   TextInputViewConfig
-	client   TextInputViewClient
-	text     string
-	selBase  int
-	selExt   int
-	focused  bool
-	mu       sync.RWMutex
+	config  TextInputViewConfig
+	client  TextInputViewClient
+	text    string
+	selBase int
+	selExt  int
+	focused bool
+	mu      sync.RWMutex
 }
 
 // NewTextInputView creates a new text input platform view.

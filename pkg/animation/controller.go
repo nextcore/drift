@@ -72,13 +72,13 @@ type AnimationController struct {
 	// UpperBound is the maximum value (default 1.0).
 	UpperBound float64
 
-	status           AnimationStatus
-	ticker           *Ticker
-	target           float64
-	startValue       float64
-	listeners        map[int]func()
-	statusListeners  map[int]func(AnimationStatus)
-	nextListenerID   int
+	status          AnimationStatus
+	ticker          *Ticker
+	target          float64
+	startValue      float64
+	listeners       map[int]func()
+	statusListeners map[int]func(AnimationStatus)
+	nextListenerID  int
 }
 
 // NewAnimationController creates an animation controller with the given duration.

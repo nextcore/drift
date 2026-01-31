@@ -4,8 +4,8 @@ import (
 	"embed"
 
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/navigation"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/navigation"
 	"github.com/go-drift/drift/pkg/svg"
 	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
@@ -75,7 +75,7 @@ func buildTabRootPage(ctx core.BuildContext, label string) core.Widget {
 				widgets.CrossAxisAlignmentStart,
 				widgets.MainAxisSizeMin,
 
-				widgets.Text{Content: label+" Tab", Style: textTheme.HeadlineMedium},
+				widgets.Text{Content: label + " Tab", Style: textTheme.HeadlineMedium},
 				widgets.VSpace(16),
 				widgets.Button{
 					Label: "Open details",
@@ -100,7 +100,7 @@ func buildTabDetailPage(ctx core.BuildContext, label string) core.Widget {
 	content := widgets.Container{
 		Color: colors.Background,
 		ChildWidget: widgets.Centered(
-			widgets.Text{Content: "Detail view for "+label, Style: textTheme.BodyLarge},
+			widgets.Text{Content: "Detail view for " + label, Style: textTheme.BodyLarge},
 		),
 	}
 

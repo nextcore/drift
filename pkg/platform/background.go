@@ -15,12 +15,12 @@ const (
 
 // TaskConstraints defines constraints for when a task should run.
 type TaskConstraints struct {
-	RequiresNetwork        bool
+	RequiresNetwork          bool
 	RequiresUnmeteredNetwork bool
-	RequiresCharging       bool
-	RequiresIdle           bool
-	RequiresStorageNotLow  bool
-	RequiresBatteryNotLow  bool
+	RequiresCharging         bool
+	RequiresIdle             bool
+	RequiresStorageNotLow    bool
+	RequiresBatteryNotLow    bool
 }
 
 // TaskRequest describes a background task to schedule.
@@ -106,12 +106,12 @@ func (s *backgroundServiceState) scheduleTask(request TaskRequest) error {
 	}
 
 	_, err := s.channel.Invoke("scheduleTask", map[string]any{
-		"id":              request.ID,
-		"taskType":        taskType,
-		"tag":             request.Tag,
-		"initialDelayMs":  request.InitialDelay.Milliseconds(),
+		"id":               request.ID,
+		"taskType":         taskType,
+		"tag":              request.Tag,
+		"initialDelayMs":   request.InitialDelay.Milliseconds(),
 		"repeatIntervalMs": request.RepeatInterval.Milliseconds(),
-		"data":            request.Data,
+		"data":             request.Data,
 		"constraints": map[string]any{
 			"requiresNetwork":          request.Constraints.RequiresNetwork,
 			"requiresUnmeteredNetwork": request.Constraints.RequiresUnmeteredNetwork,

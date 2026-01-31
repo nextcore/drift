@@ -597,20 +597,20 @@ func (m *mockOversizeChild) HitTest(position graphics.Offset, result *layout.Hit
 // mockCanvas implements graphics.Canvas for testing paint calls.
 type mockCanvas struct{}
 
-func (c *mockCanvas) Save()                                                     {}
-func (c *mockCanvas) SaveLayerAlpha(bounds graphics.Rect, alpha float64)        {}
-func (c *mockCanvas) SaveLayer(bounds graphics.Rect, paint *graphics.Paint)     {}
+func (c *mockCanvas) Save()                                                      {}
+func (c *mockCanvas) SaveLayerAlpha(bounds graphics.Rect, alpha float64)         {}
+func (c *mockCanvas) SaveLayer(bounds graphics.Rect, paint *graphics.Paint)      {}
 func (c *mockCanvas) SaveLayerBlur(bounds graphics.Rect, sigmaX, sigmaY float64) {}
-func (c *mockCanvas) Restore()                                                  {}
-func (c *mockCanvas) Translate(dx, dy float64)                                  {}
-func (c *mockCanvas) Scale(sx, sy float64)                                      {}
-func (c *mockCanvas) Rotate(radians float64)                                    {}
-func (c *mockCanvas) ClipRect(rect graphics.Rect)                               {}
-func (c *mockCanvas) ClipRRect(rect graphics.RRect)                             {}
-func (c *mockCanvas) ClipPath(path *graphics.Path, op graphics.ClipOp, aa bool) {}
-func (c *mockCanvas) Clear(color graphics.Color)                                {}
-func (c *mockCanvas) DrawRect(rect graphics.Rect, paint graphics.Paint)         {}
-func (c *mockCanvas) DrawRRect(rect graphics.RRect, paint graphics.Paint)       {}
+func (c *mockCanvas) Restore()                                                   {}
+func (c *mockCanvas) Translate(dx, dy float64)                                   {}
+func (c *mockCanvas) Scale(sx, sy float64)                                       {}
+func (c *mockCanvas) Rotate(radians float64)                                     {}
+func (c *mockCanvas) ClipRect(rect graphics.Rect)                                {}
+func (c *mockCanvas) ClipRRect(rect graphics.RRect)                              {}
+func (c *mockCanvas) ClipPath(path *graphics.Path, op graphics.ClipOp, aa bool)  {}
+func (c *mockCanvas) Clear(color graphics.Color)                                 {}
+func (c *mockCanvas) DrawRect(rect graphics.Rect, paint graphics.Paint)          {}
+func (c *mockCanvas) DrawRRect(rect graphics.RRect, paint graphics.Paint)        {}
 func (c *mockCanvas) DrawCircle(center graphics.Offset, radius float64, paint graphics.Paint) {
 }
 func (c *mockCanvas) DrawLine(p1, p2 graphics.Offset, paint graphics.Paint)          {}
@@ -619,9 +619,9 @@ func (c *mockCanvas) DrawText(layout *graphics.TextLayout, position graphics.Off
 func (c *mockCanvas) DrawImage(img image.Image, position graphics.Offset)            {}
 func (c *mockCanvas) DrawImageRect(img image.Image, src, dst graphics.Rect, q graphics.FilterQuality, key uintptr) {
 }
-func (c *mockCanvas) DrawRectShadow(rect graphics.Rect, shadow graphics.BoxShadow)  {}
+func (c *mockCanvas) DrawRectShadow(rect graphics.Rect, shadow graphics.BoxShadow)   {}
 func (c *mockCanvas) DrawRRectShadow(rect graphics.RRect, shadow graphics.BoxShadow) {}
-func (c *mockCanvas) DrawSVG(svgPtr unsafe.Pointer, bounds graphics.Rect)           {}
+func (c *mockCanvas) DrawSVG(svgPtr unsafe.Pointer, bounds graphics.Rect)            {}
 func (c *mockCanvas) DrawSVGTinted(svgPtr unsafe.Pointer, bounds graphics.Rect, tint graphics.Color) {
 }
 func (c *mockCanvas) Size() graphics.Size { return graphics.Size{Width: 800, Height: 600} }

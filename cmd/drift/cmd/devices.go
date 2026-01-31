@@ -343,7 +343,7 @@ func listIOSSimulators() error {
 			// Look ahead for state
 			stateIdx := strings.Index(output, line)
 			if stateIdx != -1 {
-				chunk := output[stateIdx : min(stateIdx+500, len(output))]
+				chunk := output[stateIdx:min(stateIdx+500, len(output))]
 				if strings.Contains(chunk, `"state" : "Booted"`) {
 					bootedCount++
 					fmt.Printf("    [%d] %s (%s)\n", bootedCount, name, currentRuntime)

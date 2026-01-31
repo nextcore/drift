@@ -128,4 +128,3 @@ func TestButton_DisabledNilsGesture(t *testing.T) {
 		t.Error("disabled button should not fire tap via GestureDetector")
 	}
 }
-

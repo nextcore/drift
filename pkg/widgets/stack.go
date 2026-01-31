@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // StackFit determines how children are sized within a Stack.

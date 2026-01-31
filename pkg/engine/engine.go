@@ -10,9 +10,9 @@ import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/errors"
 	"github.com/go-drift/drift/pkg/gestures"
+	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
 )
@@ -240,11 +240,11 @@ type appRunner struct {
 	errorScreenMounted bool // true once we've transitioned to the error screen
 
 	// Diagnostics state
-	diagnosticsConfig  *DiagnosticsConfig
-	frameTiming        *FrameTimingBuffer
-	lastFrameStart     time.Time
-	hudRenderObject    layout.RenderObject // Reference to HUD for targeted repaints
-	showLayoutBounds   bool                // Debug overlay for widget bounds (independent of HUD)
+	diagnosticsConfig *DiagnosticsConfig
+	frameTiming       *FrameTimingBuffer
+	lastFrameStart    time.Time
+	hudRenderObject   layout.RenderObject // Reference to HUD for targeted repaints
+	showLayoutBounds  bool                // Debug overlay for widget bounds (independent of HUD)
 }
 
 func init() {

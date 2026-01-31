@@ -15,9 +15,9 @@ const (
 type SystemUIStyle struct {
 	StatusBarHidden bool
 	StatusBarStyle  StatusBarStyle
-	TitleBarHidden  bool             // Android only (no-op on iOS)
+	TitleBarHidden  bool            // Android only (no-op on iOS)
 	BackgroundColor *graphics.Color // Android only (no-op on iOS)
-	Transparent     bool             // Android only (no-op on iOS)
+	Transparent     bool            // Android only (no-op on iOS)
 }
 
 var systemUIChannel = NewMethodChannel("drift/system_ui")

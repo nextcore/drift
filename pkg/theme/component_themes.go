@@ -1,8 +1,8 @@
 package theme
 
 import (
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // ButtonThemeData defines default styling for Button widgets.

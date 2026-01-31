@@ -35,8 +35,8 @@ func ExampleAnimationController_withTween() {
 	// Create tweens to map 0-1 range to other values
 	sizeTween := animation.TweenFloat64(100, 200)
 	colorTween := animation.TweenColor(
-		graphics.RGB(255, 0, 0),   // red
-		graphics.RGB(0, 0, 255),   // blue
+		graphics.RGB(255, 0, 0), // red
+		graphics.RGB(0, 0, 255), // blue
 	)
 
 	controller.AddListener(func() {
@@ -119,9 +119,9 @@ func ExampleSpringSimulation() {
 	spring := animation.BouncySpring()
 	sim := animation.NewSpringSimulation(
 		spring,
-		0,     // current position
-		500,   // initial velocity (e.g., from a fling gesture)
-		300,   // target position
+		0,   // current position
+		500, // initial velocity (e.g., from a fling gesture)
+		300, // target position
 	)
 
 	// Step the simulation (typically done each frame)

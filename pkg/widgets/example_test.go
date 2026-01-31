@@ -7,9 +7,9 @@ import (
 	"github.com/go-drift/drift/pkg/animation"
 	"github.com/go-drift/drift/pkg/core"
 	drifterrors "github.com/go-drift/drift/pkg/errors"
+	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/widgets"
 )
 
@@ -809,9 +809,27 @@ func ExampleAnimatedContainer() {
 	container := widgets.AnimatedContainer{
 		Duration: 300 * time.Millisecond,
 		Curve:    animation.EaseInOut,
-		Width:    func() float64 { if isExpanded { return 200 } else { return 100 } }(),
-		Height:   func() float64 { if isExpanded { return 200 } else { return 100 } }(),
-		Color:    func() graphics.Color { if isExpanded { return graphics.RGB(100, 149, 237) } else { return graphics.RGB(200, 200, 200) } }(),
+		Width: func() float64 {
+			if isExpanded {
+				return 200
+			} else {
+				return 100
+			}
+		}(),
+		Height: func() float64 {
+			if isExpanded {
+				return 200
+			} else {
+				return 100
+			}
+		}(),
+		Color: func() graphics.Color {
+			if isExpanded {
+				return graphics.RGB(100, 149, 237)
+			} else {
+				return graphics.RGB(200, 200, 200)
+			}
+		}(),
 		ChildWidget: widgets.Center{ChildWidget: widgets.Text{Content: "Tap to toggle"}},
 	}
 	_ = container
@@ -822,9 +840,15 @@ func ExampleAnimatedOpacity() {
 	var isVisible bool
 
 	opacity := widgets.AnimatedOpacity{
-		Duration:    200 * time.Millisecond,
-		Curve:       animation.EaseOut,
-		Opacity:     func() float64 { if isVisible { return 1.0 } else { return 0.0 } }(),
+		Duration: 200 * time.Millisecond,
+		Curve:    animation.EaseOut,
+		Opacity: func() float64 {
+			if isVisible {
+				return 1.0
+			} else {
+				return 0.0
+			}
+		}(),
 		ChildWidget: widgets.Text{Content: "Fading content"},
 	}
 	_ = opacity

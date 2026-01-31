@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 )
 
 // ScrollOffsetProvider reports a paint-time scroll offset for descendants.

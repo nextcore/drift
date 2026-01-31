@@ -21,9 +21,9 @@ func (b LayoutBox) Key() any { return nil }
 
 func (b LayoutBox) CreateRenderObject(_ core.BuildContext) layout.RenderObject {
 	ro := &renderLayoutBox{
-		width: b.Width,
+		width:  b.Width,
 		height: b.Height,
-		color: b.Color,
+		color:  b.Color,
 	}
 	ro.SetSelf(ro)
 	return ro
