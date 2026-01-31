@@ -3,11 +3,20 @@ package widgets_test
 import (
 	"testing"
 
+	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	drifttest "github.com/go-drift/drift/pkg/testing"
 	"github.com/go-drift/drift/pkg/widgets"
 )
+
+// getRenderObject extracts the render object from an element if available.
+func getRenderObject(e core.Element) layout.RenderObject {
+	if ro, ok := e.(interface{ RenderObject() layout.RenderObject }); ok {
+		return ro.RenderObject()
+	}
+	return nil
+}
 
 func TestContainer_Color(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
@@ -229,5 +238,338 @@ func TestContainer_OverflowClip(t *testing.T) {
 	if !(saveIdx < clipIdx && clipIdx < drawIdx && drawIdx < restoreIdx) {
 		t.Errorf("expected save(%d) < clipRect(%d) < drawRect(%d) < restore(%d)",
 			saveIdx, clipIdx, drawIdx, restoreIdx)
+	}
+}
+
+func TestContainer_AlignmentWithSmallerChild(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Container with explicit size and a smaller child should center the child.
+	// Wrap in Center to give the outer Container loose constraints.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Width:     100,
+			Height:    100,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  40,
+				Height: 40,
+				Color:  graphics.RGB(255, 0, 0),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	outerRO := getRenderObject(finder.At(0))
+	innerRO := getRenderObject(finder.At(1))
+
+	// Verify sizes.
+	if outerRO.Size().Width != 100 || outerRO.Size().Height != 100 {
+		t.Errorf("expected outer container size {100, 100}, got {%v, %v}", outerRO.Size().Width, outerRO.Size().Height)
+	}
+	if innerRO.Size().Width != 40 || innerRO.Size().Height != 40 {
+		t.Errorf("expected inner container size {40, 40}, got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	// Child (40x40) centered in 100x100 should be at offset (30, 30).
+	if pd.Offset.X != 30 || pd.Offset.Y != 30 {
+		t.Errorf("expected child offset {30, 30}, got {%v, %v}", pd.Offset.X, pd.Offset.Y)
+	}
+}
+
+func TestContainer_AlignmentWithTightConstraints(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Without Center, container receives tight constraints and expands to fill.
+	// Container wants 100x100 but is forced to 200x200 by tight parent constraints.
+	// Child should still be able to be smaller and align within the expanded space.
+	tester.PumpWidget(widgets.Container{
+		Width:     100,
+		Height:    100,
+		Alignment: layout.AlignmentCenter,
+		ChildWidget: widgets.Container{
+			Width:  40,
+			Height: 40,
+			Color:  graphics.RGB(255, 0, 0),
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	outerRO := getRenderObject(finder.At(0))
+	innerRO := getRenderObject(finder.At(1))
+
+	// Verify outer container was forced to 200x200 by tight constraints.
+	if outerRO.Size().Width != 200 || outerRO.Size().Height != 200 {
+		t.Errorf("expected outer container forced to {200, 200}, got {%v, %v}", outerRO.Size().Width, outerRO.Size().Height)
+	}
+	// Verify inner container kept its requested size.
+	if innerRO.Size().Width != 40 || innerRO.Size().Height != 40 {
+		t.Errorf("expected inner container size {40, 40}, got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	// Child (40x40) centered in 200x200 (expanded container) should be at offset (80, 80).
+	if pd.Offset.X != 80 || pd.Offset.Y != 80 {
+		t.Errorf("expected child offset {80, 80}, got {%v, %v}", pd.Offset.X, pd.Offset.Y)
+	}
+}
+
+func TestContainer_LooseWidthOnly(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Container with only Width set; child should be capped at that width
+	// but height remains unconstrained.
+	// Wrap in Center to give the outer Container loose constraints.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Width:     100,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  40,
+				Height: 60,
+				Color:  graphics.RGB(0, 255, 0),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// The child should keep its natural size.
+	if innerRO.Size().Width != 40 || innerRO.Size().Height != 60 {
+		t.Errorf("expected inner container size {40, 60}, got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	// Verify alignment works on the width axis (centered horizontally).
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	// Child (40 wide) centered in 100 wide container: (100-40)/2 = 30
+	// Height is unconstrained, so child fills parent height (60), offset Y = 0
+	if pd.Offset.X != 30 {
+		t.Errorf("expected child X offset 30, got %v", pd.Offset.X)
+	}
+}
+
+func TestContainer_LooseWidthOnly_MaxConstraint(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Child wants 150 width but container only allows 100.
+	// Child should be clamped to 100.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Width:     100,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  150, // Wants more than available
+				Height: 40,
+				Color:  graphics.RGB(0, 255, 0),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// Child width should be clamped to 100, height stays at 40.
+	if innerRO.Size().Width != 100 || innerRO.Size().Height != 40 {
+		t.Errorf("expected inner container size {100, 40} (width clamped), got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+}
+
+func TestContainer_LooseHeightOnly(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Container with only Height set; child should be capped at that height
+	// but width remains unconstrained.
+	// Wrap in Center to give the outer Container loose constraints.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Height:    100,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  60,
+				Height: 40,
+				Color:  graphics.RGB(0, 0, 255),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// The child should keep its natural size.
+	if innerRO.Size().Width != 60 || innerRO.Size().Height != 40 {
+		t.Errorf("expected inner container size {60, 40}, got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	// Verify alignment works on the height axis (centered vertically).
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	// Child (40 tall) centered in 100 tall container: (100-40)/2 = 30
+	// Width is unconstrained, so child fills parent width (60), offset X = 0
+	if pd.Offset.Y != 30 {
+		t.Errorf("expected child Y offset 30, got %v", pd.Offset.Y)
+	}
+}
+
+func TestContainer_LooseHeightOnly_MaxConstraint(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Child wants 150 height but container only allows 100.
+	// Child should be clamped to 100.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Height:    100,
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  40,
+				Height: 150, // Wants more than available
+				Color:  graphics.RGB(0, 0, 255),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// Child height should be clamped to 100, width stays at 40.
+	if innerRO.Size().Width != 40 || innerRO.Size().Height != 100 {
+		t.Errorf("expected inner container size {40, 100} (height clamped), got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+}
+
+func TestContainer_AlignmentWithPadding(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Container with padding; child should be centered within the content box.
+	// Content box: 100 - 10*2 = 80x80, child 20x20 -> centered at (30, 30) in content
+	// Plus padding offset of 10 -> final offset (40, 40) relative to container origin.
+	// Wrap in Center to give the outer Container loose constraints.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Width:     100,
+			Height:    100,
+			Padding:   layout.EdgeInsetsAll(10),
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  20,
+				Height: 20,
+				Color:  graphics.RGB(255, 255, 0),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// Verify child kept its natural size.
+	if innerRO.Size().Width != 20 || innerRO.Size().Height != 20 {
+		t.Errorf("expected inner container size {20, 20}, got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	// Content box is 80x80 starting at (10,10). Child (20x20) centered in 80x80
+	// is at (30,30) within content box, so (10+30, 10+30) = (40, 40).
+	if pd.Offset.X != 40 || pd.Offset.Y != 40 {
+		t.Errorf("expected child offset {40, 40}, got {%v, %v}", pd.Offset.X, pd.Offset.Y)
+	}
+}
+
+func TestContainer_PaddingReducesMaxConstraint(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 200, Height: 200})
+
+	// Container 100x100 with padding 20 on all sides.
+	// Content box is 60x60. Child wants 80x80 but should be clamped to 60x60.
+	tester.PumpWidget(widgets.Center{
+		ChildWidget: widgets.Container{
+			Width:     100,
+			Height:    100,
+			Padding:   layout.EdgeInsetsAll(20),
+			Alignment: layout.AlignmentCenter,
+			ChildWidget: widgets.Container{
+				Width:  80, // Wants more than content box allows
+				Height: 80,
+				Color:  graphics.RGB(255, 0, 255),
+			},
+		},
+	})
+
+	// Finder returns depth-first pre-order: outer container at index 0, inner at index 1.
+	finder := tester.Find(drifttest.ByType[widgets.Container]())
+	if finder.Count() < 2 {
+		t.Fatal("expected at least 2 Container elements")
+	}
+
+	innerRO := getRenderObject(finder.At(1))
+
+	// Child should be clamped to content box size (60x60).
+	if innerRO.Size().Width != 60 || innerRO.Size().Height != 60 {
+		t.Errorf("expected inner container size {60, 60} (clamped by padding), got {%v, %v}", innerRO.Size().Width, innerRO.Size().Height)
+	}
+
+	// Child fills content box exactly, so offset should be at padding origin.
+	pd, ok := innerRO.ParentData().(*layout.BoxParentData)
+	if !ok {
+		t.Fatal("expected BoxParentData on child render object")
+	}
+	if pd.Offset.X != 20 || pd.Offset.Y != 20 {
+		t.Errorf("expected child offset {20, 20}, got {%v, %v}", pd.Offset.X, pd.Offset.Y)
 	}
 }

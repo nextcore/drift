@@ -26,12 +26,12 @@
         "id": "RenderContainer#1",
         "type": "RenderContainer",
         "size": [
-          200,
-          100
+          50,
+          50
         ],
         "offset": [
-          0,
-          0
+          75,
+          25
         ],
         "props": {
           "color": "0xFFC80000",
@@ -96,8 +96,8 @@
     {
       "op": "translate",
       "params": {
-        "dx": 0,
-        "dy": 0
+        "dx": 75,
+        "dy": 25
       }
     },
     {
@@ -107,9 +107,9 @@
       "op": "clipRect",
       "params": {
         "rect": {
-          "bottom": 100,
+          "bottom": 50,
           "left": 0,
-          "right": 200,
+          "right": 50,
           "top": 0
         }
       }
@@ -119,9 +119,9 @@
       "params": {
         "color": "0xFFC80000",
         "rect": {
-          "bottom": 100,
+          "bottom": 50,
           "left": 0,
-          "right": 200,
+          "right": 50,
           "top": 0
         }
       }

@@ -538,11 +538,12 @@ Widgets must return a size that satisfies these constraints.
 ### Example: How Constraints Flow
 
 ```go
-// Parent passes tight constraints (100x100)
+// Container with explicit size passes loose constraints to child
 Container{Width: 100, Height: 100, ChildWidget: child}
-// Child receives: MinWidth=100, MaxWidth=100, MinHeight=100, MaxHeight=100
+// Child receives: MinWidth=0, MaxWidth=100, MinHeight=0, MaxHeight=100
+// Child can be smaller than container; Alignment positions it within
 
-// Parent passes loose constraints
+// Column passes loose/unbounded constraints
 Column{ChildrenWidgets: []Widget{child}}
 // Child receives: MinWidth=0, MaxWidth=parentWidth, MinHeight=0, MaxHeight=infinity
 ```

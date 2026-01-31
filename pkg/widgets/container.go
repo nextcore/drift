@@ -18,9 +18,13 @@ import (
 // # Sizing Behavior
 //
 // Without explicit Width/Height, Container sizes to fit its child plus padding.
-// With Width and/or Height set, Container uses those dimensions (constrained by
-// parent constraints). In both cases, Alignment positions the child within the
-// available content area (after padding).
+// With Width and/or Height set, those dimensions become the container's preferred
+// size (subject to parent constraints) and set maximum child size on those axes.
+// Children can be smaller than the container, and Alignment controls their
+// placement within the available content area (after padding).
+//
+// Note: Parent constraints take precedence. If a parent imposes tight constraints
+// larger than Width/Height, the container will expand to meet those constraints.
 //
 // # Common Patterns
 //
@@ -225,13 +229,13 @@ func (r *renderContainer) PerformLayout() {
 	if hasWidth {
 		constrained := constraints.Constrain(graphics.Size{Width: r.width}).Width
 		available := max(constrained-r.padding.Horizontal(), 0)
-		childConstraints.MinWidth = available
+		childConstraints.MinWidth = 0 // Loose: child can be smaller
 		childConstraints.MaxWidth = available
 	}
 	if hasHeight {
 		constrained := constraints.Constrain(graphics.Size{Height: r.height}).Height
 		available := max(constrained-r.padding.Vertical(), 0)
-		childConstraints.MinHeight = available
+		childConstraints.MinHeight = 0 // Loose: child can be smaller
 		childConstraints.MaxHeight = available
 	}
 	var childSize graphics.Size
