@@ -32,7 +32,15 @@ func (s BlurStyle) String() string {
 	}
 }
 
-// BoxShadow defines a shadow to draw behind a shape.
+// BoxShadow defines a shadow to draw around a shape.
+//
+// BlurStyle controls where the shadow appears relative to the shape.
+//
+// Spread controls the shadow's extent relative to the shape:
+// - Outer/Normal/Solid: positive spread expands the shadow outward.
+// - Inner: positive spread moves the inner edge inward, thickening the band.
+//
+// BlurRadius controls softness. Sigma for Skia is BlurRadius * 0.5.
 type BoxShadow struct {
 	Color      Color
 	Offset     Offset

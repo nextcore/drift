@@ -28,6 +28,7 @@ extern "C" {
 #include "core/SkImage.h"
 #include "core/SkImageInfo.h"
 #include "core/SkPaint.h"
+#include "core/SkPathBuilder.h"
 #include "effects/SkGradient.h"
 #include "effects/SkDashPathEffect.h"
 #include "core/SkBlurTypes.h"
@@ -1390,33 +1391,66 @@ void drift_skia_canvas_draw_rect_shadow(
         return;
     }
     if (spread < 0) spread = 0;
-    SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
-    SkPaint paint;
-    paint.setAntiAlias(true);
-    paint.setColor(to_sk_color(color));
-    if (sigma > 0) {
-        SkBlurStyle skStyle;
-        switch (blur_style) {
-            case 1: skStyle = kNormal_SkBlurStyle; break;
-            case 2: skStyle = kSolid_SkBlurStyle; break;
-            case 3: skStyle = kInner_SkBlurStyle; break;
-            default: skStyle = kOuter_SkBlurStyle; break;
-        }
-        paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
-    }
     auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
     sk_canvas->save();
 
-    // For external styles (Outer=0, Normal=1, Solid=2), clip out the original box
-    // bounds so shadow never appears inside the box area.
-    // Inner (3) is for inset shadows and should draw inside only.
-    if (blur_style != 3) {
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(to_sk_color(color));
+
+    // Inner (3) is for inset shadows - clip to bounds and draw a blurred frame.
+    // Use a blurred frame (outer - inner) so the shadow is strongest at edges.
+    if (blur_style == 3) {
+        // No visible effect when both sigma and spread are zero.
+        if (sigma <= 0 && spread <= 0) {
+            sk_canvas->restore();
+            return;
+        }
+
+        SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
+        sk_canvas->clipRect(origRect, SkClipOp::kIntersect, true);
+        sk_canvas->translate(dx, dy);
+
+        // For inset shadows, spread moves the edge inward (expands shadow region).
+        SkRect insetRect = SkRect::MakeLTRB(l + spread, t + spread, r - spread, b - spread);
+        if (insetRect.isEmpty()) {
+            // Spread consumed entire rect; fill with color (fully shadowed).
+            sk_canvas->drawRect(origRect, paint);
+            sk_canvas->restore();
+            return;
+        }
+
+        SkPathBuilder frameBuilder;
+        if (sigma > 0) {
+            float pad = sigma * 3 + spread;
+            SkRect outerRect = SkRect::MakeLTRB(l - pad, t - pad, r + pad, b + pad);
+            frameBuilder.addRect(outerRect);
+            paint.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, sigma));
+        } else {
+            frameBuilder.addRect(origRect);
+        }
+        frameBuilder.addRect(insetRect, SkPathDirection::kCCW);
+        sk_canvas->drawPath(frameBuilder.detach(), paint);
+    } else {
+        // External styles (Outer=0, Normal=1, Solid=2) - clip out the original box
+        // bounds so shadow never appears inside the box area.
         SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
         sk_canvas->clipRect(origRect, SkClipOp::kDifference, true);
+        sk_canvas->translate(dx, dy);
+
+        SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
+        if (sigma > 0) {
+            SkBlurStyle skStyle;
+            switch (blur_style) {
+                case 1: skStyle = kNormal_SkBlurStyle; break;
+                case 2: skStyle = kSolid_SkBlurStyle; break;
+                default: skStyle = kOuter_SkBlurStyle; break;
+            }
+            paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
+        }
+        sk_canvas->drawRect(rect, paint);
     }
 
-    sk_canvas->translate(dx, dy);
-    sk_canvas->drawRect(rect, paint);
     sk_canvas->restore();
 }
 
@@ -1430,44 +1464,94 @@ void drift_skia_canvas_draw_rrect_shadow(
         return;
     }
     if (spread < 0) spread = 0;
-    SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
-    SkVector radii[4] = {
-        {rx1 + spread, ry1 + spread},
-        {rx2 + spread, ry2 + spread},
-        {rx3 + spread, ry3 + spread},
-        {rx4 + spread, ry4 + spread}
-    };
-    SkRRect rrect;
-    rrect.setRectRadii(rect, radii);
-    SkPaint paint;
-    paint.setAntiAlias(true);
-    paint.setColor(to_sk_color(color));
-    if (sigma > 0) {
-        SkBlurStyle skStyle;
-        switch (blur_style) {
-            case 1: skStyle = kNormal_SkBlurStyle; break;
-            case 2: skStyle = kSolid_SkBlurStyle; break;
-            case 3: skStyle = kInner_SkBlurStyle; break;
-            default: skStyle = kOuter_SkBlurStyle; break;
-        }
-        paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
-    }
     auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
     sk_canvas->save();
 
-    // For external styles (Outer=0, Normal=1, Solid=2), clip out the original box
-    // bounds so shadow never appears inside the box area.
-    // Inner (3) is for inset shadows and should draw inside only.
-    if (blur_style != 3) {
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(to_sk_color(color));
+
+    // Inner (3) is for inset shadows - clip to bounds and draw a blurred frame.
+    // Use a blurred frame (outer - inner) so the shadow is strongest at edges.
+    if (blur_style == 3) {
+        // No visible effect when both sigma and spread are zero.
+        if (sigma <= 0 && spread <= 0) {
+            sk_canvas->restore();
+            return;
+        }
+
+        SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
+        SkVector origRadii[4] = {{rx1, ry1}, {rx2, ry2}, {rx3, ry3}, {rx4, ry4}};
+        SkRRect origRRect;
+        origRRect.setRectRadii(origRect, origRadii);
+        sk_canvas->clipRRect(origRRect, SkClipOp::kIntersect, true);
+        sk_canvas->translate(dx, dy);
+
+        // For inset shadows, spread moves the edge inward (expands shadow region).
+        SkRect insetRect = SkRect::MakeLTRB(l + spread, t + spread, r - spread, b - spread);
+        if (insetRect.isEmpty()) {
+            // Spread consumed entire rect; fill with color (fully shadowed).
+            sk_canvas->drawRRect(origRRect, paint);
+            sk_canvas->restore();
+            return;
+        }
+
+        float maxRadiusX = insetRect.width() / 2;
+        float maxRadiusY = insetRect.height() / 2;
+        SkVector insetRadii[4] = {
+            {std::min(maxRadiusX, std::max(0.0f, rx1 - spread)), std::min(maxRadiusY, std::max(0.0f, ry1 - spread))},
+            {std::min(maxRadiusX, std::max(0.0f, rx2 - spread)), std::min(maxRadiusY, std::max(0.0f, ry2 - spread))},
+            {std::min(maxRadiusX, std::max(0.0f, rx3 - spread)), std::min(maxRadiusY, std::max(0.0f, ry3 - spread))},
+            {std::min(maxRadiusX, std::max(0.0f, rx4 - spread)), std::min(maxRadiusY, std::max(0.0f, ry4 - spread))}
+        };
+        SkRRect insetRRect;
+        insetRRect.setRectRadii(insetRect, insetRadii);
+
+        SkPathBuilder frameBuilder;
+        if (sigma > 0) {
+            float pad = sigma * 3 + spread;
+            SkRect outerRect = SkRect::MakeLTRB(l - pad, t - pad, r + pad, b + pad);
+            SkRRect outerRRect;
+            outerRRect.setRectRadii(outerRect, origRadii);
+            frameBuilder.addRRect(outerRRect);
+            paint.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, sigma));
+        } else {
+            frameBuilder.addRRect(origRRect);
+        }
+        frameBuilder.addRRect(insetRRect, SkPathDirection::kCCW);
+        sk_canvas->drawPath(frameBuilder.detach(), paint);
+    } else {
+        // External styles (Outer=0, Normal=1, Solid=2) - clip out the original box
+        // bounds so shadow never appears inside the box area.
         SkRect origRect = SkRect::MakeLTRB(l, t, r, b);
         SkVector origRadii[4] = {{rx1, ry1}, {rx2, ry2}, {rx3, ry3}, {rx4, ry4}};
         SkRRect origRRect;
         origRRect.setRectRadii(origRect, origRadii);
         sk_canvas->clipRRect(origRRect, SkClipOp::kDifference, true);
+        sk_canvas->translate(dx, dy);
+
+        SkRect rect = SkRect::MakeLTRB(l - spread, t - spread, r + spread, b + spread);
+        SkVector radii[4] = {
+            {rx1 + spread, ry1 + spread},
+            {rx2 + spread, ry2 + spread},
+            {rx3 + spread, ry3 + spread},
+            {rx4 + spread, ry4 + spread}
+        };
+        SkRRect rrect;
+        rrect.setRectRadii(rect, radii);
+
+        if (sigma > 0) {
+            SkBlurStyle skStyle;
+            switch (blur_style) {
+                case 1: skStyle = kNormal_SkBlurStyle; break;
+                case 2: skStyle = kSolid_SkBlurStyle; break;
+                default: skStyle = kOuter_SkBlurStyle; break;
+            }
+            paint.setMaskFilter(SkMaskFilter::MakeBlur(skStyle, sigma));
+        }
+        sk_canvas->drawRRect(rrect, paint);
     }
 
-    sk_canvas->translate(dx, dy);
-    sk_canvas->drawRRect(rrect, paint);
     sk_canvas->restore();
 }
 

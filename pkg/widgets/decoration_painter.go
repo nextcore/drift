@@ -20,8 +20,8 @@ type decorationPainter struct {
 
 // paint draws the decoration (shadow, background, border) within the given rect.
 func (p *decorationPainter) paint(ctx *layout.PaintContext, rect graphics.Rect) {
-	// Draw shadow
-	if p.shadow != nil {
+	// Draw outer shadow (before background so it appears behind)
+	if p.shadow != nil && p.shadow.BlurStyle != graphics.BlurStyleInner {
 		p.drawShadow(ctx, rect, *p.shadow)
 	}
 
@@ -56,6 +56,11 @@ func (p *decorationPainter) paint(ctx *layout.PaintContext, rect graphics.Rect) 
 		} else {
 			p.drawShape(ctx, rect, paint)
 		}
+	}
+
+	// Draw inner shadow (after background so it appears on top)
+	if p.shadow != nil && p.shadow.BlurStyle == graphics.BlurStyleInner {
+		p.drawShadow(ctx, rect, *p.shadow)
 	}
 
 	// Draw border

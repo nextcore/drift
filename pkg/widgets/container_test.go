@@ -573,3 +573,78 @@ func TestContainer_PaddingReducesMaxConstraint(t *testing.T) {
 		t.Errorf("expected child offset {20, 20}, got {%v, %v}", pd.Offset.X, pd.Offset.Y)
 	}
 }
+
+func TestContainer_InnerShadow(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 100, Height: 100})
+
+	tester.PumpWidget(widgets.Container{
+		Width:        60,
+		Height:       60,
+		Color:        graphics.RGB(200, 200, 200),
+		BorderRadius: 8,
+		BorderWidth:  1,
+		BorderColor:  graphics.RGBA(0, 0, 0, 0.3),
+		Shadow: &graphics.BoxShadow{
+			Color:      graphics.RGBA(0, 0, 0, 0.5),
+			BlurRadius: 10,
+			BlurStyle:  graphics.BlurStyleInner,
+		},
+	})
+
+	snap := tester.CaptureSnapshot()
+	snap.MatchesFile(t, "testdata/container_inner_shadow.snapshot.json")
+
+	ops := snap.DisplayOps
+
+	// For inner shadows, the shadow should be drawn AFTER the background.
+	bgIdx := findOpIndex(ops, "drawRRect") // background (rounded rect)
+	shadowIdx := findOpIndex(ops, "drawRRectShadow")
+
+	if bgIdx < 0 {
+		t.Fatal("expected drawRRect op for background")
+	}
+	if shadowIdx < 0 {
+		t.Fatal("expected drawRRectShadow op")
+	}
+	if shadowIdx < bgIdx {
+		t.Errorf("inner shadow (index %d) should paint AFTER background (index %d)", shadowIdx, bgIdx)
+	}
+}
+
+func TestContainer_InnerShadow_RectWithClip(t *testing.T) {
+	tester := drifttest.NewWidgetTesterWithT(t)
+	tester.SetSize(graphics.Size{Width: 100, Height: 100})
+
+	// Non-rounded container with OverflowClip and inner shadow.
+	tester.PumpWidget(widgets.Container{
+		Width:    60,
+		Height:   60,
+		Color:    graphics.RGB(200, 200, 200),
+		Overflow: widgets.OverflowClip,
+		Shadow: &graphics.BoxShadow{
+			Color:      graphics.RGBA(0, 0, 0, 0.5),
+			BlurRadius: 10,
+			BlurStyle:  graphics.BlurStyleInner,
+		},
+	})
+
+	snap := tester.CaptureSnapshot()
+	snap.MatchesFile(t, "testdata/container_inner_shadow_rect_clip.snapshot.json")
+
+	ops := snap.DisplayOps
+
+	// For inner shadows with no border radius, we use drawRect/drawRectShadow.
+	bgIdx := findOpIndex(ops, "drawRect")
+	shadowIdx := findOpIndex(ops, "drawRectShadow")
+
+	if bgIdx < 0 {
+		t.Fatal("expected drawRect op for background")
+	}
+	if shadowIdx < 0 {
+		t.Fatal("expected drawRectShadow op")
+	}
+	if shadowIdx < bgIdx {
+		t.Errorf("inner shadow (index %d) should paint AFTER background (index %d)", shadowIdx, bgIdx)
+	}
+}

@@ -1,0 +1,93 @@
+{
+  "renderTree": {
+    "id": "RenderContainer#0",
+    "type": "RenderContainer",
+    "size": [
+      100,
+      100
+    ],
+    "offset": [
+      0,
+      0
+    ],
+    "props": {
+      "color": "0xFFC8C8C8",
+      "height": 60,
+      "padding": {
+        "Bottom": 0,
+        "Left": 0,
+        "Right": 0,
+        "Top": 0
+      },
+      "width": 60
+    }
+  },
+  "displayOps": [
+    {
+      "op": "save"
+    },
+    {
+      "op": "clipRRect",
+      "params": {
+        "radius": {
+          "x": 8,
+          "y": 8
+        },
+        "rect": {
+          "bottom": 100,
+          "left": 0,
+          "right": 100,
+          "top": 0
+        }
+      }
+    },
+    {
+      "op": "drawRRect",
+      "params": {
+        "color": "0xFFC8C8C8",
+        "radius": {
+          "x": 8,
+          "y": 8
+        },
+        "rect": {
+          "bottom": 100,
+          "left": 0,
+          "right": 100,
+          "top": 0
+        }
+      }
+    },
+    {
+      "op": "restore"
+    },
+    {
+      "op": "drawRRectShadow",
+      "params": {
+        "blur": 10,
+        "color": "0x80000000",
+        "rect": {
+          "bottom": 100,
+          "left": 0,
+          "right": 100,
+          "top": 0
+        }
+      }
+    },
+    {
+      "op": "drawRRect",
+      "params": {
+        "color": "0x4D000000",
+        "radius": {
+          "x": 8,
+          "y": 8
+        },
+        "rect": {
+          "bottom": 100,
+          "left": 0,
+          "right": 100,
+          "top": 0
+        }
+      }
+    }
+  ]
+}
