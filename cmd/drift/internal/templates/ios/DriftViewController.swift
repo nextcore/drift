@@ -86,6 +86,15 @@ final class DriftViewController: UIViewController {
         startDisplayLink()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Restart the render loop when view becomes visible again
+        // (e.g., after dismissing a modal like camera picker)
+        if displayLink == nil {
+            startDisplayLink()
+        }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         applySystemUIStyle(SystemUIHandler.currentStyle)
