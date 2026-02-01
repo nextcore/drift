@@ -530,15 +530,36 @@ enum SystemUIHandler {
 
     private static func activeDriftController() -> DriftViewController? {
         guard let window = activeWindow() else { return nil }
-        if let navigation = window.rootViewController as? UINavigationController {
-            return navigation.visibleViewController as? DriftViewController
+        return findDriftController(from: window.rootViewController)
+    }
+
+    private static func findDriftController(from vc: UIViewController?) -> DriftViewController? {
+        guard let vc = vc else { return nil }
+
+        // Direct match
+        if let drift = vc as? DriftViewController {
+            return drift
         }
 
-        var top = window.rootViewController
-        while let presented = top?.presentedViewController {
-            top = presented
+        // Check presented view controller
+        if let presented = vc.presentedViewController,
+           let drift = findDriftController(from: presented) {
+            return drift
         }
-        return top as? DriftViewController
+
+        // Check children (needed for UIHostingController with UIViewControllerRepresentable)
+        for child in vc.children {
+            if let drift = findDriftController(from: child) {
+                return drift
+            }
+        }
+
+        // Check navigation controller
+        if let nav = vc as? UINavigationController {
+            return findDriftController(from: nav.visibleViewController)
+        }
+
+        return nil
     }
 
     private static func activeWindow() -> UIWindow? {
