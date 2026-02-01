@@ -140,6 +140,11 @@ type renderSvgImage struct {
 	excludeFromSemantics bool
 }
 
+// IsRepaintBoundary isolates SVG repaints into their own layer.
+func (r *renderSvgImage) IsRepaintBoundary() bool {
+	return true
+}
+
 func (r *renderSvgImage) SetChild(child layout.RenderObject) {
 	// SvgImage has no children
 }

@@ -167,6 +167,11 @@ type renderImage struct {
 	cacheID      uintptr
 }
 
+// IsRepaintBoundary isolates image repaints into their own layer.
+func (r *renderImage) IsRepaintBoundary() bool {
+	return true
+}
+
 func (r *renderImage) SetChild(child layout.RenderObject) {
 	// Image has no children
 }
