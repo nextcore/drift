@@ -21,7 +21,7 @@ func buildLayoutHubPage(ctx core.BuildContext) core.Widget {
 		ctx,
 		CategoryLayout,
 		"Layout",
-		"Layout primitives for arranging content. Row, Column, Stack, and spacing utilities.",
+		"Layout primitives for arranging content. Row, Column, Stack, spacing utilities, and scrolling.",
 	)
 }
 
@@ -39,7 +39,7 @@ func buildMotionHubPage(ctx core.BuildContext) core.Widget {
 		ctx,
 		CategoryMotion,
 		"Motion",
-		"Animation and touch handling. Gestures, implicit animations, scrollable lists, and navigation.",
+		"Animation and touch handling. Gestures, implicit animations, and navigation.",
 	)
 }
 

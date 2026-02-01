@@ -35,9 +35,9 @@ type CategoryInfo struct {
 // categories defines the main demo categories (6 categories for 3x2 grid).
 var categories = []CategoryInfo{
 	{CategoryTheming, "/theming-hub", "Theming", "Colors, gradients"},
-	{CategoryLayout, "/layout-hub", "Layout", "Row, Column, Stack"},
+	{CategoryLayout, "/layout-hub", "Layout", "Row, Column, Stack, scrolling"},
 	{CategoryWidgets, "/widgets-hub", "Widgets", "Buttons, inputs"},
-	{CategoryMotion, "/motion-hub", "Motion", "Gestures, scroll"},
+	{CategoryMotion, "/motion-hub", "Motion", "Gestures, animations"},
 	{CategoryMedia, "/media-hub", "Media", "Camera, WebView"},
 	{CategorySystem, "/system-hub", "System", "Permissions, storage"},
 }
@@ -63,7 +63,7 @@ var demos = []Demo{
 	// Motion demos
 	{"/gestures", "Gestures", "Drag gestures with axis locking", CategoryMotion, "icon-gesture.svg", buildGesturesPage},
 	{"/animations", "Animations", "Implicit animations for smooth UI", CategoryMotion, "icon-motion.svg", buildAnimationsPage},
-	{"/scroll", "Scrolling", "Scrollable lists with physics", CategoryMotion, "icon-scroll.svg", buildScrollPage},
+	{"/scroll", "Scrolling", "Scrollable lists with physics", CategoryLayout, "icon-scroll.svg", buildScrollPage},
 	{"/tabs", "Tabs", "Bottom tab navigation", CategoryWidgets, "icon-navigation.svg", buildTabsPage},
 
 	// Media demos
