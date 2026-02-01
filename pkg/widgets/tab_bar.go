@@ -102,9 +102,10 @@ func (t TabBar) Build(ctx core.BuildContext) core.Widget {
 		ChildWidget: Container{
 			Color: background,
 			ChildWidget: Row{
-				ChildrenWidgets:   children,
-				MainAxisAlignment: MainAxisAlignmentSpaceEvenly,
-				MainAxisSize:      MainAxisSizeMax,
+				ChildrenWidgets:    children,
+				MainAxisAlignment:  MainAxisAlignmentStart,
+				CrossAxisAlignment: CrossAxisAlignmentStretch,
+				MainAxisSize:       MainAxisSizeMax,
 			},
 		},
 	}
@@ -135,9 +136,10 @@ func (t TabBar) buildTabItem(index int, item TabItem, active, inactive, indicato
 
 	// Build tab content column
 	tabContent := Column{
-		ChildrenWidgets:   content,
-		MainAxisAlignment: MainAxisAlignmentCenter,
-		MainAxisSize:      MainAxisSizeMin,
+		ChildrenWidgets:    content,
+		MainAxisAlignment:  MainAxisAlignmentCenter,
+		CrossAxisAlignment: CrossAxisAlignmentCenter,
+		MainAxisSize:       MainAxisSizeMin,
 	}
 
 	// Build accessibility flags

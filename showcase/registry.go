@@ -64,7 +64,7 @@ var demos = []Demo{
 	{"/gestures", "Gestures", "Drag gestures with axis locking", CategoryMotion, "icon-gesture.svg", buildGesturesPage},
 	{"/animations", "Animations", "Implicit animations for smooth UI", CategoryMotion, "icon-motion.svg", buildAnimationsPage},
 	{"/scroll", "Scrolling", "Scrollable lists with physics", CategoryMotion, "icon-scroll.svg", buildScrollPage},
-	{"/tabs", "Navigation", "Bottom tab bar navigation", CategoryMotion, "icon-navigation.svg", buildTabsPage},
+	{"/tabs", "Tabs", "Bottom tab navigation", CategoryWidgets, "icon-navigation.svg", buildTabsPage},
 
 	// Media demos
 	{"/camera", "Camera", "Photo capture and gallery access", CategoryMedia, "icon-camera.svg", buildCameraPage},

@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/graphics"
+	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/navigation"
 	"github.com/go-drift/drift/pkg/svg"
 	"github.com/go-drift/drift/pkg/theme"
@@ -93,10 +94,27 @@ func buildTabDetailPage(ctx core.BuildContext, label string) core.Widget {
 
 	content := widgets.Container{
 		Color: colors.Background,
-		ChildWidget: widgets.Centered(
-			widgets.Text{Content: "Detail view for " + label, Style: textTheme.BodyLarge},
-		),
+		ChildWidget: widgets.Padding{
+			Padding: layout.EdgeInsetsAll(24),
+			ChildWidget: widgets.Column{
+				MainAxisAlignment:  widgets.MainAxisAlignmentStart,
+				CrossAxisAlignment: widgets.CrossAxisAlignmentStart,
+				MainAxisSize:       widgets.MainAxisSizeMin,
+				ChildrenWidgets: []core.Widget{
+					widgets.Text{Content: label + " Details", Style: textTheme.HeadlineSmall},
+					widgets.VSpace(12),
+					theme.ButtonOf(ctx, "Back", func() {
+						nav := navigation.NavigatorOf(ctx)
+						if nav != nil {
+							nav.Pop(nil)
+						}
+					}),
+					widgets.VSpace(24),
+					widgets.Text{Content: "Detail view for " + label, Style: textTheme.BodyLarge},
+				},
+			},
+		},
 	}
 
-	return pageScaffold(ctx, label+" Details", content)
+	return content
 }

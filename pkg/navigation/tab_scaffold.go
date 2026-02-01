@@ -3,6 +3,7 @@ package navigation
 import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/layout"
+	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
 )
 
@@ -82,16 +83,14 @@ func (s *tabScaffoldState) Build(ctx core.BuildContext) core.Widget {
 					Index:           index,
 				},
 			},
-			widgets.TabBar{
-				Items:        tabItems,
-				CurrentIndex: index,
-				OnTap: func(tabIndex int) {
-					s.controller.SetIndex(tabIndex)
-				},
+			widgets.SafeArea{
+				Bottom:      true,
+				ChildWidget: theme.TabBarOf(ctx, tabItems, index, func(tabIndex int) { s.controller.SetIndex(tabIndex) }),
 			},
 		},
-		MainAxisAlignment: widgets.MainAxisAlignmentStart,
-		MainAxisSize:      widgets.MainAxisSizeMax,
+		MainAxisAlignment:  widgets.MainAxisAlignmentStart,
+		MainAxisSize:       widgets.MainAxisSizeMax,
+		CrossAxisAlignment: widgets.CrossAxisAlignmentStretch,
 	}
 }
 
