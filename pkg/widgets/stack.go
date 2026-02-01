@@ -441,9 +441,12 @@ func hitTestChildrenReverse(children []layout.RenderBox, position graphics.Offse
 
 // IndexedStack is a [Stack] that only displays one child at a time.
 //
-// All children are laid out (maintaining their state), but only the child at
-// Index is painted and receives hit tests. This is useful for tab views or
-// wizards where you want to preserve the state of off-screen pages.
+// By default, all children are laid out (maintaining their state), but only
+// the child at Index is painted and receives hit tests. This is useful for tab
+// views or wizards where you want to preserve the state of off-screen pages.
+//
+// With Fit == StackFitExpand, only the active child is laid out because the
+// stack size is constraint-driven (inactive children cannot affect it).
 //
 // Example:
 //
@@ -526,6 +529,33 @@ func (r *renderIndexedStack) VisitChildren(visitor func(layout.RenderObject)) {
 
 func (r *renderIndexedStack) PerformLayout() {
 	constraints := r.Constraints()
+	if r.fit == StackFitExpand {
+		size := graphics.Size{Width: constraints.MaxWidth, Height: constraints.MaxHeight}
+		if size.Width <= 0 {
+			size.Width = constraints.MinWidth
+		}
+		if size.Height <= 0 {
+			size.Height = constraints.MinHeight
+		}
+		size = constraints.Constrain(size)
+		r.SetSize(size)
+
+		if child := r.activeChild(); child != nil {
+			if pos, ok := child.(*renderPositioned); ok {
+				// Mirror Stack behavior for positioned children.
+				pos.Layout(layout.Tight(size), true) // true: we read child.Size()
+				layoutPositionedChild(pos, size, r.alignment)
+			} else {
+				child.Layout(layout.Tight(size), true) // true: we read child.Size()
+				offset := r.alignment.WithinRect(
+					graphics.RectFromLTWH(0, 0, size.Width, size.Height),
+					child.Size(),
+				)
+				child.SetParentData(&layout.BoxParentData{Offset: offset})
+			}
+		}
+		return
+	}
 	size := layoutStackChildren(r.children, r.fit, r.alignment, constraints)
 	r.SetSize(size)
 }
