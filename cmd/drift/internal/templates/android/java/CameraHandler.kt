@@ -21,6 +21,7 @@ object CameraHandler {
 
     private var pendingCameraFile: File? = null
     private var pendingType: String = "capture"
+    private var pendingRequestId: String? = null
 
     fun handle(context: Context, method: String, args: Any?): Pair<Any?, Exception?> {
         return when (method) {
@@ -36,6 +37,7 @@ object CameraHandler {
 
         val argsMap = args as? Map<*, *> ?: emptyMap<String, Any>()
         val useFrontCamera = argsMap["useFrontCamera"] as? Boolean ?: false
+        val requestId = argsMap["requestId"] as? String
 
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
@@ -43,6 +45,7 @@ object CameraHandler {
         val photoFile = createTempImageFile(context)
         pendingCameraFile = photoFile
         pendingType = "capture"
+        pendingRequestId = requestId
 
         val photoUri = FileProvider.getUriForFile(
             context,
@@ -77,8 +80,10 @@ object CameraHandler {
 
         val argsMap = args as? Map<*, *> ?: emptyMap<String, Any>()
         val allowMultiple = argsMap["allowMultiple"] as? Boolean ?: false
+        val requestId = argsMap["requestId"] as? String
 
         pendingType = "gallery"
+        pendingRequestId = requestId
 
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "image/*"
@@ -106,31 +111,36 @@ object CameraHandler {
 
     private fun handleCameraResult(resultCode: Int) {
         val file = pendingCameraFile
+        val requestId = pendingRequestId
         pendingCameraFile = null
+        pendingRequestId = null
 
         if (resultCode != Activity.RESULT_OK) {
             file?.delete()
-            sendResult(type = "capture", cancelled = true)
+            sendResult(type = "capture", requestId = requestId, cancelled = true)
             return
         }
 
         if (file == null || !file.exists()) {
-            sendResult(type = "capture", error = "No camera output file")
+            sendResult(type = "capture", requestId = requestId, error = "No camera output file")
             return
         }
 
         try {
             val mediaInfo = getMediaInfoFromFile(file)
-            sendResult(type = "capture", media = mediaInfo)
+            sendResult(type = "capture", requestId = requestId, media = mediaInfo)
         } catch (e: Exception) {
             file.delete()
-            sendResult(type = "capture", error = e.message ?: "Failed to process image")
+            sendResult(type = "capture", requestId = requestId, error = e.message ?: "Failed to process image")
         }
     }
 
     private fun handleGalleryResult(resultCode: Int, data: Intent?, context: Context, allowMultiple: Boolean) {
+        val requestId = pendingRequestId
+        pendingRequestId = null
+
         if (resultCode != Activity.RESULT_OK || data == null) {
-            sendResult(type = "gallery", cancelled = true)
+            sendResult(type = "gallery", requestId = requestId, cancelled = true)
             return
         }
 
@@ -155,14 +165,14 @@ object CameraHandler {
             }
 
             if (mediaList.isEmpty()) {
-                sendResult(type = "gallery", cancelled = true)
+                sendResult(type = "gallery", requestId = requestId, cancelled = true)
             } else if (mediaList.size == 1) {
-                sendResult(type = "gallery", media = mediaList.first())
+                sendResult(type = "gallery", requestId = requestId, media = mediaList.first())
             } else {
-                sendResult(type = "gallery", mediaList = mediaList)
+                sendResult(type = "gallery", requestId = requestId, mediaList = mediaList)
             }
         } catch (e: Exception) {
-            sendResult(type = "gallery", error = e.message ?: "Failed to process image")
+            sendResult(type = "gallery", requestId = requestId, error = e.message ?: "Failed to process image")
         }
     }
 
@@ -215,6 +225,7 @@ object CameraHandler {
 
     private fun sendResult(
         type: String,
+        requestId: String? = null,
         media: Map<String, Any?>? = null,
         mediaList: List<Map<String, Any?>>? = null,
         cancelled: Boolean = false,
@@ -224,6 +235,9 @@ object CameraHandler {
             "type" to type,
             "cancelled" to cancelled
         )
+        if (requestId != null) {
+            payload["requestId"] = requestId
+        }
         if (media != null) {
             payload["media"] = media
         }

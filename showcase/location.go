@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-drift/drift/pkg/core"
@@ -32,10 +33,13 @@ func (l locationPage) CreateState() core.State {
 
 type locationState struct {
 	core.StateBase
-	statusText  *core.ManagedState[string]
-	location    *core.ManagedState[*platform.LocationUpdate]
-	isStreaming *core.ManagedState[bool]
-	isEnabled   *core.ManagedState[bool]
+	statusText      *core.ManagedState[string]
+	location        *core.ManagedState[*platform.LocationUpdate]
+	isStreaming     *core.ManagedState[bool]
+	isEnabled       *core.ManagedState[bool]
+	whenInUseStatus *core.ManagedState[platform.PermissionStatus]
+	alwaysStatus    *core.ManagedState[platform.PermissionStatus]
+	unsubFuncs      []func()
 }
 
 func (s *locationState) InitState() {
@@ -43,24 +47,52 @@ func (s *locationState) InitState() {
 	s.location = core.NewManagedState[*platform.LocationUpdate](&s.StateBase, nil)
 	s.isStreaming = core.NewManagedState(&s.StateBase, false)
 	s.isEnabled = core.NewManagedState(&s.StateBase, false)
+	s.whenInUseStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+	s.alwaysStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+
+	ctx := context.Background()
 
 	// Check if location services are enabled
 	go func() {
-		enabled, _ := platform.IsLocationEnabled()
+		enabled, _ := platform.Location.IsEnabled(ctx)
 		drift.Dispatch(func() {
 			s.isEnabled.Set(enabled)
 		})
 	}()
 
-	// Listen for location updates
+	// Check initial permission statuses
 	go func() {
-		for update := range platform.LocationUpdates() {
-			drift.Dispatch(func() {
-				s.location.Set(&update)
-				s.statusText.Set("Location updated")
-			})
-		}
+		whenInUse, _ := platform.Location.Permission.WhenInUse.Status(ctx)
+		always, _ := platform.Location.Permission.Always.Status(ctx)
+		drift.Dispatch(func() {
+			s.whenInUseStatus.Set(whenInUse)
+			s.alwaysStatus.Set(always)
+		})
 	}()
+
+	// Listen for permission changes
+	whenInUseUnsub := platform.Location.Permission.WhenInUse.Listen(func(status platform.PermissionStatus) {
+		drift.Dispatch(func() { s.whenInUseStatus.Set(status) })
+	})
+	alwaysUnsub := platform.Location.Permission.Always.Listen(func(status platform.PermissionStatus) {
+		drift.Dispatch(func() { s.alwaysStatus.Set(status) })
+	})
+
+	// Listen for location updates using Stream
+	updatesUnsub := platform.Location.Updates().Listen(func(update platform.LocationUpdate) {
+		drift.Dispatch(func() {
+			s.location.Set(&update)
+			s.statusText.Set("Location updated")
+		})
+	})
+
+	s.unsubFuncs = []func(){whenInUseUnsub, alwaysUnsub, updatesUnsub}
+
+	s.OnDispose(func() {
+		for _, unsub := range s.unsubFuncs {
+			unsub()
+		}
+	})
 }
 
 func (s *locationState) Build(ctx core.BuildContext) core.Widget {
@@ -81,6 +113,52 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 	}
 
 	return demoPage(ctx, "Location",
+		sectionTitle("Permission", colors),
+		widgets.VSpace(8),
+		widgets.Row{
+			MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
+			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
+			ChildrenWidgets: []core.Widget{
+				widgets.Text{Content: "When In Use:", Style: labelStyle(colors)},
+				permissionBadge(s.whenInUseStatus.Get(), colors),
+			},
+		},
+		widgets.VSpace(8),
+		widgets.Row{
+			MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
+			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
+			ChildrenWidgets: []core.Widget{
+				widgets.Text{Content: "Always:", Style: labelStyle(colors)},
+				permissionBadge(s.alwaysStatus.Get(), colors),
+			},
+		},
+		widgets.VSpace(12),
+		widgets.Row{
+			MainAxisAlignment: widgets.MainAxisAlignmentStart,
+			ChildrenWidgets: []core.Widget{
+				theme.ButtonOf(ctx, "Request When In Use", func() {
+					go func() {
+						ctx := context.Background()
+						status, _ := platform.Location.Permission.WhenInUse.Request(ctx)
+						drift.Dispatch(func() {
+							s.whenInUseStatus.Set(status)
+						})
+					}()
+				}),
+				widgets.HSpace(8),
+				theme.ButtonOf(ctx, "Request Always", func() {
+					go func() {
+						ctx := context.Background()
+						status, _ := platform.Location.Permission.Always.Request(ctx)
+						drift.Dispatch(func() {
+							s.alwaysStatus.Set(status)
+						})
+					}()
+				}),
+			},
+		},
+		widgets.VSpace(24),
+
 		sectionTitle("Location Services", colors),
 		widgets.VSpace(12),
 		widgets.Text{Content: enabledText, Style: labelStyle(colors)},
@@ -171,7 +249,8 @@ func (s *locationState) getCurrentLocation() {
 	s.statusText.Set("Getting location...")
 
 	go func() {
-		loc, err := platform.GetCurrentLocation(platform.LocationOptions{
+		ctx := context.Background()
+		loc, err := platform.Location.GetCurrent(ctx, platform.LocationOptions{
 			HighAccuracy: true,
 		})
 		drift.Dispatch(func() {
@@ -190,8 +269,10 @@ func (s *locationState) getCurrentLocation() {
 }
 
 func (s *locationState) toggleUpdates() {
+	ctx := context.Background()
+
 	if s.isStreaming.Get() {
-		err := platform.StopLocationUpdates()
+		err := platform.Location.StopUpdates(ctx)
 		if err != nil {
 			s.statusText.Set("Error stopping: " + err.Error())
 			return
@@ -199,7 +280,7 @@ func (s *locationState) toggleUpdates() {
 		s.isStreaming.Set(false)
 		s.statusText.Set("Location updates stopped")
 	} else {
-		err := platform.StartLocationUpdates(platform.LocationOptions{
+		err := platform.Location.StartUpdates(ctx, platform.LocationOptions{
 			HighAccuracy:   true,
 			DistanceFilter: 10, // 10 meters
 		})

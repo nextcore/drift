@@ -1,5 +1,15 @@
 package platform
 
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	drifterrors "github.com/go-drift/drift/pkg/errors"
+)
+
 // CapturedMedia represents a captured or selected media file.
 type CapturedMedia struct {
 	// Path is the absolute file path to the media file in the app's temp directory.
@@ -19,8 +29,10 @@ type CapturedMedia struct {
 }
 
 // CameraResult represents the result of a camera or gallery operation.
-// Results are delivered asynchronously via CameraResults().
 type CameraResult struct {
+	// RequestID correlates the result with its request (internal use).
+	RequestID string
+
 	// Type indicates the operation: "capture" for camera, "gallery" for picker.
 	Type string
 
@@ -52,71 +64,222 @@ type PickFromGalleryOptions struct {
 	AllowMultiple bool
 }
 
-var cameraService = newCameraService()
+// ErrCameraBusy is returned when a camera operation is already in progress.
+// Native camera handlers only support one operation at a time.
+var ErrCameraBusy = errors.New("camera operation already in progress")
+
+// CameraService provides camera capture and photo library access.
+type CameraService struct {
+	// Permission for camera access. Request before capturing photos.
+	Permission Permission
+
+	state *cameraServiceState
+	mu    sync.Mutex // serializes camera operations
+}
+
+// Camera is the singleton camera service.
+var Camera *CameraService
+
+func init() {
+	Camera = &CameraService{
+		Permission: &basicPermission{inner: newPermission("camera")},
+		state:      newCameraService(),
+	}
+}
 
 type cameraServiceState struct {
-	channel  *MethodChannel
-	events   *EventChannel
-	resultCh chan CameraResult
+	channel *MethodChannel
+	events  *EventChannel
 }
 
 func newCameraService() *cameraServiceState {
-	service := &cameraServiceState{
-		channel:  NewMethodChannel("drift/camera"),
-		events:   NewEventChannel("drift/camera/result"),
-		resultCh: make(chan CameraResult, 8),
+	return &cameraServiceState{
+		channel: NewMethodChannel("drift/camera"),
+		events:  NewEventChannel("drift/camera/result"),
 	}
-
-	service.events.Listen(EventHandler{
-		OnEvent: func(data any) {
-			result := parseCameraResult(data)
-			select {
-			case service.resultCh <- result:
-			default:
-				// Buffer full, drop oldest
-				<-service.resultCh
-				service.resultCh <- result
-			}
-		},
-	})
-
-	return service
 }
 
 // CapturePhoto opens the native camera to capture a photo.
-// The operation is asynchronous - listen on CameraResults() for the result.
-// The captured image is saved to the app's temp directory as a JPEG.
-func CapturePhoto(opts CapturePhotoOptions) error {
-	_, err := cameraService.channel.Invoke("capturePhoto", map[string]any{
+// Blocks until the user captures a photo, cancels, or the context expires.
+// This method should be called from a goroutine, not the main/render thread.
+//
+// Returns ErrCameraBusy if another camera operation is already in progress.
+//
+// Important: Always pass a context with a deadline or timeout. If the native
+// layer fails to send a result and the context has no deadline, this method
+// blocks forever and holds the camera mutex, preventing further operations.
+//
+// Note: If the context is canceled, the native camera UI remains open.
+// The user must dismiss it manually; there's no programmatic close.
+func (c *CameraService) CapturePhoto(ctx context.Context, opts CapturePhotoOptions) (CameraResult, error) {
+	// Serialize camera operations - native handlers only support one at a time
+	if !c.mu.TryLock() {
+		return CameraResult{}, ErrCameraBusy
+	}
+	defer c.mu.Unlock()
+
+	requestID := generateRequestID()
+
+	// Subscribe to results BEFORE triggering native
+	resultChan := make(chan CameraResult, 1)
+	errChan := make(chan error, 1)
+	sub := c.state.events.Listen(EventHandler{
+		OnEvent: func(data any) {
+			result, err := parseCameraResultWithID(data)
+			if err != nil {
+				drifterrors.Report(&drifterrors.DriftError{
+					Op:      "camera.parse",
+					Kind:    drifterrors.KindParsing,
+					Channel: "drift/camera/result",
+					Err:     err,
+				})
+				// If we got a parse error but can't match requestID, we can't route it
+				// to a specific caller. Report and continue listening.
+				return
+			}
+			if result.RequestID == requestID {
+				select {
+				case resultChan <- result:
+				default:
+				}
+			}
+		},
+		OnError: func(err error) {
+			drifterrors.Report(&drifterrors.DriftError{
+				Op:      "camera.streamError",
+				Kind:    drifterrors.KindPlatform,
+				Channel: "drift/camera/result",
+				Err:     err,
+			})
+			select {
+			case errChan <- err:
+			default:
+			}
+		},
+	})
+	defer sub.Cancel()
+
+	// Trigger native camera with request ID
+	_, err := c.state.channel.Invoke("capturePhoto", map[string]any{
 		"useFrontCamera": opts.UseFrontCamera,
+		"requestId":      requestID,
 	})
-	return err
+	if err != nil {
+		return CameraResult{}, err
+	}
+
+	// Wait for result or context cancellation
+	select {
+	case result := <-resultChan:
+		if result.Error != "" {
+			return result, errors.New(result.Error)
+		}
+		return result, nil
+	case err := <-errChan:
+		return CameraResult{}, err
+	case <-ctx.Done():
+		return CameraResult{}, ctx.Err()
+	}
 }
 
-// PickFromGallery opens the native photo picker to select images from the library.
-// The operation is asynchronous - listen on CameraResults() for the result.
-// Selected images are copied to the app's temp directory for reliable access.
-func PickFromGallery(opts PickFromGalleryOptions) error {
-	_, err := cameraService.channel.Invoke("pickFromGallery", map[string]any{
+// PickFromGallery opens the photo picker.
+// Blocks until the user selects images, cancels, or the context expires.
+// This method should be called from a goroutine, not the main/render thread.
+//
+// Returns ErrCameraBusy if another camera operation is already in progress.
+//
+// Important: Always pass a context with a deadline or timeout. If the native
+// layer fails to send a result and the context has no deadline, this method
+// blocks forever and holds the camera mutex, preventing further operations.
+//
+// Note: If the context is canceled, the native picker UI remains open.
+func (c *CameraService) PickFromGallery(ctx context.Context, opts PickFromGalleryOptions) (CameraResult, error) {
+	// Serialize camera operations - native handlers only support one at a time
+	if !c.mu.TryLock() {
+		return CameraResult{}, ErrCameraBusy
+	}
+	defer c.mu.Unlock()
+
+	requestID := generateRequestID()
+
+	resultChan := make(chan CameraResult, 1)
+	errChan := make(chan error, 1)
+	sub := c.state.events.Listen(EventHandler{
+		OnEvent: func(data any) {
+			result, err := parseCameraResultWithID(data)
+			if err != nil {
+				drifterrors.Report(&drifterrors.DriftError{
+					Op:      "camera.parse",
+					Kind:    drifterrors.KindParsing,
+					Channel: "drift/camera/result",
+					Err:     err,
+				})
+				return
+			}
+			if result.RequestID == requestID {
+				select {
+				case resultChan <- result:
+				default:
+				}
+			}
+		},
+		OnError: func(err error) {
+			drifterrors.Report(&drifterrors.DriftError{
+				Op:      "camera.streamError",
+				Kind:    drifterrors.KindPlatform,
+				Channel: "drift/camera/result",
+				Err:     err,
+			})
+			select {
+			case errChan <- err:
+			default:
+			}
+		},
+	})
+	defer sub.Cancel()
+
+	_, err := c.state.channel.Invoke("pickFromGallery", map[string]any{
 		"allowMultiple": opts.AllowMultiple,
+		"requestId":     requestID,
 	})
-	return err
+	if err != nil {
+		return CameraResult{}, err
+	}
+
+	select {
+	case result := <-resultChan:
+		if result.Error != "" {
+			return result, errors.New(result.Error)
+		}
+		return result, nil
+	case err := <-errChan:
+		return CameraResult{}, err
+	case <-ctx.Done():
+		return CameraResult{}, ctx.Err()
+	}
 }
 
-// CameraResults returns a channel that receives camera and gallery operation results.
-// Listen on this channel from a goroutine and use drift.Dispatch to update UI.
-// The channel is buffered (capacity 8) and drops oldest results if full.
-func CameraResults() <-chan CameraResult {
-	return cameraService.resultCh
+// generateRequestID creates a unique ID for request correlation.
+func generateRequestID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-func parseCameraResult(data any) CameraResult {
+// parseCameraResultWithID parses camera result including request ID.
+// Returns an error if requestId is missing or empty, since we cannot
+// correlate the result with a waiting caller.
+func parseCameraResultWithID(data any) (CameraResult, error) {
 	m, ok := data.(map[string]any)
 	if !ok {
-		return CameraResult{Error: "invalid result format"}
+		return CameraResult{}, errors.New("invalid result format: expected map")
+	}
+
+	requestID := parseString(m["requestId"])
+	if requestID == "" {
+		return CameraResult{}, errors.New("missing or empty requestId in camera result")
 	}
 
 	result := CameraResult{
+		RequestID: requestID,
 		Type:      parseString(m["type"]),
 		Cancelled: parseBool(m["cancelled"]),
 		Error:     parseString(m["error"]),
@@ -136,7 +299,7 @@ func parseCameraResult(data any) CameraResult {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 func parseCapturedMedia(m map[string]any) *CapturedMedia {
@@ -147,13 +310,13 @@ func parseCapturedMedia(m map[string]any) *CapturedMedia {
 	return &CapturedMedia{
 		Path:     path,
 		MimeType: parseString(m["mimeType"]),
-		Width:    parseInt(m["width"]),
-		Height:   parseInt(m["height"]),
+		Width:    parseCameraInt(m["width"]),
+		Height:   parseCameraInt(m["height"]),
 		Size:     parseInt64(m["size"]),
 	}
 }
 
-func parseInt(value any) int {
+func parseCameraInt(value any) int {
 	switch v := value.(type) {
 	case int:
 		return v

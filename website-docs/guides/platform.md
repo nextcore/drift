@@ -137,117 +137,357 @@ platform.SetSystemUI(platform.SystemUIStyle{
 
 ## Permissions
 
-Request runtime permissions using the `Permissions` service:
+Permissions are attached to the features that use them. Each feature service provides a `Permission` field for checking and requesting access.
+
+### Camera Permission
 
 ```go
-// Request a permission
-result, err := platform.Permissions.Camera.Request()
+ctx := context.Background()
+
+// Check status
+status, err := platform.Camera.Permission.Status(ctx)
+
+// Request permission
+result, err := platform.Camera.Permission.Request(ctx)
 if result == platform.PermissionGranted {
-    openCamera()
+    // Camera is available
 }
 
-// Check current permission status
-status, err := platform.Permissions.Camera.Status()
-
 // Convenience checks
-if platform.Permissions.Camera.IsGranted() {
+if platform.Camera.Permission.IsGranted(ctx) {
     // Camera is available
 }
 
 // Listen for permission changes
-go func() {
-    for result := range platform.Permissions.Camera.Changes() {
-        drift.Dispatch(func() {
-            updateUI(result)
-        })
-    }
-}()
-
-// Open app settings for manual permission management
-platform.OpenAppSettings()
+unsubscribe := platform.Camera.Permission.Listen(func(status platform.PermissionStatus) {
+    drift.Dispatch(func() {
+        updateUI(status)
+    })
+})
+defer unsubscribe()
 ```
 
 ### Location Permissions
 
-Location has two levels - when in use and always (background). Each level has its own
-status, request, and change notification methods:
+Location has two permission levels - when in use and always (background):
 
 ```go
+ctx := context.Background()
+
 // When-in-use location
-result, err := platform.Permissions.Location.RequestWhenInUse()
-status, err := platform.Permissions.Location.Status()
+status, err := platform.Location.Permission.WhenInUse.Status(ctx)
+result, err := platform.Location.Permission.WhenInUse.Request(ctx)
 
 // Background (always) location
-result, err := platform.Permissions.Location.RequestAlways()
-status, err := platform.Permissions.Location.StatusAlways()
-if platform.Permissions.Location.IsAlwaysGranted() {
+// Note: On iOS, WhenInUse must be granted before requesting Always.
+status, err := platform.Location.Permission.Always.Status(ctx)
+result, err := platform.Location.Permission.Always.Request(ctx)
+
+// Convenience check
+if platform.Location.Permission.Always.IsGranted(ctx) {
     // Background location available
 }
 
 // Listen for permission changes
-// IMPORTANT: Use Changes() for when-in-use, ChangesAlways() for background.
-// These are separate event streams from the platform.
-go func() {
-    for result := range platform.Permissions.Location.Changes() {
-        drift.Dispatch(func() { updateWhenInUseUI(result) })
-    }
-}()
-
-go func() {
-    for result := range platform.Permissions.Location.ChangesAlways() {
-        drift.Dispatch(func() { updateAlwaysUI(result) })
-    }
-}()
+whenInUseUnsub := platform.Location.Permission.WhenInUse.Listen(func(status platform.PermissionStatus) {
+    drift.Dispatch(func() { updateWhenInUseUI(status) })
+})
+alwaysUnsub := platform.Location.Permission.Always.Listen(func(status platform.PermissionStatus) {
+    drift.Dispatch(func() { updateAlwaysUI(status) })
+})
+defer whenInUseUnsub()
+defer alwaysUnsub()
 ```
 
 ### Notification Permissions
 
-Notifications support iOS-specific options:
+Notifications support iOS-specific options via `RequestWithOptions`:
 
 ```go
+ctx := context.Background()
+
 // Request with default options (Alert, Sound, Badge)
-result, err := platform.Permissions.Notification.Request()
+result, err := platform.Notifications.Permission.Request(ctx)
 
 // Request with specific options
-result, err := platform.Permissions.Notification.Request(platform.NotificationOptions{
-    Alert:       true,
-    Sound:       true,
-    Badge:       true,
-    Provisional: false, // iOS provisional notifications
-})
+result, err := platform.Notifications.Permission.RequestWithOptions(ctx,
+    platform.NotificationPermissionOptions{
+        Alert:       true,
+        Sound:       true,
+        Badge:       true,
+        Provisional: false, // iOS provisional notifications
+    },
+)
 ```
 
-### Available Permissions
+### Other Permissions
 
-| Permission | Use |
-|------------|-----|
-| `Permissions.Camera` | Camera access |
-| `Permissions.Microphone` | Microphone access |
-| `Permissions.Location` | Location services |
-| `Permissions.Storage` | File storage |
-| `Permissions.Contacts` | Contacts access |
-| `Permissions.Photos` | Photo library |
-| `Permissions.Calendar` | Calendar access |
-| `Permissions.Notification` | Push notifications |
+For permissions without dedicated feature services:
+
+```go
+ctx := context.Background()
+
+// Microphone
+status, err := platform.Microphone.Permission.Status(ctx)
+result, err := platform.Microphone.Permission.Request(ctx)
+
+// Photos
+status, err := platform.Photos.Permission.Status(ctx)
+result, err := platform.Photos.Permission.Request(ctx)
+
+// Contacts
+status, err := platform.Contacts.Permission.Status(ctx)
+result, err := platform.Contacts.Permission.Request(ctx)
+
+// Calendar
+status, err := platform.Calendar.Permission.Status(ctx)
+result, err := platform.Calendar.Permission.Request(ctx)
+
+// Storage
+status, err := platform.StoragePermission.Permission.Status(ctx)
+result, err := platform.StoragePermission.Permission.Request(ctx)
+```
+
+### Open App Settings
+
+```go
+// Open app settings for manual permission management
+ctx := context.Background()
+platform.OpenAppSettings(ctx)
+```
 
 ### Permission Results
 
 | Result | Meaning |
 |--------|---------|
 | `PermissionGranted` | Permission was granted |
-| `PermissionDenied` | Permission was denied |
+| `PermissionDenied` | Permission was denied (the app may request again) |
 | `PermissionPermanentlyDenied` | User selected "Don't ask again" |
 | `PermissionRestricted` | Restricted by device policy |
 | `PermissionLimited` | Limited access granted (iOS photos) |
 | `PermissionProvisional` | Provisional access (iOS notifications) |
+| `PermissionNotDetermined` | Permission has not been requested yet |
+| `PermissionResultUnknown` | Permission status could not be determined |
+
+## Camera
+
+Capture photos and select images from the photo library using the synchronous API.
+Methods block until the user completes or cancels the operation.
+
+**Important:** Always use a context with a timeout. If the native layer fails to respond
+and the context has no deadline, the call blocks forever and holds the camera mutex,
+preventing further operations.
+
+**Note:** Only one camera operation can run at a time. If another operation is in progress,
+`CapturePhoto` and `PickFromGallery` return `platform.ErrCameraBusy`.
+
+```go
+import "github.com/go-drift/drift/pkg/platform"
+
+// Request permission first
+ctx := context.Background()
+if !platform.Camera.Permission.IsGranted(ctx) {
+    platform.Camera.Permission.Request(ctx)
+}
+
+// Capture a photo (blocks until complete or cancelled)
+// Call from a goroutine, not the main/render thread
+go func() {
+    // Use timeout to prevent blocking forever if native layer fails
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+    defer cancel()
+
+    result, err := platform.Camera.CapturePhoto(ctx, platform.CapturePhotoOptions{})
+    drift.Dispatch(func() {
+        if err != nil {
+            handleError(err)
+            return
+        }
+        if result.Cancelled {
+            return
+        }
+        handleMedia(result.Media)
+    })
+}()
+
+// Capture a selfie with the front camera
+go func() {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+    defer cancel()
+
+    result, err := platform.Camera.CapturePhoto(ctx, platform.CapturePhotoOptions{
+        UseFrontCamera: true,
+    })
+    // ... handle result
+}()
+
+// Pick from gallery (blocks until complete)
+go func() {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+    defer cancel()
+
+    result, err := platform.Camera.PickFromGallery(ctx, platform.PickFromGalleryOptions{})
+    // ... handle result
+}()
+
+// Pick multiple images (Android only; iOS returns single image)
+go func() {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+    defer cancel()
+
+    result, err := platform.Camera.PickFromGallery(ctx, platform.PickFromGalleryOptions{
+        AllowMultiple: true,
+    })
+    // ... handle result.MediaList for multiple images
+}()
+```
+
+### CapturedMedia Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Path` | `string` | Absolute path to the image file |
+| `MimeType` | `string` | Media type (e.g., "image/jpeg") |
+| `Width` | `int` | Image width in pixels |
+| `Height` | `int` | Image height in pixels |
+| `Size` | `int64` | File size in bytes |
+
+### Example: Camera Page
+
+```go
+type cameraState struct {
+    core.StateBase
+    status           *core.ManagedState[string]
+    image            *core.ManagedState[image.Image]
+    permissionStatus *core.ManagedState[platform.PermissionStatus]
+}
+
+func (s *cameraState) InitState() {
+    s.status = core.NewManagedState(&s.StateBase, "Tap to capture")
+    s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
+    s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+
+    ctx := context.Background()
+
+    // Check initial permission
+    go func() {
+        status, _ := platform.Camera.Permission.Status(ctx)
+        drift.Dispatch(func() { s.permissionStatus.Set(status) })
+    }()
+
+    // Listen for permission changes
+    unsub := platform.Camera.Permission.Listen(func(status platform.PermissionStatus) {
+        drift.Dispatch(func() { s.permissionStatus.Set(status) })
+    })
+    s.OnDispose(unsub)
+}
+
+func (s *cameraState) takePhoto() {
+    s.status.Set("Opening camera...")
+    go func() {
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+        defer cancel()
+
+        result, err := platform.Camera.CapturePhoto(ctx, platform.CapturePhotoOptions{})
+        drift.Dispatch(func() {
+            if err != nil {
+                s.status.Set("Error: " + err.Error())
+                return
+            }
+            if result.Cancelled {
+                s.status.Set("Cancelled")
+                return
+            }
+            if result.Media != nil {
+                img, err := loadImage(result.Media.Path)
+                if err != nil {
+                    s.status.Set("Failed to load: " + err.Error())
+                    return
+                }
+                s.image.Set(img)
+                s.status.Set("Photo captured!")
+            }
+        })
+    }()
+}
+```
+
+:::note Platform Notes
+- **iOS**: Multi-select (`AllowMultiple`) is not supported; only a single image is returned
+- **iOS**: Camera availability is checked; an error is returned if no camera is present (e.g., on simulator)
+- **Android**: The front camera hint (`UseFrontCamera`) is not guaranteed to be honored by all camera apps
+- Captured images are saved to the app's temp directory as JPEGs
+- Gallery selections are copied to temp files for reliable cross-process access
+:::
+
+## Location
+
+Access device location using the Location service:
+
+```go
+ctx := context.Background()
+
+// Request permission first
+platform.Location.Permission.WhenInUse.Request(ctx)
+
+// Get current location (synchronous)
+loc, err := platform.Location.GetCurrent(ctx, platform.LocationOptions{
+    HighAccuracy: true,
+})
+if err == nil {
+    fmt.Printf("Lat: %f, Lng: %f\n", loc.Latitude, loc.Longitude)
+}
+
+// Start continuous location updates
+platform.Location.StartUpdates(ctx, platform.LocationOptions{
+    HighAccuracy:   true,
+    DistanceFilter: 10, // meters
+})
+
+// Listen for updates using Stream
+unsubscribe := platform.Location.Updates().Listen(func(update platform.LocationUpdate) {
+    drift.Dispatch(func() {
+        s.userLocation = &update
+    })
+})
+defer unsubscribe()
+
+// Stop updates when done
+platform.Location.StopUpdates(ctx)
+
+// Check if location services are enabled
+enabled, err := platform.Location.IsEnabled(ctx)
+
+// Get last known location without triggering a new request
+lastKnown, err := platform.Location.LastKnown(ctx)
+```
+
+### Location Data
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Latitude` | `float64` | Latitude in degrees |
+| `Longitude` | `float64` | Longitude in degrees |
+| `Altitude` | `float64` | Altitude in meters |
+| `Accuracy` | `float64` | Accuracy in meters |
+| `Heading` | `float64` | Direction in degrees |
+| `Speed` | `float64` | Speed in m/s |
+| `Timestamp` | `time.Time` | When reading was taken |
 
 ## Notifications
 
-Schedule local notifications:
+Manage local and push notifications using the Notifications service:
 
 ```go
-// Schedule a notification
-err := platform.ScheduleLocalNotification(platform.NotificationRequest{
+ctx := context.Background()
+
+// Request permission with options
+status, err := platform.Notifications.Permission.RequestWithOptions(ctx,
+    platform.NotificationPermissionOptions{Alert: true, Sound: true, Badge: true},
+)
+
+// Schedule a local notification
+platform.Notifications.Schedule(ctx, platform.NotificationRequest{
     ID:    "reminder-1",
     Title: "Reminder",
     Body:  "Meeting in 5 minutes",
@@ -256,35 +496,44 @@ err := platform.ScheduleLocalNotification(platform.NotificationRequest{
 })
 
 // Cancel a notification
-platform.CancelLocalNotification("reminder-1")
+platform.Notifications.Cancel(ctx, "reminder-1")
 
 // Cancel all notifications
-platform.CancelAllLocalNotifications()
+platform.Notifications.CancelAll(ctx)
 
 // Set app badge count
-platform.SetNotificationBadge(3)
+platform.Notifications.SetBadge(ctx, 3)
+
+// Get notification settings
+settings, err := platform.Notifications.Settings(ctx)
 ```
 
 ### Listening for Notifications
 
 ```go
 // Listen for delivered notifications
-go func() {
-    for event := range platform.Notifications() {
-        drift.Dispatch(func() {
-            handleNotification(event)
-        })
-    }
-}()
+deliveriesUnsub := platform.Notifications.Deliveries().Listen(func(event platform.NotificationEvent) {
+    drift.Dispatch(func() {
+        handleNotification(event)
+    })
+})
+defer deliveriesUnsub()
 
 // Listen for notification opens (user tapped notification)
-go func() {
-    for open := range platform.NotificationOpens() {
-        drift.Dispatch(func() {
-            navigateToContent(open.Data)
-        })
-    }
-}()
+opensUnsub := platform.Notifications.Opens().Listen(func(open platform.NotificationOpen) {
+    drift.Dispatch(func() {
+        navigateToContent(open.Data)
+    })
+})
+defer opensUnsub()
+
+// Listen for device token updates (push notifications)
+tokensUnsub := platform.Notifications.Tokens().Listen(func(token platform.DeviceToken) {
+    drift.Dispatch(func() {
+        sendTokenToServer(token.Token)
+    })
+})
+defer tokensUnsub()
 ```
 
 ## Share
@@ -307,52 +556,6 @@ result, err := platform.Share.ShareURLWithText("https://example.com", "Check out
 // Share a file
 result, err := platform.Share.ShareFile("/path/to/file.pdf", "application/pdf")
 ```
-
-## Location
-
-Access device location:
-
-```go
-// Get current location
-location, err := platform.GetCurrentLocation(platform.LocationOptions{
-    HighAccuracy: true,
-})
-if err == nil {
-    fmt.Printf("Lat: %f, Lng: %f\n", location.Latitude, location.Longitude)
-}
-
-// Start continuous location updates
-platform.StartLocationUpdates(platform.LocationOptions{
-    HighAccuracy:   true,
-    DistanceFilter: 10, // meters
-})
-
-// Listen for updates
-go func() {
-    for update := range platform.LocationUpdates() {
-        drift.Dispatch(func() {
-            s.SetState(func() {
-                s.userLocation = update
-            })
-        })
-    }
-}()
-
-// Stop updates when done
-platform.StopLocationUpdates()
-```
-
-### Location Data
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `Latitude` | `float64` | Latitude in degrees |
-| `Longitude` | `float64` | Longitude in degrees |
-| `Altitude` | `float64` | Altitude in meters |
-| `Accuracy` | `float64` | Accuracy in meters |
-| `Heading` | `float64` | Direction in degrees |
-| `Speed` | `float64` | Speed in m/s |
-| `Timestamp` | `time.Time` | When reading was taken |
 
 ## File Storage
 
@@ -397,164 +600,6 @@ go func() {
     }
 }()
 ```
-
-## Camera
-
-Capture photos and select images from the photo library:
-
-```go
-import "github.com/go-drift/drift/pkg/platform"
-
-// Capture a photo with the rear camera
-err := platform.CapturePhoto(platform.CapturePhotoOptions{})
-
-// Capture a selfie with the front camera
-err := platform.CapturePhoto(platform.CapturePhotoOptions{
-    UseFrontCamera: true,
-})
-
-// Pick a single image from the gallery
-err := platform.PickFromGallery(platform.PickFromGalleryOptions{})
-
-// Pick multiple images (Android only; iOS returns single image)
-err := platform.PickFromGallery(platform.PickFromGalleryOptions{
-    AllowMultiple: true,
-})
-```
-
-### Handling Results
-
-Camera operations are asynchronous. Listen for results on the `CameraResults()` channel:
-
-```go
-func (s *myState) InitState() {
-    go func() {
-        for result := range platform.CameraResults() {
-            r := result // capture for closure
-            drift.Dispatch(func() {
-                s.handleCameraResult(r)
-            })
-        }
-    }()
-}
-
-func (s *myState) handleCameraResult(result platform.CameraResult) {
-    if result.Cancelled {
-        s.showMessage("Cancelled")
-        return
-    }
-
-    if result.Error != "" {
-        s.showError(result.Error)
-        return
-    }
-
-    // Get the captured/selected media
-    var media *platform.CapturedMedia
-    if result.Media != nil {
-        media = result.Media
-    } else if len(result.MediaList) > 0 {
-        media = &result.MediaList[0]
-    }
-
-    if media != nil {
-        // media.Path contains the file path
-        // media.Width and media.Height contain dimensions
-        s.loadImage(media.Path)
-    }
-}
-```
-
-### CapturedMedia Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `Path` | `string` | Absolute path to the image file |
-| `MimeType` | `string` | Media type (e.g., "image/jpeg") |
-| `Width` | `int` | Image width in pixels |
-| `Height` | `int` | Image height in pixels |
-| `Size` | `int64` | File size in bytes |
-
-### Example: Camera Page
-
-```go
-type cameraState struct {
-    core.StateBase
-    status *core.ManagedState[string]
-    image  *core.ManagedState[image.Image]
-}
-
-func (s *cameraState) InitState() {
-    s.status = core.NewManagedState(&s.StateBase, "Tap to capture")
-    s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
-
-    go func() {
-        for result := range platform.CameraResults() {
-            r := result
-            drift.Dispatch(func() {
-                s.handleResult(r)
-            })
-        }
-    }()
-}
-
-func (s *cameraState) takePhoto() {
-    s.status.Set("Opening camera...")
-    go func() {
-        if err := platform.CapturePhoto(platform.CapturePhotoOptions{}); err != nil {
-            drift.Dispatch(func() {
-                s.status.Set("Error: " + err.Error())
-            })
-        }
-    }()
-}
-
-func (s *cameraState) handleResult(result platform.CameraResult) {
-    if result.Cancelled {
-        s.status.Set("Cancelled")
-        return
-    }
-    if result.Error != "" {
-        s.status.Set("Error: " + result.Error)
-        return
-    }
-    if result.Media != nil {
-        img, err := loadImage(result.Media.Path)
-        if err != nil {
-            s.status.Set("Failed to load: " + err.Error())
-            return
-        }
-        s.image.Set(img)
-        s.status.Set("Photo captured!")
-    }
-}
-```
-
-### Permissions
-
-Camera and photo library access requires permissions. Request them before use:
-
-```go
-// Request camera permission
-result, err := platform.Permissions.Camera.Request()
-if result == platform.PermissionGranted {
-    platform.CapturePhoto(platform.CapturePhotoOptions{})
-}
-
-// Request photo library permission (for gallery)
-result, err := platform.Permissions.Photos.Request()
-if result == platform.PermissionGranted {
-    platform.PickFromGallery(platform.PickFromGalleryOptions{})
-}
-```
-
-:::note Platform Notes
-- **iOS**: Multi-select (`AllowMultiple`) is not supported; only a single image is returned
-- **iOS**: Camera availability is checked; an error is returned if no camera is present (e.g., on simulator)
-- **Android**: The front camera hint (`UseFrontCamera`) is not guaranteed to be honored by all camera apps
-- Captured images are saved to the app's temp directory as JPEGs
-- Gallery selections are copied to temp files for reliable cross-process access
-:::
 
 ## Secure Storage
 
@@ -671,17 +716,14 @@ if err == platform.ErrPlatformNotSupported {
 Platform services are safe to call from any goroutine. However, when updating UI state from platform callbacks, use `drift.Dispatch`:
 
 ```go
-go func() {
-    for update := range platform.LocationUpdates() {
-        // Called from background goroutine
-        drift.Dispatch(func() {
-            // Now safe to update UI
-            s.SetState(func() {
-                s.location = update
-            })
-        })
-    }
-}()
+unsubscribe := platform.Location.Updates().Listen(func(update platform.LocationUpdate) {
+    // Called from background goroutine
+    drift.Dispatch(func() {
+        // Now safe to update UI
+        s.location = &update
+    })
+})
+defer unsubscribe()
 ```
 
 ## Next Steps

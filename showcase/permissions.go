@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"context"
 	"maps"
 
 	"github.com/go-drift/drift/pkg/core"
@@ -32,33 +32,41 @@ func (p permissionsPage) CreateState() core.State {
 	return &permissionsState{}
 }
 
+// permissionDemo represents a permission to display.
+type permissionDemo struct {
+	name       string
+	permission platform.Permission
+}
+
+// Define which permissions to show (orphan permissions not covered by dedicated pages)
+var otherPermissions = []permissionDemo{
+	{"Contacts", platform.Contacts.Permission},
+	{"Calendar", platform.Calendar.Permission},
+	{"Storage", platform.StoragePermission.Permission},
+	{"Microphone", platform.Microphone.Permission},
+	{"Photos", platform.Photos.Permission},
+}
+
 type permissionsState struct {
 	core.StateBase
 	statuses   *core.ManagedState[map[string]platform.PermissionResult]
 	statusText *core.ManagedState[string]
+	unsubFuncs []func()
 }
 
 func (s *permissionsState) InitState() {
 	s.statuses = core.NewManagedState(&s.StateBase, make(map[string]platform.PermissionResult))
 	s.statusText = core.NewManagedState(&s.StateBase, "Tap 'Request' to request a permission.")
 
+	ctx := context.Background()
+
 	// Check initial status of all permissions
 	go func() {
 		statuses := make(map[string]platform.PermissionResult)
-		if result, err := platform.Permissions.Camera.Status(); err == nil {
-			statuses["Camera"] = result
-		}
-		if result, err := platform.Permissions.Location.Status(); err == nil {
-			statuses["Location"] = result
-		}
-		if result, err := platform.Permissions.Photos.Status(); err == nil {
-			statuses["Photos"] = result
-		}
-		if result, err := platform.Permissions.Microphone.Status(); err == nil {
-			statuses["Microphone"] = result
-		}
-		if result, err := platform.Permissions.Notification.Status(); err == nil {
-			statuses["Notifications"] = result
+		for _, p := range otherPermissions {
+			if result, err := p.permission.Status(ctx); err == nil {
+				statuses[p.name] = result
+			}
 		}
 		drift.Dispatch(func() {
 			s.statuses.Set(statuses)
@@ -66,28 +74,26 @@ func (s *permissionsState) InitState() {
 	}()
 
 	// Listen for permission changes
-	s.listenForChanges("Camera", platform.Permissions.Camera.Changes())
-	s.listenForChanges("Location", platform.Permissions.Location.Changes())
-	s.listenForChanges("Photos", platform.Permissions.Photos.Changes())
-	s.listenForChanges("Microphone", platform.Permissions.Microphone.Changes())
-	s.listenForChanges("Notifications", platform.Permissions.Notification.Changes())
-}
-
-func (s *permissionsState) listenForChanges(name string, ch <-chan platform.PermissionResult) {
-	go func() {
-		for result := range ch {
-			r := result
-			log.Printf("permission change %s %s", name, string(r))
+	for _, p := range otherPermissions {
+		perm := p // capture for closure
+		unsub := perm.permission.Listen(func(result platform.PermissionResult) {
 			drift.Dispatch(func() {
 				statuses := s.statuses.Get()
 				newStatuses := make(map[string]platform.PermissionResult)
 				maps.Copy(newStatuses, statuses)
-				newStatuses[name] = r
+				newStatuses[perm.name] = result
 				s.statuses.Set(newStatuses)
-				s.statusText.Set(name + " permission: " + string(r))
+				s.statusText.Set(perm.name + " permission: " + string(result))
 			})
+		})
+		s.unsubFuncs = append(s.unsubFuncs, unsub)
+	}
+
+	s.OnDispose(func() {
+		for _, unsub := range s.unsubFuncs {
+			unsub()
 		}
-	}()
+	})
 }
 
 func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
@@ -96,11 +102,11 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 
 	// Build permission rows
 	var rows []core.Widget
-	for _, name := range []string{"Camera", "Location", "Photos", "Microphone", "Notifications"} {
-		rows = append(rows, s.permissionRow(name, statuses[name], colors), widgets.VSpace(12))
+	for _, p := range otherPermissions {
+		rows = append(rows, s.permissionRow(p.name, statuses[p.name], colors), widgets.VSpace(12))
 	}
 
-	return demoPage(ctx, "Permissions",
+	return demoPage(ctx, "Other Permissions",
 		sectionTitle("Runtime Permissions", colors),
 		widgets.VSpace(12),
 		widgets.Text{Content: "Check and request app permissions:", Style: labelStyle(colors)},
@@ -148,7 +154,7 @@ func (s *permissionsState) permissionRow(name string, status platform.Permission
 								FontWeight: graphics.FontWeightSemibold,
 							}},
 							widgets.VSpace(4),
-							s.statusBadge(status, colors),
+							permissionBadge(status, colors),
 						},
 					},
 					widgets.Button{
@@ -167,68 +173,20 @@ func (s *permissionsState) permissionRow(name string, status platform.Permission
 	}
 }
 
-func (s *permissionsState) statusBadge(status platform.PermissionResult, colors theme.ColorScheme) core.Widget {
-	var bgColor, textColor graphics.Color
-	label := string(status)
-	if label == "" {
-		label = "unknown"
-	}
-
-	switch status {
-	case platform.PermissionGranted:
-		bgColor = 0xFF4CAF50 // green
-		textColor = 0xFFFFFFFF
-	case platform.PermissionDenied, platform.PermissionPermanentlyDenied:
-		bgColor = 0xFFF44336 // red
-		textColor = 0xFFFFFFFF
-	case platform.PermissionLimited, platform.PermissionProvisional:
-		bgColor = 0xFFFF9800 // orange
-		textColor = 0xFFFFFFFF
-	default:
-		bgColor = colors.SurfaceContainerHigh
-		textColor = colors.OnSurfaceVariant
-	}
-
-	return widgets.DecoratedBox{
-		Color:        bgColor,
-		BorderRadius: 4,
-		ChildWidget: widgets.Padding{
-			Padding: layout.EdgeInsetsSymmetric(8, 4),
-			ChildWidget: widgets.Text{Content: label, Style: graphics.TextStyle{
-				Color:    textColor,
-				FontSize: 12,
-			}},
-		},
-	}
-}
-
 func (s *permissionsState) requestPermission(name string) {
 	s.statusText.Set("Requesting " + name + " permission...")
 
 	go func() {
+		ctx := context.Background()
 		var result platform.PermissionResult
 		var err error
 
-		switch name {
-		case "Camera":
-			result, err = platform.Permissions.Camera.Request()
-		case "Location":
-			result, err = platform.Permissions.Location.RequestWhenInUse()
-		case "Photos":
-			result, err = platform.Permissions.Photos.Request()
-		case "Microphone":
-			result, err = platform.Permissions.Microphone.Request()
-		case "Notifications":
-			result, err = platform.Permissions.Notification.Request(platform.NotificationOptions{
-				Alert: true,
-				Sound: true,
-				Badge: true,
-			})
-		default:
-			drift.Dispatch(func() {
-				s.statusText.Set("Unknown permission: " + name)
-			})
-			return
+		// Find the permission by name
+		for _, p := range otherPermissions {
+			if p.name == name {
+				result, err = p.permission.Request(ctx)
+				break
+			}
 		}
 
 		drift.Dispatch(func() {
@@ -248,7 +206,8 @@ func (s *permissionsState) requestPermission(name string) {
 }
 
 func (s *permissionsState) openSettings() {
-	err := platform.OpenAppSettings()
+	ctx := context.Background()
+	err := platform.OpenAppSettings(ctx)
 	if err != nil {
 		s.statusText.Set("Error opening settings: " + err.Error())
 		return

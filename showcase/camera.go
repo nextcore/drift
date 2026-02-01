@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
+	"time"
 
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/drift"
@@ -35,22 +37,35 @@ func (c cameraPage) CreateState() core.State {
 
 type cameraState struct {
 	core.StateBase
-	status *core.ManagedState[string]
-	image  *core.ManagedState[image.Image]
+	status           *core.ManagedState[string]
+	image            *core.ManagedState[image.Image]
+	permissionStatus *core.ManagedState[platform.PermissionStatus]
+	unsubscribe      func()
 }
 
 func (s *cameraState) InitState() {
 	s.status = core.NewManagedState(&s.StateBase, "Tap a button to capture or select an image.")
 	s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
+	s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
 
+	ctx := context.Background()
+
+	// Check initial permission status
 	go func() {
-		for result := range platform.CameraResults() {
-			r := result
-			drift.Dispatch(func() {
-				s.handleResult(r)
-			})
-		}
+		status, _ := platform.Camera.Permission.Status(ctx)
+		drift.Dispatch(func() {
+			s.permissionStatus.Set(status)
+		})
 	}()
+
+	// Listen for permission changes
+	s.unsubscribe = platform.Camera.Permission.Listen(func(status platform.PermissionStatus) {
+		drift.Dispatch(func() {
+			s.permissionStatus.Set(status)
+		})
+	})
+
+	s.OnDispose(s.unsubscribe)
 }
 
 func (s *cameraState) handleResult(result platform.CameraResult) {
@@ -104,6 +119,28 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 	_, colors, _ := theme.UseTheme(ctx)
 
 	return demoPage(ctx, "Camera",
+		sectionTitle("Permission", colors),
+		widgets.VSpace(8),
+		widgets.Row{
+			MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
+			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
+			ChildrenWidgets: []core.Widget{
+				widgets.Text{Content: "Camera access:", Style: labelStyle(colors)},
+				permissionBadge(s.permissionStatus.Get(), colors),
+			},
+		},
+		widgets.VSpace(8),
+		theme.ButtonOf(ctx, "Request Permission", func() {
+			go func() {
+				ctx := context.Background()
+				status, _ := platform.Camera.Permission.Request(ctx)
+				drift.Dispatch(func() {
+					s.permissionStatus.Set(status)
+				})
+			}()
+		}),
+		widgets.VSpace(24),
+
 		sectionTitle("Camera Capture", colors),
 		widgets.VSpace(12),
 		widgets.Row{
@@ -174,27 +211,37 @@ func (s *cameraState) imagePreview(colors theme.ColorScheme) core.Widget {
 func (s *cameraState) capturePhoto(useFront bool) {
 	s.status.Set("Opening camera...")
 	go func() {
-		err := platform.CapturePhoto(platform.CapturePhotoOptions{
+		// Use timeout to prevent blocking forever if native layer fails
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		result, err := platform.Camera.CapturePhoto(ctx, platform.CapturePhotoOptions{
 			UseFrontCamera: useFront,
 		})
-		if err != nil {
-			drift.Dispatch(func() {
+		drift.Dispatch(func() {
+			if err != nil {
 				s.status.Set("Error: " + err.Error())
-			})
-		}
+				return
+			}
+			s.handleResult(result)
+		})
 	}()
 }
 
 func (s *cameraState) pickFromGallery() {
 	s.status.Set("Opening gallery...")
 	go func() {
-		err := platform.PickFromGallery(platform.PickFromGalleryOptions{
-			AllowMultiple: false,
-		})
-		if err != nil {
-			drift.Dispatch(func() {
+		// Use timeout to prevent blocking forever if native layer fails
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		result, err := platform.Camera.PickFromGallery(ctx, platform.PickFromGalleryOptions{})
+		drift.Dispatch(func() {
+			if err != nil {
 				s.status.Set("Error: " + err.Error())
-			})
-		}
+				return
+			}
+			s.handleResult(result)
+		})
 	}()
 }

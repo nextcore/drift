@@ -5,6 +5,7 @@ import (
 	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/navigation"
+	"github.com/go-drift/drift/pkg/platform"
 	"github.com/go-drift/drift/pkg/theme"
 	"github.com/go-drift/drift/pkg/widgets"
 )
@@ -123,7 +124,7 @@ func gradientBorderCard(ctx core.BuildContext, title, description, route string,
 			BorderWidth:    1,
 			BorderRadius:   12,
 			Color:          colors.Background, // Inner fill matches page background
-			Height:         96,
+			Height:         84,
 			Alignment:      layout.AlignmentTopLeft,
 			Shadow: &graphics.BoxShadow{
 				Color:      PinkSeed.WithAlpha(pinkAlpha),
@@ -315,6 +316,42 @@ func demoCard(ctx core.BuildContext, demo Demo, colors theme.ColorScheme) core.W
 					},
 				},
 			},
+		},
+	}
+}
+
+// permissionBadge renders a colored badge showing permission status.
+func permissionBadge(status platform.PermissionStatus, colors theme.ColorScheme) core.Widget {
+	var bgColor, textColor graphics.Color
+	label := string(status)
+	if label == "" {
+		label = "unknown"
+	}
+
+	switch status {
+	case platform.PermissionGranted:
+		bgColor = 0xFF4CAF50 // green
+		textColor = 0xFFFFFFFF
+	case platform.PermissionDenied, platform.PermissionPermanentlyDenied:
+		bgColor = 0xFFF44336 // red
+		textColor = 0xFFFFFFFF
+	case platform.PermissionLimited, platform.PermissionProvisional:
+		bgColor = 0xFFFF9800 // orange
+		textColor = 0xFFFFFFFF
+	default:
+		bgColor = colors.SurfaceContainerHigh
+		textColor = colors.OnSurfaceVariant
+	}
+
+	return widgets.DecoratedBox{
+		Color:        bgColor,
+		BorderRadius: 4,
+		ChildWidget: widgets.Padding{
+			Padding: layout.EdgeInsetsSymmetric(8, 4),
+			ChildWidget: widgets.Text{Content: label, Style: graphics.TextStyle{
+				Color:    textColor,
+				FontSize: 12,
+			}},
 		},
 	}
 }

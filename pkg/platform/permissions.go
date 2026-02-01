@@ -61,12 +61,7 @@ type NotificationOptions struct {
 const DefaultPermissionTimeout = 30 * time.Second
 
 // isTerminalStatus returns true if the status is a terminal state that won't change
-// from showing a permission dialog. This includes:
-//   - granted: permission already granted
-//   - permanently_denied: user denied with "don't ask again" (Android) or denied twice (iOS)
-//   - restricted: system policy prevents granting (parental controls, MDM, etc.)
-//   - limited: partial access granted (e.g., iOS Photos with selected photos only)
-//   - provisional: provisional notifications granted (iOS); no upgrade prompt available
+// from showing a permission dialog.
 func isTerminalStatus(status PermissionResult) bool {
 	switch status {
 	case PermissionGranted, PermissionPermanentlyDenied, PermissionRestricted,
@@ -75,29 +70,6 @@ func isTerminalStatus(status PermissionResult) bool {
 	default:
 		return false
 	}
-}
-
-// Permissions provides access to runtime permission management.
-// Each permission type offers Status(), Request(), IsGranted(), IsDenied(),
-// ShouldShowRationale(), and Changes() methods.
-var Permissions = struct {
-	Camera       *permissionType
-	Microphone   *permissionType
-	Photos       *permissionType
-	Location     *locationPermissionType
-	Contacts     *permissionType
-	Calendar     *permissionType
-	Storage      *permissionType
-	Notification *notificationPermissionType
-}{
-	Camera:       newPermission("camera"),
-	Microphone:   newPermission("microphone"),
-	Photos:       newPermission("photos"),
-	Location:     newLocationPermission(),
-	Contacts:     newPermission("contacts"),
-	Calendar:     newPermission("calendar"),
-	Storage:      newPermission("storage"),
-	Notification: newNotificationPermission(),
 }
 
 var (
@@ -120,10 +92,6 @@ type permissionType struct {
 
 	// Mutex to serialize permission requests (only one dialog can be shown at a time)
 	requestMu sync.Mutex
-
-	// Shared channel for Changes() - initialized once, returned to all callers
-	changesOnce sync.Once
-	changesChan chan PermissionResult
 }
 
 func newPermission(name string) *permissionType {
@@ -147,15 +115,6 @@ func (p *permissionType) Status() (PermissionResult, error) {
 
 // Request requests the permission from the user and blocks until the user responds
 // or the default timeout (DefaultPermissionTimeout) is exceeded.
-//
-// If the permission is already in a terminal state (granted, permanently_denied,
-// restricted, limited, or provisional), returns immediately without showing a dialog.
-//
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the user did not respond within the timeout period
-//   - Other errors: platform communication failures
 func (p *permissionType) Request() (PermissionResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultPermissionTimeout)
 	defer cancel()
@@ -164,16 +123,6 @@ func (p *permissionType) Request() (PermissionResult, error) {
 
 // RequestWithContext requests the permission from the user and blocks until the user
 // responds, the context is canceled, or the context deadline is exceeded.
-//
-// If the permission is already in a terminal state (granted, permanently_denied,
-// restricted, limited, or provisional), returns immediately without showing a dialog.
-//
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the context deadline was exceeded
-//   - ErrCanceled: the context was canceled
-//   - Other errors: platform communication failures
 func (p *permissionType) RequestWithContext(ctx context.Context) (PermissionResult, error) {
 	p.requestMu.Lock()
 	defer p.requestMu.Unlock()
@@ -266,52 +215,6 @@ func (p *permissionType) ShouldShowRationale() bool {
 	return false
 }
 
-// Changes returns a channel that receives permission status changes for this permission.
-// The same channel is returned on each call. Only one goroutine should read from it;
-// if multiple goroutines read, events will be split between them (not broadcast).
-// The channel has a small buffer; slow consumers may miss events.
-func (p *permissionType) Changes() <-chan PermissionResult {
-	p.changesOnce.Do(func() {
-		p.changesChan = make(chan PermissionResult, 4)
-		p.changes.Listen(EventHandler{
-			OnEvent: func(data any) {
-				change, ok := parsePermissionChange(data)
-				if !ok {
-					errors.Report(&errors.DriftError{
-						Op:      "permissions.parseChange",
-						Kind:    errors.KindParsing,
-						Channel: "drift/permissions/changes",
-						Err: &errors.ParseError{
-							Channel:  "drift/permissions/changes",
-							DataType: "PermissionChange",
-							Got:      data,
-						},
-					})
-					return
-				}
-				// Only send changes for this specific permission
-				if change.Permission == p.name {
-					select {
-					case p.changesChan <- change.Result:
-					default:
-						// Channel full, skip
-					}
-				}
-			},
-			OnError: func(err error) {
-				errors.Report(&errors.DriftError{
-					Op:      "permissions.streamError",
-					Kind:    errors.KindPlatform,
-					Channel: "drift/permissions/changes",
-					Err:     err,
-				})
-			},
-		})
-	})
-
-	return p.changesChan
-}
-
 // locationPermissionType extends permissionType with location-specific methods.
 type locationPermissionType struct {
 	*permissionType
@@ -319,10 +222,6 @@ type locationPermissionType struct {
 
 	// Mutex to serialize always permission requests
 	alwaysRequestMu sync.Mutex
-
-	// Shared channel for ChangesAlways() - initialized once, returned to all callers
-	alwaysChangesOnce sync.Once
-	alwaysChangesChan chan PermissionResult
 }
 
 func newLocationPermission() *locationPermissionType {
@@ -332,43 +231,8 @@ func newLocationPermission() *locationPermissionType {
 	}
 }
 
-// RequestWhenInUse requests permission to access location while the app is in use
-// and blocks until the user responds or the default timeout is exceeded.
-//
-// This is equivalent to calling Request() on the location permission.
-// See [permissionType.Request] for full documentation on blocking behavior and errors.
-func (l *locationPermissionType) RequestWhenInUse() (PermissionResult, error) {
-	return l.Request()
-}
-
-// RequestAlways requests permission to access location in the background ("always")
-// and blocks until the user responds or the default timeout is exceeded.
-//
-// On iOS, this requires first obtaining "when in use" permission. On Android 10+,
-// background location is requested separately from foreground location.
-//
-// If the permission is already in a terminal state, returns immediately.
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the user did not respond within the timeout period
-//   - Other errors: platform communication failures
-func (l *locationPermissionType) RequestAlways() (PermissionResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultPermissionTimeout)
-	defer cancel()
-	return l.RequestAlwaysWithContext(ctx)
-}
-
 // RequestAlwaysWithContext requests permission to access location in the background
 // and blocks until the user responds, the context is canceled, or the deadline is exceeded.
-//
-// If the permission is already in a terminal state, returns immediately.
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the context deadline was exceeded
-//   - ErrCanceled: the context was canceled
-//   - Other errors: platform communication failures
 func (l *locationPermissionType) RequestAlwaysWithContext(ctx context.Context) (PermissionResult, error) {
 	l.alwaysRequestMu.Lock()
 	defer l.alwaysRequestMu.Unlock()
@@ -447,45 +311,6 @@ func (l *locationPermissionType) IsAlwaysGranted() bool {
 	return status == PermissionGranted
 }
 
-// ChangesAlways returns a channel that receives background location permission status changes.
-// The same channel is returned on each call. Only one goroutine should read from it;
-// if multiple goroutines read, events will be split between them (not broadcast).
-// The channel has a small buffer; slow consumers may miss events.
-//
-// Note: Use Changes() for when-in-use location updates and ChangesAlways() for background
-// location updates. The platform emits separate events for each permission level.
-func (l *locationPermissionType) ChangesAlways() <-chan PermissionResult {
-	l.alwaysChangesOnce.Do(func() {
-		l.alwaysChangesChan = make(chan PermissionResult, 4)
-		l.changes.Listen(EventHandler{
-			OnEvent: func(data any) {
-				change, ok := parsePermissionChange(data)
-				if !ok {
-					return
-				}
-				// Only send changes for location_always
-				if change.Permission == "location_always" {
-					select {
-					case l.alwaysChangesChan <- change.Result:
-					default:
-						// Channel full, skip
-					}
-				}
-			},
-			OnError: func(err error) {
-				errors.Report(&errors.DriftError{
-					Op:      "permissions.streamError",
-					Kind:    errors.KindPlatform,
-					Channel: "drift/permissions/changes",
-					Err:     err,
-				})
-			},
-		})
-	})
-
-	return l.alwaysChangesChan
-}
-
 // notificationPermissionType extends permissionType with notification-specific options.
 type notificationPermissionType struct {
 	*permissionType
@@ -497,39 +322,8 @@ func newNotificationPermission() *notificationPermissionType {
 	}
 }
 
-// Request requests notification permission with optional configuration and blocks
-// until the user responds or the default timeout is exceeded.
-//
-// If no options are provided, defaults to Alert, Sound, and Badge enabled.
-// Options only affect iOS; on Android they are ignored.
-//
-// If the permission is already in a terminal state (granted, permanently_denied,
-// restricted, or provisional), returns immediately without showing a dialog.
-//
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the user did not respond within the timeout period
-//   - Other errors: platform communication failures
-func (n *notificationPermissionType) Request(opts ...NotificationOptions) (PermissionResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultPermissionTimeout)
-	defer cancel()
-	return n.RequestWithContext(ctx, opts...)
-}
-
 // RequestWithContext requests notification permission with optional configuration and blocks
 // until the user responds, the context is canceled, or the deadline is exceeded.
-//
-// If no options are provided, defaults to Alert, Sound, and Badge enabled.
-// Options only affect iOS; on Android they are ignored.
-//
-// If the permission is already in a terminal state, returns immediately.
-// This method blocks and should be called from a goroutine, not the main/render thread.
-//
-// Errors:
-//   - ErrTimeout: the context deadline was exceeded
-//   - ErrCanceled: the context was canceled
-//   - Other errors: platform communication failures
 func (n *notificationPermissionType) RequestWithContext(ctx context.Context, opts ...NotificationOptions) (PermissionResult, error) {
 	n.requestMu.Lock()
 	defer n.requestMu.Unlock()
@@ -605,7 +399,8 @@ func (n *notificationPermissionType) RequestWithContext(ctx context.Context, opt
 //
 // On iOS, opens the Settings app to the app's settings page.
 // On Android, opens the App Info screen in system settings.
-func OpenAppSettings() error {
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func OpenAppSettings(ctx context.Context) error {
 	channel := NewMethodChannel("drift/permissions")
 	_, err := channel.Invoke("openSettings", nil)
 	return err
@@ -635,4 +430,193 @@ func parsePermissionChange(data any) (permissionChange, bool) {
 		Permission: parseString(m["permission"]),
 		Result:     PermissionResult(parseString(m["status"])),
 	}, true
+}
+
+// basicPermission implements Permission by wrapping permissionType.
+type basicPermission struct {
+	inner *permissionType
+}
+
+func (p *basicPermission) Status(ctx context.Context) (PermissionStatus, error) {
+	return p.inner.Status()
+}
+
+func (p *basicPermission) Request(ctx context.Context) (PermissionStatus, error) {
+	return p.inner.RequestWithContext(ctx)
+}
+
+func (p *basicPermission) IsGranted(ctx context.Context) bool {
+	return p.inner.IsGranted()
+}
+
+func (p *basicPermission) IsDenied(ctx context.Context) bool {
+	return p.inner.IsDenied()
+}
+
+func (p *basicPermission) ShouldShowRationale(ctx context.Context) (bool, error) {
+	return p.inner.ShouldShowRationale(), nil
+}
+
+func (p *basicPermission) Listen(handler func(PermissionStatus)) (unsubscribe func()) {
+	sub := p.inner.changes.Listen(EventHandler{
+		OnEvent: func(data any) {
+			change, ok := parsePermissionChange(data)
+			if !ok {
+				errors.Report(&errors.DriftError{
+					Op:      "permissions.parseChange",
+					Kind:    errors.KindParsing,
+					Channel: "drift/permissions/changes",
+					Err: &errors.ParseError{
+						Channel:  "drift/permissions/changes",
+						DataType: "PermissionChange",
+						Got:      data,
+					},
+				})
+				return
+			}
+			if change.Permission == p.inner.name {
+				handler(change.Result)
+			}
+		},
+		OnError: func(err error) {
+			errors.Report(&errors.DriftError{
+				Op:      "permissions.streamError",
+				Kind:    errors.KindPlatform,
+				Channel: "drift/permissions/changes",
+				Err:     err,
+			})
+		},
+	})
+	return sub.Cancel
+}
+
+// locationAlwaysPermission implements Permission for background location.
+// Preserves iOS behavior: when-in-use must be granted before requesting always.
+type locationAlwaysPermission struct {
+	inner *locationPermissionType
+}
+
+func (p *locationAlwaysPermission) Status(ctx context.Context) (PermissionStatus, error) {
+	return p.inner.StatusAlways()
+}
+
+func (p *locationAlwaysPermission) Request(ctx context.Context) (PermissionStatus, error) {
+	return p.inner.RequestAlwaysWithContext(ctx)
+}
+
+func (p *locationAlwaysPermission) IsGranted(ctx context.Context) bool {
+	return p.inner.IsAlwaysGranted()
+}
+
+func (p *locationAlwaysPermission) IsDenied(ctx context.Context) bool {
+	status, err := p.inner.StatusAlways()
+	if err != nil {
+		return false
+	}
+	return status == PermissionDenied || status == PermissionPermanentlyDenied
+}
+
+func (p *locationAlwaysPermission) ShouldShowRationale(ctx context.Context) (bool, error) {
+	return p.inner.ShouldShowRationale(), nil
+}
+
+func (p *locationAlwaysPermission) Listen(handler func(PermissionStatus)) (unsubscribe func()) {
+	sub := p.inner.changes.Listen(EventHandler{
+		OnEvent: func(data any) {
+			change, ok := parsePermissionChange(data)
+			if !ok {
+				errors.Report(&errors.DriftError{
+					Op:      "permissions.parseChange",
+					Kind:    errors.KindParsing,
+					Channel: "drift/permissions/changes",
+					Err: &errors.ParseError{
+						Channel:  "drift/permissions/changes",
+						DataType: "PermissionChange",
+						Got:      data,
+					},
+				})
+				return
+			}
+			if change.Permission == "location_always" {
+				handler(change.Result)
+			}
+		},
+		OnError: func(err error) {
+			errors.Report(&errors.DriftError{
+				Op:      "permissions.streamError",
+				Kind:    errors.KindPlatform,
+				Channel: "drift/permissions/changes",
+				Err:     err,
+			})
+		},
+	})
+	return sub.Cancel
+}
+
+// notificationPermissionImpl implements NotificationPermission.
+type notificationPermissionImpl struct {
+	inner *notificationPermissionType
+}
+
+func (p *notificationPermissionImpl) Status(ctx context.Context) (PermissionStatus, error) {
+	return p.inner.Status()
+}
+
+func (p *notificationPermissionImpl) Request(ctx context.Context) (PermissionStatus, error) {
+	// Default options: Alert, Sound, Badge enabled
+	return p.inner.RequestWithContext(ctx)
+}
+
+func (p *notificationPermissionImpl) RequestWithOptions(ctx context.Context, opts NotificationPermissionOptions) (PermissionStatus, error) {
+	return p.inner.RequestWithContext(ctx, NotificationOptions{
+		Alert:       opts.Alert,
+		Sound:       opts.Sound,
+		Badge:       opts.Badge,
+		Provisional: opts.Provisional,
+	})
+}
+
+func (p *notificationPermissionImpl) IsGranted(ctx context.Context) bool {
+	return p.inner.IsGranted()
+}
+
+func (p *notificationPermissionImpl) IsDenied(ctx context.Context) bool {
+	return p.inner.IsDenied()
+}
+
+func (p *notificationPermissionImpl) ShouldShowRationale(ctx context.Context) (bool, error) {
+	return p.inner.ShouldShowRationale(), nil
+}
+
+func (p *notificationPermissionImpl) Listen(handler func(PermissionStatus)) (unsubscribe func()) {
+	sub := p.inner.changes.Listen(EventHandler{
+		OnEvent: func(data any) {
+			change, ok := parsePermissionChange(data)
+			if !ok {
+				errors.Report(&errors.DriftError{
+					Op:      "permissions.parseChange",
+					Kind:    errors.KindParsing,
+					Channel: "drift/permissions/changes",
+					Err: &errors.ParseError{
+						Channel:  "drift/permissions/changes",
+						DataType: "PermissionChange",
+						Got:      data,
+					},
+				})
+				return
+			}
+			if change.Permission == p.inner.name {
+				handler(change.Result)
+			}
+		},
+		OnError: func(err error) {
+			errors.Report(&errors.DriftError{
+				Op:      "permissions.streamError",
+				Kind:    errors.KindPlatform,
+				Channel: "drift/permissions/changes",
+				Err:     err,
+			})
+		},
+	})
+	return sub.Cancel
 }

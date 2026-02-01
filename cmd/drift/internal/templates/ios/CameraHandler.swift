@@ -7,16 +7,21 @@ import PhotosUI
 final class CameraHandler: NSObject {
     static let shared = CameraHandler()
 
+    // Track current request ID for correlation
+    private var currentRequestId: String?
+
     static func handle(method: String, args: Any?) -> (Any?, Error?) {
         let dict = args as? [String: Any] ?? [:]
         switch method {
         case "capturePhoto":
             let useFront = dict["useFrontCamera"] as? Bool ?? false
-            DispatchQueue.main.async { shared.openCamera(front: useFront) }
+            let requestId = dict["requestId"] as? String
+            DispatchQueue.main.async { shared.openCamera(front: useFront, requestId: requestId) }
             return (nil, nil)
         case "pickFromGallery":
             let multi = dict["allowMultiple"] as? Bool ?? false
-            DispatchQueue.main.async { shared.openGallery(multi: multi) }
+            let requestId = dict["requestId"] as? String
+            DispatchQueue.main.async { shared.openGallery(multi: multi, requestId: requestId) }
             return (nil, nil)
         default:
             return (nil, NSError(domain: "Camera", code: 404))
@@ -25,11 +30,13 @@ final class CameraHandler: NSObject {
 
     // MARK: - Pickers
 
-    private func openCamera(front: Bool) {
+    private func openCamera(front: Bool, requestId: String?) {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            sendResult(type: "capture", image: nil, error: "Camera not available")
+            sendResult(type: "capture", image: nil, requestId: requestId, error: "Camera not available")
             return
         }
+
+        currentRequestId = requestId
 
         let picker = UIImagePickerController()
         picker.sourceType = .camera
@@ -38,9 +45,11 @@ final class CameraHandler: NSObject {
         present(picker)
     }
 
-    private func openGallery(multi: Bool) {
+    private func openGallery(multi: Bool, requestId: String?) {
         // Note: multi-select is not currently supported on iOS; only the first image is returned.
         _ = multi
+        currentRequestId = requestId
+
         var config = PHPickerConfiguration()
         config.selectionLimit = 1
         config.filter = .images
@@ -71,8 +80,12 @@ final class CameraHandler: NSObject {
         }
     }
 
-    private func sendResult(type: String, image: UIImage?, cancelled: Bool = false, error: String? = nil) {
+    private func sendResult(type: String, image: UIImage?, requestId: String?, cancelled: Bool = false, error: String? = nil) {
         var payload: [String: Any] = ["type": type, "cancelled": cancelled]
+
+        if let requestId = requestId {
+            payload["requestId"] = requestId
+        }
 
         if let error = error {
             payload["error"] = error
@@ -94,18 +107,22 @@ final class CameraHandler: NSObject {
 extension CameraHandler: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         let image = info[.originalImage] as? UIImage
+        let requestId = currentRequestId
+        currentRequestId = nil
         picker.dismiss(animated: true) { [weak self] in
             if let image = image {
-                self?.sendResult(type: "capture", image: image)
+                self?.sendResult(type: "capture", image: image, requestId: requestId)
             } else {
-                self?.sendResult(type: "capture", image: nil, error: "No image captured")
+                self?.sendResult(type: "capture", image: nil, requestId: requestId, error: "No image captured")
             }
         }
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        let requestId = currentRequestId
+        currentRequestId = nil
         picker.dismiss(animated: true) { [weak self] in
-            self?.sendResult(type: "capture", image: nil, cancelled: true)
+            self?.sendResult(type: "capture", image: nil, requestId: requestId, cancelled: true)
         }
     }
 }
@@ -114,19 +131,21 @@ extension CameraHandler: UIImagePickerControllerDelegate, UINavigationController
 
 extension CameraHandler: PHPickerViewControllerDelegate {
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        let requestId = currentRequestId
+        currentRequestId = nil
         picker.dismiss(animated: true)
 
         guard let provider = results.first?.itemProvider, provider.canLoadObject(ofClass: UIImage.self) else {
-            sendResult(type: "gallery", image: nil, cancelled: results.isEmpty)
+            sendResult(type: "gallery", image: nil, requestId: requestId, cancelled: results.isEmpty)
             return
         }
 
         provider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
             DispatchQueue.main.async {
                 if let image = object as? UIImage {
-                    self?.sendResult(type: "gallery", image: image)
+                    self?.sendResult(type: "gallery", image: image, requestId: requestId)
                 } else {
-                    self?.sendResult(type: "gallery", image: nil, error: error?.localizedDescription ?? "Failed to load image")
+                    self?.sendResult(type: "gallery", image: nil, requestId: requestId, error: error?.localizedDescription ?? "Failed to load image")
                 }
             }
         }

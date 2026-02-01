@@ -1,83 +1,89 @@
 package platform
 
-import "time"
-
-var locationService = newLocationService()
+import (
+	"context"
+	"fmt"
+	"time"
+)
 
 // LocationUpdate represents a location update from the device.
 type LocationUpdate struct {
-	Latitude  float64
+	// Latitude is the latitude in degrees.
+	Latitude float64
+	// Longitude is the longitude in degrees.
 	Longitude float64
-	Altitude  float64
-	Accuracy  float64
-	Heading   float64
-	Speed     float64
+	// Altitude is the altitude in meters.
+	Altitude float64
+	// Accuracy is the estimated horizontal accuracy in meters.
+	Accuracy float64
+	// Heading is the direction of travel in degrees.
+	Heading float64
+	// Speed is the speed in meters per second.
+	Speed float64
+	// Timestamp is when the reading was taken.
 	Timestamp time.Time
-	IsMocked  bool
+	// IsMocked reports whether the reading came from a mock provider (Android).
+	IsMocked bool
 }
 
 // LocationOptions configures location update behavior.
 type LocationOptions struct {
-	HighAccuracy      bool
-	DistanceFilter    float64
-	IntervalMs        int64
+	// HighAccuracy requests the highest available accuracy (may use more power).
+	HighAccuracy bool
+	// DistanceFilter is the minimum distance in meters between updates.
+	DistanceFilter float64
+	// IntervalMs is the desired update interval in milliseconds.
+	IntervalMs int64
+	// FastestIntervalMs is the fastest acceptable update interval in milliseconds (Android).
 	FastestIntervalMs int64
 }
 
-// GetCurrentLocation gets the device's current location.
-func GetCurrentLocation(opts LocationOptions) (*LocationUpdate, error) {
-	return locationService.getCurrentLocation(opts)
+// LocationService provides location and GPS services.
+// Context parameters are currently unused and reserved for future cancellation support.
+type LocationService struct {
+	// Permission provides access to location permission levels.
+	Permission struct {
+		// WhenInUse permission for foreground location access.
+		WhenInUse Permission
+		// Always permission for background location access.
+		// On iOS, WhenInUse must be granted before requesting Always.
+		Always Permission
+	}
+
+	state   *locationServiceState
+	updates *Stream[LocationUpdate]
 }
 
-// StartLocationUpdates starts receiving continuous location updates.
-func StartLocationUpdates(opts LocationOptions) error {
-	return locationService.startUpdates(opts)
-}
+// Location is the singleton location service.
+var Location *LocationService
 
-// StopLocationUpdates stops receiving location updates.
-func StopLocationUpdates() error {
-	return locationService.stopUpdates()
-}
-
-// LocationUpdates returns a channel that receives location updates.
-func LocationUpdates() <-chan LocationUpdate {
-	return locationService.updateChannel()
-}
-
-// IsLocationEnabled checks if location services are enabled on the device.
-func IsLocationEnabled() (bool, error) {
-	return locationService.isEnabled()
-}
-
-// GetLastKnownLocation returns the last known location without triggering a new request.
-func GetLastKnownLocation() (*LocationUpdate, error) {
-	return locationService.getLastKnown()
+func init() {
+	locPerm := newLocationPermission()
+	state := newLocationService()
+	Location = &LocationService{
+		state:   state,
+		updates: NewStream("drift/location/updates", state.updates, parseLocationUpdateWithError),
+	}
+	Location.Permission.WhenInUse = &basicPermission{inner: locPerm.permissionType}
+	Location.Permission.Always = &locationAlwaysPermission{inner: locPerm}
 }
 
 type locationServiceState struct {
-	channel  *MethodChannel
-	updates  *EventChannel
-	updateCh chan LocationUpdate
+	channel *MethodChannel
+	updates *EventChannel
 }
 
 func newLocationService() *locationServiceState {
-	service := &locationServiceState{
-		channel:  NewMethodChannel("drift/location"),
-		updates:  NewEventChannel("drift/location/updates"),
-		updateCh: make(chan LocationUpdate, 4),
+	return &locationServiceState{
+		channel: NewMethodChannel("drift/location"),
+		updates: NewEventChannel("drift/location/updates"),
 	}
-
-	service.updates.Listen(EventHandler{OnEvent: func(data any) {
-		if update, ok := parseLocationUpdate(data); ok {
-			service.updateCh <- update
-		}
-	}})
-
-	return service
 }
 
-func (s *locationServiceState) getCurrentLocation(opts LocationOptions) (*LocationUpdate, error) {
-	result, err := s.channel.Invoke("getCurrentLocation", map[string]any{
+// GetCurrent returns the current device location.
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func (l *LocationService) GetCurrent(ctx context.Context, opts LocationOptions) (*LocationUpdate, error) {
+	result, err := l.state.channel.Invoke("getCurrentLocation", map[string]any{
 		"highAccuracy":      opts.HighAccuracy,
 		"distanceFilter":    opts.DistanceFilter,
 		"intervalMs":        opts.IntervalMs,
@@ -86,14 +92,17 @@ func (s *locationServiceState) getCurrentLocation(opts LocationOptions) (*Locati
 	if err != nil {
 		return nil, err
 	}
-	if update, ok := parseLocationUpdate(result); ok {
-		return &update, nil
+	update, err := parseLocationUpdateWithError(result)
+	if err != nil {
+		return nil, ErrInvalidArguments
 	}
-	return nil, ErrInvalidArguments
+	return &update, nil
 }
 
-func (s *locationServiceState) startUpdates(opts LocationOptions) error {
-	_, err := s.channel.Invoke("startUpdates", map[string]any{
+// StartUpdates begins continuous location updates.
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func (l *LocationService) StartUpdates(ctx context.Context, opts LocationOptions) error {
+	_, err := l.state.channel.Invoke("startUpdates", map[string]any{
 		"highAccuracy":      opts.HighAccuracy,
 		"distanceFilter":    opts.DistanceFilter,
 		"intervalMs":        opts.IntervalMs,
@@ -102,13 +111,22 @@ func (s *locationServiceState) startUpdates(opts LocationOptions) error {
 	return err
 }
 
-func (s *locationServiceState) stopUpdates() error {
-	_, err := s.channel.Invoke("stopUpdates", nil)
+// StopUpdates stops location updates.
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func (l *LocationService) StopUpdates(ctx context.Context) error {
+	_, err := l.state.channel.Invoke("stopUpdates", nil)
 	return err
 }
 
-func (s *locationServiceState) isEnabled() (bool, error) {
-	result, err := s.channel.Invoke("isEnabled", nil)
+// Updates returns a stream of location updates.
+func (l *LocationService) Updates() *Stream[LocationUpdate] {
+	return l.updates
+}
+
+// IsEnabled checks if location services are enabled on the device.
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func (l *LocationService) IsEnabled(ctx context.Context) (bool, error) {
+	result, err := l.state.channel.Invoke("isEnabled", nil)
 	if err != nil {
 		return false, err
 	}
@@ -118,28 +136,27 @@ func (s *locationServiceState) isEnabled() (bool, error) {
 	return false, nil
 }
 
-func (s *locationServiceState) getLastKnown() (*LocationUpdate, error) {
-	result, err := s.channel.Invoke("getLastKnown", nil)
+// LastKnown returns the last known location without triggering a new request.
+// The ctx parameter is currently unused and reserved for future cancellation support.
+func (l *LocationService) LastKnown(ctx context.Context) (*LocationUpdate, error) {
+	result, err := l.state.channel.Invoke("getLastKnown", nil)
 	if err != nil {
 		return nil, err
 	}
 	if result == nil {
 		return nil, nil
 	}
-	if update, ok := parseLocationUpdate(result); ok {
-		return &update, nil
+	update, err := parseLocationUpdateWithError(result)
+	if err != nil {
+		return nil, nil
 	}
-	return nil, nil
+	return &update, nil
 }
 
-func (s *locationServiceState) updateChannel() <-chan LocationUpdate {
-	return s.updateCh
-}
-
-func parseLocationUpdate(data any) (LocationUpdate, bool) {
+func parseLocationUpdateWithError(data any) (LocationUpdate, error) {
 	m, ok := data.(map[string]any)
 	if !ok {
-		return LocationUpdate{}, false
+		return LocationUpdate{}, fmt.Errorf("expected map, got %T", data)
 	}
 	return LocationUpdate{
 		Latitude:  parseFloat64(m["latitude"]),
@@ -150,7 +167,7 @@ func parseLocationUpdate(data any) (LocationUpdate, bool) {
 		Speed:     parseFloat64(m["speed"]),
 		Timestamp: parseTime(m["timestamp"]),
 		IsMocked:  parseBool(m["isMocked"]),
-	}, true
+	}, nil
 }
 
 func parseFloat64(value any) float64 {

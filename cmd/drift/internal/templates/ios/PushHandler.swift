@@ -27,7 +27,7 @@ enum PushHandler {
 
     private static func register() -> (Any?, Error?) {
         // Check current authorization status and register for remote notifications if authorized.
-        // Permission should be requested via platform.Permissions.Notification.Request() first.
+        // Permission should be requested via platform.Notifications.Permission.Request() first.
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
@@ -35,7 +35,7 @@ enum PushHandler {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
             case .notDetermined:
-                sendError("authorization_required", message: "Call Permissions.Notification.Request() before registering for push")
+                sendError("authorization_required", message: "Call platform.Notifications.Permission.Request() before registering for push")
             case .denied:
                 sendError("authorization_denied", message: "Notification permission denied")
             @unknown default:

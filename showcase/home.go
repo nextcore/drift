@@ -62,7 +62,7 @@ func homeScrollContent(ctx core.BuildContext, colors theme.ColorScheme, isDark b
 				headerRow(ctx, isDark, toggleTheme),
 
 				// Hero section
-				widgets.VSpace(60),
+				widgets.VSpace(50),
 				logoWithGlow(),
 				widgets.VSpace(28),
 				taglineText(colors),
@@ -74,7 +74,7 @@ func homeScrollContent(ctx core.BuildContext, colors theme.ColorScheme, isDark b
 				homeCategoryGrid(ctx, colors, isDark),
 
 				// Footer
-				widgets.VSpace(60),
+				widgets.VSpace(40),
 				crashButton(ctx, colors),
 				widgets.VSpace(40),
 			},

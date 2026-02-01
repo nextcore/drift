@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -33,50 +34,76 @@ func (n notificationsPage) CreateState() core.State {
 
 type notificationsState struct {
 	core.StateBase
-	statusText   *core.ManagedState[string]
-	receivedText *core.ManagedState[string]
-	openedText   *core.ManagedState[string]
+	statusText       *core.ManagedState[string]
+	receivedText     *core.ManagedState[string]
+	openedText       *core.ManagedState[string]
+	permissionStatus *core.ManagedState[platform.PermissionStatus]
+	unsubFuncs       []func()
 }
 
 func (s *notificationsState) InitState() {
 	s.statusText = core.NewManagedState(&s.StateBase, "Request permission to enable notifications.")
 	s.receivedText = core.NewManagedState(&s.StateBase, "No notifications received yet.")
 	s.openedText = core.NewManagedState(&s.StateBase, "No notification opens yet.")
+	s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
 
+	ctx := context.Background()
+
+	// Check initial permission status
 	go func() {
-		for event := range platform.Notifications() {
-			message := fmt.Sprintf("Received (%s): %s", event.Source, event.Title)
-			drift.Dispatch(func() {
-				s.receivedText.Set(message)
-			})
-		}
+		status, _ := platform.Notifications.Permission.Status(ctx)
+		drift.Dispatch(func() {
+			s.permissionStatus.Set(status)
+		})
 	}()
 
-	go func() {
-		for event := range platform.NotificationOpens() {
-			message := fmt.Sprintf("Opened (%s): %s", event.Source, event.ID)
-			drift.Dispatch(func() {
-				s.openedText.Set(message)
-			})
-		}
-	}()
+	// Listen for notification deliveries
+	deliveriesUnsub := platform.Notifications.Deliveries().Listen(func(event platform.NotificationEvent) {
+		message := fmt.Sprintf("Received (%s): %s", event.Source, event.Title)
+		drift.Dispatch(func() {
+			s.receivedText.Set(message)
+		})
+	})
 
-	// Listen for notification permission changes
-	go func() {
-		for status := range platform.Permissions.Notification.Changes() {
-			message := "Permission status: " + string(status)
-			drift.Dispatch(func() {
-				s.statusText.Set(message)
-			})
+	// Listen for notification opens
+	opensUnsub := platform.Notifications.Opens().Listen(func(event platform.NotificationOpen) {
+		message := fmt.Sprintf("Opened (%s): %s", event.Source, event.ID)
+		drift.Dispatch(func() {
+			s.openedText.Set(message)
+		})
+	})
+
+	// Listen for permission changes
+	permUnsub := platform.Notifications.Permission.Listen(func(status platform.PermissionStatus) {
+		drift.Dispatch(func() {
+			s.permissionStatus.Set(status)
+			s.statusText.Set("Permission status: " + string(status))
+		})
+	})
+
+	s.unsubFuncs = []func(){deliveriesUnsub, opensUnsub, permUnsub}
+
+	s.OnDispose(func() {
+		for _, unsub := range s.unsubFuncs {
+			unsub()
 		}
-	}()
+	})
 }
 
 func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 	_, colors, _ := theme.UseTheme(ctx)
 
 	return demoPage(ctx, "Notifications",
-		sectionTitle("Permissions", colors),
+		sectionTitle("Permission", colors),
+		widgets.VSpace(8),
+		widgets.Row{
+			MainAxisAlignment:  widgets.MainAxisAlignmentSpaceBetween,
+			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
+			ChildrenWidgets: []core.Widget{
+				widgets.Text{Content: "Notification access:", Style: labelStyle(colors)},
+				permissionBadge(s.permissionStatus.Get(), colors),
+			},
+		},
 		widgets.VSpace(12),
 		widgets.Text{Content: "Request notification permissions on iOS/Android:", Style: labelStyle(colors)},
 		widgets.VSpace(12),
@@ -103,25 +130,38 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *notificationsState) requestPermissions() {
-	status, err := platform.Permissions.Notification.Request(platform.NotificationOptions{
-		Alert: true,
-		Sound: true,
-		Badge: true,
-	})
+	go func() {
+		// Use timeout to prevent blocking forever if OS never responds
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
 
-	if err != nil {
-		s.statusText.Set("Permission error: " + err.Error())
-		return
-	}
+		status, err := platform.Notifications.Permission.RequestWithOptions(ctx,
+			platform.NotificationPermissionOptions{
+				Alert: true,
+				Sound: true,
+				Badge: true,
+			},
+		)
 
-	message := "Permission status: " + string(status)
-	if status == platform.PermissionNotDetermined {
-		message = "Waiting for permission…"
-	}
-	s.statusText.Set(message)
+		drift.Dispatch(func() {
+			if err != nil {
+				s.statusText.Set("Permission error: " + err.Error())
+				return
+			}
+
+			s.permissionStatus.Set(status)
+			message := "Permission status: " + string(status)
+			if status == platform.PermissionNotDetermined {
+				message = "Waiting for permission…"
+			}
+			s.statusText.Set(message)
+		})
+	}()
 }
 
 func (s *notificationsState) scheduleLocal() {
+	ctx := context.Background()
+
 	request := platform.NotificationRequest{
 		ID:    fmt.Sprintf("demo-%d", time.Now().Unix()),
 		Title: "Drift Notification",
@@ -132,7 +172,7 @@ func (s *notificationsState) scheduleLocal() {
 		},
 	}
 
-	if err := platform.ScheduleLocalNotification(request); err != nil {
+	if err := platform.Notifications.Schedule(ctx, request); err != nil {
 		s.receivedText.Set("Schedule error: " + err.Error())
 		return
 	}

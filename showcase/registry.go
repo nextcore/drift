@@ -71,7 +71,7 @@ var demos = []Demo{
 	{"/webview", "WebView", "Embedded browser view", CategoryMedia, "icon-globe.svg", buildWebViewPage},
 
 	// System demos
-	{"/permissions", "Permissions", "Runtime permission requests", CategorySystem, "icon-shield.svg", buildPermissionsPage},
+	{"/permissions", "Other Permissions", "Contacts, calendar, storage access", CategorySystem, "icon-shield.svg", buildPermissionsPage},
 	{"/location", "Location", "GPS and location services", CategorySystem, "icon-location.svg", buildLocationPage},
 	{"/notifications", "Notifications", "Push and local notifications", CategorySystem, "icon-bell.svg", buildNotificationsPage},
 	{"/storage", "Storage", "File picker and directories", CategorySystem, "icon-folder.svg", buildStoragePage},
