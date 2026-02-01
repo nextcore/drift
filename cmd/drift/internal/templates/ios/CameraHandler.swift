@@ -1,212 +1,91 @@
 /// CameraHandler.swift
-/// Handles camera capture and gallery picking for the Drift platform channel.
+/// Handles camera capture and photo library selection.
 
 import UIKit
-import Photos
 import PhotosUI
-import AVFoundation
 
 final class CameraHandler: NSObject {
     static let shared = CameraHandler()
 
-    private override init() {
-        super.init()
-    }
-
     static func handle(method: String, args: Any?) -> (Any?, Error?) {
+        let dict = args as? [String: Any] ?? [:]
         switch method {
         case "capturePhoto":
-            return shared.capturePhoto(args: args)
-        case "captureVideo":
-            return shared.captureVideo(args: args)
+            let useFront = dict["useFrontCamera"] as? Bool ?? false
+            DispatchQueue.main.async { shared.openCamera(front: useFront) }
+            return (nil, nil)
         case "pickFromGallery":
-            return shared.pickFromGallery(args: args)
+            let multi = dict["allowMultiple"] as? Bool ?? false
+            DispatchQueue.main.async { shared.openGallery(multi: multi) }
+            return (nil, nil)
         default:
-            return (nil, NSError(domain: "Camera", code: 404, userInfo: [NSLocalizedDescriptionKey: "Unknown method: \(method)"]))
+            return (nil, NSError(domain: "Camera", code: 404))
         }
     }
 
-    private func capturePhoto(args: Any?) -> (Any?, Error?) {
-        let dict = args as? [String: Any] ?? [:]
-        let useFrontCamera = dict["useFrontCamera"] as? Bool ?? false
+    // MARK: - Pickers
 
-        DispatchQueue.main.async {
-            self.presentImagePicker(
-                sourceType: .camera,
-                mediaTypes: ["public.image"],
-                cameraDevice: useFrontCamera ? .front : .rear
-            )
-        }
-
-        // Result will be delivered via drift/camera/result event channel
-        return (["pending": true], nil)
-    }
-
-    private func captureVideo(args: Any?) -> (Any?, Error?) {
-        let dict = args as? [String: Any] ?? [:]
-        let useFrontCamera = dict["useFrontCamera"] as? Bool ?? false
-        let maxDurationMs = dict["maxDurationMs"] as? Int64
-
-        DispatchQueue.main.async {
-            self.presentImagePicker(
-                sourceType: .camera,
-                mediaTypes: ["public.movie"],
-                cameraDevice: useFrontCamera ? .front : .rear,
-                maxDuration: maxDurationMs.map { TimeInterval($0) / 1000.0 }
-            )
-        }
-
-        // Result will be delivered via drift/camera/result event channel
-        return (["pending": true], nil)
-    }
-
-    private func pickFromGallery(args: Any?) -> (Any?, Error?) {
-        let dict = args as? [String: Any] ?? [:]
-        let allowMultiple = dict["allowMultiple"] as? Bool ?? false
-        let mediaType = dict["mediaType"] as? String ?? "all"
-        let maxSelection = dict["maxSelection"] as? Int ?? (allowMultiple ? 10 : 1)
-
-        DispatchQueue.main.async {
-            self.presentPhotoPicker(
-                allowMultiple: allowMultiple,
-                mediaType: mediaType,
-                maxSelection: maxSelection
-            )
-        }
-
-        // Result will be delivered via drift/camera/result event channel
-        return (["pending": true], nil)
-    }
-
-    private func presentImagePicker(
-        sourceType: UIImagePickerController.SourceType,
-        mediaTypes: [String],
-        cameraDevice: UIImagePickerController.CameraDevice,
-        maxDuration: TimeInterval? = nil
-    ) {
-        guard UIImagePickerController.isSourceTypeAvailable(sourceType) else {
-            sendCancelled("capture")
+    private func openCamera(front: Bool) {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            sendResult(type: "capture", image: nil, error: "Camera not available")
             return
         }
 
         let picker = UIImagePickerController()
-        picker.sourceType = sourceType
-        picker.mediaTypes = mediaTypes
+        picker.sourceType = .camera
+        picker.cameraDevice = front ? .front : .rear
         picker.delegate = self
-
-        if sourceType == .camera {
-            picker.cameraDevice = cameraDevice
-            if let maxDuration = maxDuration {
-                picker.videoMaximumDuration = maxDuration
-            }
-        }
-
-        presentPicker(picker)
+        present(picker)
     }
 
-    private func presentPhotoPicker(allowMultiple: Bool, mediaType: String, maxSelection: Int) {
-        var config = PHPickerConfiguration(photoLibrary: .shared())
-        config.selectionLimit = allowMultiple ? maxSelection : 1
-
-        switch mediaType {
-        case "image":
-            config.filter = .images
-        case "video":
-            config.filter = .videos
-        default:
-            config.filter = .any(of: [.images, .videos])
-        }
-
+    private func openGallery(multi: Bool) {
+        // Note: multi-select is not currently supported on iOS; only the first image is returned.
+        _ = multi
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 1
+        config.filter = .images
         let picker = PHPickerViewController(configuration: config)
         picker.delegate = self
-        presentPicker(picker)
+        present(picker)
     }
 
-    private func presentPicker(_ picker: UIViewController) {
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = windowScene.windows.first?.rootViewController {
-            var topVC = rootVC
-            while let presented = topVC.presentedViewController {
-                topVC = presented
-            }
-            topVC.present(picker, animated: true)
-        }
+    // MARK: - Helpers
+
+    private func present(_ vc: UIViewController) {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let root = scene.windows.first?.rootViewController else { return }
+        var top = root
+        while let presented = top.presentedViewController { top = presented }
+        top.present(vc, animated: true)
     }
 
-    private func getMediaInfo(url: URL) -> [String: Any] {
-        var info: [String: Any] = [
-            "path": url.path,
-            "mimeType": mimeType(for: url),
-            "size": fileSize(at: url)
-        ]
-
-        if let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
-           let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] {
-            info["width"] = properties[kCGImagePropertyPixelWidth as String] as? Int ?? 0
-            info["height"] = properties[kCGImagePropertyPixelHeight as String] as? Int ?? 0
-            info["durationMs"] = 0
-        } else {
-            let asset = AVAsset(url: url)
-            if let track = asset.tracks(withMediaType: .video).first {
-                let size = track.naturalSize.applying(track.preferredTransform)
-                info["width"] = Int(abs(size.width))
-                info["height"] = Int(abs(size.height))
-                info["durationMs"] = Int64(CMTimeGetSeconds(asset.duration) * 1000)
-            }
-        }
-
-        return info
-    }
-
-    private func mimeType(for url: URL) -> String {
-        let ext = url.pathExtension.lowercased()
-        switch ext {
-        case "jpg", "jpeg":
-            return "image/jpeg"
-        case "png":
-            return "image/png"
-        case "gif":
-            return "image/gif"
-        case "heic":
-            return "image/heic"
-        case "mov":
-            return "video/quicktime"
-        case "mp4":
-            return "video/mp4"
-        default:
-            return "application/octet-stream"
-        }
-    }
-
-    private func fileSize(at url: URL) -> Int64 {
+    private func saveToTemp(_ image: UIImage) -> String? {
+        guard let data = image.jpegData(compressionQuality: 0.9) else { return nil }
+        let filename = "photo_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         do {
-            let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
-            return attrs[.size] as? Int64 ?? 0
+            try data.write(to: url)
+            return url.path
         } catch {
-            return 0
+            return nil
         }
     }
 
-    // MARK: - Event Sending
+    private func sendResult(type: String, image: UIImage?, cancelled: Bool = false, error: String? = nil) {
+        var payload: [String: Any] = ["type": type, "cancelled": cancelled]
 
-    private func sendCaptureResult(_ result: [String: Any]) {
-        var payload = result
-        payload["type"] = "capture"
+        if let error = error {
+            payload["error"] = error
+        } else if let image = image, let path = saveToTemp(image) {
+            payload["media"] = [
+                "path": path,
+                "width": Int(image.size.width),
+                "height": Int(image.size.height),
+                "mimeType": "image/jpeg"
+            ]
+        }
+
         PlatformChannelManager.shared.sendEvent(channel: "drift/camera/result", data: payload)
-    }
-
-    private func sendGalleryResult(_ mediaList: [[String: Any]]) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/camera/result", data: [
-            "type": "gallery",
-            "media": mediaList
-        ])
-    }
-
-    private func sendCancelled(_ requestType: String) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/camera/result", data: [
-            "type": requestType,
-            "cancelled": true
-        ])
     }
 }
 
@@ -214,45 +93,20 @@ final class CameraHandler: NSObject {
 
 extension CameraHandler: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        picker.dismiss(animated: true)
-
-        if let mediaURL = info[.mediaURL] as? URL {
-            // Video
-            sendCaptureResult(getMediaInfo(url: mediaURL))
-        } else if let imageURL = info[.imageURL] as? URL {
-            // Image with URL
-            sendCaptureResult(getMediaInfo(url: imageURL))
-        } else if let image = info[.originalImage] as? UIImage {
-            // Image without URL - save to temp
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension("jpg")
-
-            if let data = image.jpegData(compressionQuality: 0.9) {
-                do {
-                    try data.write(to: tempURL)
-                    sendCaptureResult([
-                        "path": tempURL.path,
-                        "mimeType": "image/jpeg",
-                        "width": Int(image.size.width),
-                        "height": Int(image.size.height),
-                        "size": Int64(data.count),
-                        "durationMs": 0
-                    ])
-                } catch {
-                    sendCancelled("capture")
-                }
+        let image = info[.originalImage] as? UIImage
+        picker.dismiss(animated: true) { [weak self] in
+            if let image = image {
+                self?.sendResult(type: "capture", image: image)
             } else {
-                sendCancelled("capture")
+                self?.sendResult(type: "capture", image: nil, error: "No image captured")
             }
-        } else {
-            sendCancelled("capture")
         }
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
-        sendCancelled("capture")
+        picker.dismiss(animated: true) { [weak self] in
+            self?.sendResult(type: "capture", image: nil, cancelled: true)
+        }
     }
 }
 
@@ -262,75 +116,18 @@ extension CameraHandler: PHPickerViewControllerDelegate {
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
 
-        guard !results.isEmpty else {
-            sendCancelled("gallery")
+        guard let provider = results.first?.itemProvider, provider.canLoadObject(ofClass: UIImage.self) else {
+            sendResult(type: "gallery", image: nil, cancelled: results.isEmpty)
             return
         }
 
-        // Use a serial queue for thread-safe array access
-        let syncQueue = DispatchQueue(label: "com.drift.camera.gallery")
-        var mediaItems: [[String: Any]] = []
-        let group = DispatchGroup()
-
-        for result in results {
-            group.enter()
-
-            let provider = result.itemProvider
-
-            if provider.hasItemConformingToTypeIdentifier("public.movie") {
-                provider.loadFileRepresentation(forTypeIdentifier: "public.movie") { url, error in
-                    guard let url = url else {
-                        group.leave()
-                        return
-                    }
-
-                    // Copy to temp location
-                    let tempURL = FileManager.default.temporaryDirectory
-                        .appendingPathComponent(UUID().uuidString)
-                        .appendingPathExtension(url.pathExtension)
-
-                    do {
-                        try FileManager.default.copyItem(at: url, to: tempURL)
-                        let info = self.getMediaInfo(url: tempURL)
-                        syncQueue.sync {
-                            mediaItems.append(info)
-                        }
-                    } catch {
-                        // Ignore failed items
-                    }
-                    group.leave()
+        provider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
+            DispatchQueue.main.async {
+                if let image = object as? UIImage {
+                    self?.sendResult(type: "gallery", image: image)
+                } else {
+                    self?.sendResult(type: "gallery", image: nil, error: error?.localizedDescription ?? "Failed to load image")
                 }
-            } else if provider.hasItemConformingToTypeIdentifier("public.image") {
-                provider.loadFileRepresentation(forTypeIdentifier: "public.image") { url, error in
-                    guard let url = url else {
-                        group.leave()
-                        return
-                    }
-
-                    // Copy to temp location
-                    let tempURL = FileManager.default.temporaryDirectory
-                        .appendingPathComponent(UUID().uuidString)
-                        .appendingPathExtension(url.pathExtension)
-
-                    do {
-                        try FileManager.default.copyItem(at: url, to: tempURL)
-                        let info = self.getMediaInfo(url: tempURL)
-                        syncQueue.sync {
-                            mediaItems.append(info)
-                        }
-                    } catch {
-                        // Ignore failed items
-                    }
-                    group.leave()
-                }
-            } else {
-                group.leave()
-            }
-        }
-
-        group.notify(queue: .main) {
-            syncQueue.sync {
-                self.sendGalleryResult(mediaItems)
             }
         }
     }

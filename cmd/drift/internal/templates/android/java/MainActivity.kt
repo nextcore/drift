@@ -131,6 +131,13 @@ class MainActivity : AppCompatActivity() {
         PermissionHandler.onRequestPermissionsResult(this, requestCode, permissions, grantResults)
     }
 
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        CameraHandler.onActivityResult(requestCode, resultCode, data, this)
+        StorageHandler.onActivityResult(requestCode, resultCode, data, this)
+    }
+
     /**
      * Called when the activity becomes visible and interactive.
      *

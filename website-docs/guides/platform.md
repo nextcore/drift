@@ -398,6 +398,164 @@ go func() {
 }()
 ```
 
+## Camera
+
+Capture photos and select images from the photo library:
+
+```go
+import "github.com/go-drift/drift/pkg/platform"
+
+// Capture a photo with the rear camera
+err := platform.CapturePhoto(platform.CapturePhotoOptions{})
+
+// Capture a selfie with the front camera
+err := platform.CapturePhoto(platform.CapturePhotoOptions{
+    UseFrontCamera: true,
+})
+
+// Pick a single image from the gallery
+err := platform.PickFromGallery(platform.PickFromGalleryOptions{})
+
+// Pick multiple images (Android only; iOS returns single image)
+err := platform.PickFromGallery(platform.PickFromGalleryOptions{
+    AllowMultiple: true,
+})
+```
+
+### Handling Results
+
+Camera operations are asynchronous. Listen for results on the `CameraResults()` channel:
+
+```go
+func (s *myState) InitState() {
+    go func() {
+        for result := range platform.CameraResults() {
+            r := result // capture for closure
+            drift.Dispatch(func() {
+                s.handleCameraResult(r)
+            })
+        }
+    }()
+}
+
+func (s *myState) handleCameraResult(result platform.CameraResult) {
+    if result.Cancelled {
+        s.showMessage("Cancelled")
+        return
+    }
+
+    if result.Error != "" {
+        s.showError(result.Error)
+        return
+    }
+
+    // Get the captured/selected media
+    var media *platform.CapturedMedia
+    if result.Media != nil {
+        media = result.Media
+    } else if len(result.MediaList) > 0 {
+        media = &result.MediaList[0]
+    }
+
+    if media != nil {
+        // media.Path contains the file path
+        // media.Width and media.Height contain dimensions
+        s.loadImage(media.Path)
+    }
+}
+```
+
+### CapturedMedia Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Path` | `string` | Absolute path to the image file |
+| `MimeType` | `string` | Media type (e.g., "image/jpeg") |
+| `Width` | `int` | Image width in pixels |
+| `Height` | `int` | Image height in pixels |
+| `Size` | `int64` | File size in bytes |
+
+### Example: Camera Page
+
+```go
+type cameraState struct {
+    core.StateBase
+    status *core.ManagedState[string]
+    image  *core.ManagedState[image.Image]
+}
+
+func (s *cameraState) InitState() {
+    s.status = core.NewManagedState(&s.StateBase, "Tap to capture")
+    s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
+
+    go func() {
+        for result := range platform.CameraResults() {
+            r := result
+            drift.Dispatch(func() {
+                s.handleResult(r)
+            })
+        }
+    }()
+}
+
+func (s *cameraState) takePhoto() {
+    s.status.Set("Opening camera...")
+    go func() {
+        if err := platform.CapturePhoto(platform.CapturePhotoOptions{}); err != nil {
+            drift.Dispatch(func() {
+                s.status.Set("Error: " + err.Error())
+            })
+        }
+    }()
+}
+
+func (s *cameraState) handleResult(result platform.CameraResult) {
+    if result.Cancelled {
+        s.status.Set("Cancelled")
+        return
+    }
+    if result.Error != "" {
+        s.status.Set("Error: " + result.Error)
+        return
+    }
+    if result.Media != nil {
+        img, err := loadImage(result.Media.Path)
+        if err != nil {
+            s.status.Set("Failed to load: " + err.Error())
+            return
+        }
+        s.image.Set(img)
+        s.status.Set("Photo captured!")
+    }
+}
+```
+
+### Permissions
+
+Camera and photo library access requires permissions. Request them before use:
+
+```go
+// Request camera permission
+result, err := platform.Permissions.Camera.Request()
+if result == platform.PermissionGranted {
+    platform.CapturePhoto(platform.CapturePhotoOptions{})
+}
+
+// Request photo library permission (for gallery)
+result, err := platform.Permissions.Photos.Request()
+if result == platform.PermissionGranted {
+    platform.PickFromGallery(platform.PickFromGalleryOptions{})
+}
+```
+
+:::note Platform Notes
+- **iOS**: Multi-select (`AllowMultiple`) is not supported; only a single image is returned
+- **iOS**: Camera availability is checked; an error is returned if no camera is present (e.g., on simulator)
+- **Android**: The front camera hint (`UseFrontCamera`) is not guaranteed to be honored by all camera apps
+- Captured images are saved to the app's temp directory as JPEGs
+- Gallery selections are copied to temp files for reliable cross-process access
+:::
+
 ## Secure Storage
 
 Store sensitive data securely using platform-native encryption (iOS Keychain, Android EncryptedSharedPreferences):

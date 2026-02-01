@@ -1,183 +1,171 @@
 package platform
 
-import "time"
-
-var cameraService = newCameraService()
-
-// CapturedMedia represents a captured photo or video.
+// CapturedMedia represents a captured or selected media file.
 type CapturedMedia struct {
-	Path     string
+	// Path is the absolute file path to the media file in the app's temp directory.
+	Path string
+
+	// MimeType is the media type (e.g., "image/jpeg").
 	MimeType string
-	Width    int
-	Height   int
-	Size     int64
-	Duration time.Duration
+
+	// Width is the image width in pixels.
+	Width int
+
+	// Height is the image height in pixels.
+	Height int
+
+	// Size is the file size in bytes.
+	Size int64
 }
 
-// CameraResult represents a result from camera/gallery operations.
+// CameraResult represents the result of a camera or gallery operation.
+// Results are delivered asynchronously via CameraResults().
 type CameraResult struct {
-	Type      string          // "capture" or "gallery"
-	Media     *CapturedMedia  // For capture results
-	MediaList []CapturedMedia // For gallery results
+	// Type indicates the operation: "capture" for camera, "gallery" for picker.
+	Type string
+
+	// Media contains the captured/selected media for single-selection operations.
+	Media *CapturedMedia
+
+	// MediaList contains multiple selected media when AllowMultiple is true.
+	MediaList []CapturedMedia
+
+	// Cancelled is true if the user dismissed the camera/picker without selecting.
 	Cancelled bool
+
+	// Error contains the error message if the operation failed.
+	Error string
 }
 
 // CapturePhotoOptions configures photo capture behavior.
 type CapturePhotoOptions struct {
-	Quality        int
-	MaxWidth       int
-	MaxHeight      int
+	// UseFrontCamera opens the front-facing camera when true.
+	// Note: On Android, this is a hint that not all camera apps honor.
 	UseFrontCamera bool
-	SaveToGallery  bool
-}
-
-// CaptureVideoOptions configures video capture behavior.
-type CaptureVideoOptions struct {
-	Quality        int
-	MaxDuration    time.Duration
-	UseFrontCamera bool
-	SaveToGallery  bool
 }
 
 // PickFromGalleryOptions configures gallery picker behavior.
 type PickFromGalleryOptions struct {
+	// AllowMultiple enables selecting multiple images from the gallery.
+	// When true on Android, results are returned in CameraResult.MediaList.
+	// Note: iOS does not support multi-select; only a single image is returned.
 	AllowMultiple bool
-	MediaType     MediaType
-	MaxSelection  int
 }
 
-// MediaType specifies the type of media to pick.
-type MediaType string
-
-const (
-	MediaTypeImage MediaType = "image"
-	MediaTypeVideo MediaType = "video"
-	MediaTypeAll   MediaType = "all"
-)
-
-// CapturePhoto captures a photo using the device camera.
-// Results are delivered asynchronously via CameraResults().
-func CapturePhoto(opts CapturePhotoOptions) error {
-	return cameraService.capturePhoto(opts)
-}
-
-// CaptureVideo captures a video using the device camera.
-// Results are delivered asynchronously via CameraResults().
-func CaptureVideo(opts CaptureVideoOptions) error {
-	return cameraService.captureVideo(opts)
-}
-
-// PickFromGallery opens the device gallery to pick media.
-// Results are delivered asynchronously via CameraResults().
-func PickFromGallery(opts PickFromGalleryOptions) error {
-	return cameraService.pickFromGallery(opts)
-}
-
-// CameraResults returns a channel that receives camera operation results.
-func CameraResults() <-chan CameraResult {
-	return cameraService.resultChannel()
-}
+var cameraService = newCameraService()
 
 type cameraServiceState struct {
 	channel  *MethodChannel
-	results  *EventChannel
+	events   *EventChannel
 	resultCh chan CameraResult
 }
 
 func newCameraService() *cameraServiceState {
 	service := &cameraServiceState{
 		channel:  NewMethodChannel("drift/camera"),
-		results:  NewEventChannel("drift/camera/result"),
-		resultCh: make(chan CameraResult, 4),
+		events:   NewEventChannel("drift/camera/result"),
+		resultCh: make(chan CameraResult, 8),
 	}
 
-	service.results.Listen(EventHandler{OnEvent: func(data any) {
-		if result, ok := parseCameraResult(data); ok {
-			service.resultCh <- result
-		}
-	}})
+	service.events.Listen(EventHandler{
+		OnEvent: func(data any) {
+			result := parseCameraResult(data)
+			select {
+			case service.resultCh <- result:
+			default:
+				// Buffer full, drop oldest
+				<-service.resultCh
+				service.resultCh <- result
+			}
+		},
+	})
 
 	return service
 }
 
-func (s *cameraServiceState) capturePhoto(opts CapturePhotoOptions) error {
-	_, err := s.channel.Invoke("capturePhoto", map[string]any{
-		"quality":        opts.Quality,
-		"maxWidth":       opts.MaxWidth,
-		"maxHeight":      opts.MaxHeight,
+// CapturePhoto opens the native camera to capture a photo.
+// The operation is asynchronous - listen on CameraResults() for the result.
+// The captured image is saved to the app's temp directory as a JPEG.
+func CapturePhoto(opts CapturePhotoOptions) error {
+	_, err := cameraService.channel.Invoke("capturePhoto", map[string]any{
 		"useFrontCamera": opts.UseFrontCamera,
-		"saveToGallery":  opts.SaveToGallery,
 	})
 	return err
 }
 
-func (s *cameraServiceState) captureVideo(opts CaptureVideoOptions) error {
-	_, err := s.channel.Invoke("captureVideo", map[string]any{
-		"quality":        opts.Quality,
-		"maxDurationMs":  opts.MaxDuration.Milliseconds(),
-		"useFrontCamera": opts.UseFrontCamera,
-		"saveToGallery":  opts.SaveToGallery,
-	})
-	return err
-}
-
-func (s *cameraServiceState) pickFromGallery(opts PickFromGalleryOptions) error {
-	mediaType := string(opts.MediaType)
-	if mediaType == "" {
-		mediaType = string(MediaTypeAll)
-	}
-
-	_, err := s.channel.Invoke("pickFromGallery", map[string]any{
+// PickFromGallery opens the native photo picker to select images from the library.
+// The operation is asynchronous - listen on CameraResults() for the result.
+// Selected images are copied to the app's temp directory for reliable access.
+func PickFromGallery(opts PickFromGalleryOptions) error {
+	_, err := cameraService.channel.Invoke("pickFromGallery", map[string]any{
 		"allowMultiple": opts.AllowMultiple,
-		"mediaType":     mediaType,
-		"maxSelection":  opts.MaxSelection,
 	})
 	return err
 }
 
-func (s *cameraServiceState) resultChannel() <-chan CameraResult {
-	return s.resultCh
+// CameraResults returns a channel that receives camera and gallery operation results.
+// Listen on this channel from a goroutine and use drift.Dispatch to update UI.
+// The channel is buffered (capacity 8) and drops oldest results if full.
+func CameraResults() <-chan CameraResult {
+	return cameraService.resultCh
 }
 
-func parseCameraResult(data any) (CameraResult, bool) {
+func parseCameraResult(data any) CameraResult {
 	m, ok := data.(map[string]any)
 	if !ok {
-		return CameraResult{}, false
+		return CameraResult{Error: "invalid result format"}
 	}
 
 	result := CameraResult{
 		Type:      parseString(m["type"]),
 		Cancelled: parseBool(m["cancelled"]),
+		Error:     parseString(m["error"]),
 	}
 
-	if result.Type == "gallery" {
-		if mediaList, ok := m["media"].([]any); ok {
-			for _, item := range mediaList {
-				if cm, ok := parseCapturedMedia(item); ok {
-					result.MediaList = append(result.MediaList, cm)
+	if mediaData, ok := m["media"].(map[string]any); ok {
+		result.Media = parseCapturedMedia(mediaData)
+	}
+
+	if mediaList, ok := m["mediaList"].([]any); ok {
+		for _, item := range mediaList {
+			if itemMap, ok := item.(map[string]any); ok {
+				if media := parseCapturedMedia(itemMap); media != nil {
+					result.MediaList = append(result.MediaList, *media)
 				}
 			}
 		}
-	} else if result.Type == "capture" {
-		if cm, ok := parseCapturedMedia(m); ok {
-			result.Media = &cm
-		}
 	}
 
-	return result, true
+	return result
 }
 
-func parseCapturedMedia(result any) (CapturedMedia, bool) {
-	m, ok := result.(map[string]any)
-	if !ok {
-		return CapturedMedia{}, false
+func parseCapturedMedia(m map[string]any) *CapturedMedia {
+	path := parseString(m["path"])
+	if path == "" {
+		return nil
 	}
-	return CapturedMedia{
-		Path:     parseString(m["path"]),
+	return &CapturedMedia{
+		Path:     path,
 		MimeType: parseString(m["mimeType"]),
-		Width:    int(parseInt64(m["width"])),
-		Height:   int(parseInt64(m["height"])),
+		Width:    parseInt(m["width"]),
+		Height:   parseInt(m["height"]),
 		Size:     parseInt64(m["size"]),
-		Duration: time.Duration(parseInt64(m["durationMs"])) * time.Millisecond,
-	}, true
+	}
+}
+
+func parseInt(value any) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case int32:
+		return int(v)
+	case float64:
+		return int(v)
+	case float32:
+		return int(v)
+	default:
+		return 0
+	}
 }

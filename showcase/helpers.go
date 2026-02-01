@@ -53,6 +53,25 @@ func itoa(value int) string {
 	return string(buf[i:])
 }
 
+// formatSize formats a byte count as a human-readable string.
+func formatSize(bytes int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+	switch {
+	case bytes >= GB:
+		return itoa(int(bytes/GB)) + " GB"
+	case bytes >= MB:
+		return itoa(int(bytes/MB)) + " MB"
+	case bytes >= KB:
+		return itoa(int(bytes/KB)) + " KB"
+	default:
+		return itoa(int(bytes)) + " B"
+	}
+}
+
 // demoPage creates a standard demo page with scroll view and column layout.
 // This is the common pattern used by most showcase pages.
 func demoPage(ctx core.BuildContext, title string, items ...core.Widget) core.Widget {

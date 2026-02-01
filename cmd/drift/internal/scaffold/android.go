@@ -81,6 +81,16 @@ func WriteAndroid(root string, settings Settings) error {
 		return err
 	}
 
+	// FileProvider paths
+	xmlDir := filepath.Join(resDir, "xml")
+	if err := os.MkdirAll(xmlDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create res/xml: %w", err)
+	}
+
+	if err := writeTemplateFile("android/res/xml/file_paths.xml.tmpl", filepath.Join(xmlDir, "file_paths.xml"), 0o644); err != nil {
+		return err
+	}
+
 	// Write Kotlin files from templates
 	kotlinPkg := strings.ReplaceAll(settings.AppID, ".", "/")
 	kotlinDir := filepath.Join(srcDir, "java", kotlinPkg)
