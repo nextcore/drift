@@ -94,6 +94,9 @@ func (p *PaintContext) PaintChild(child RenderBox, offset graphics.Offset) {
 	if child == nil {
 		return
 	}
+	if p.shouldCullChild(child, offset) {
+		return
+	}
 	p.Canvas.Save()
 	p.Canvas.Translate(offset.X, offset.Y)
 	p.PushTranslation(offset.X, offset.Y)
@@ -117,6 +120,9 @@ func (p *PaintContext) PaintChild(child RenderBox, offset graphics.Offset) {
 // PaintChildWithLayer paints a child, using its cached layer if available.
 func (p *PaintContext) PaintChildWithLayer(child RenderBox, offset graphics.Offset) {
 	if child == nil {
+		return
+	}
+	if p.shouldCullChild(child, offset) {
 		return
 	}
 
@@ -157,6 +163,39 @@ func (p *PaintContext) PaintChildWithLayer(child RenderBox, offset graphics.Offs
 
 	p.PopTranslation()
 	p.Canvas.Restore()
+}
+
+type paintBoundsProvider interface {
+	PaintBounds() graphics.Rect
+}
+
+// shouldCullChild returns true if the child's bounds do not intersect the current clip.
+func (p *PaintContext) shouldCullChild(child RenderBox, offset graphics.Offset) bool {
+	if child == nil {
+		return true
+	}
+	if clip, ok := p.CurrentClipBounds(); ok {
+		var localRect graphics.Rect
+		if provider, ok := child.(paintBoundsProvider); ok {
+			localRect = provider.PaintBounds()
+			if localRect.IsEmpty() {
+				// Unknown paint bounds - avoid culling to prevent false negatives.
+				return false
+			}
+		} else {
+			size := child.Size()
+			if size.Width <= 0 || size.Height <= 0 {
+				// Unknown paint bounds - avoid culling to prevent false negatives.
+				return false
+			}
+			localRect = graphics.RectFromLTWH(0, 0, size.Width, size.Height)
+		}
+		globalRect := localRect.Translate(p.transform.X+offset.X, p.transform.Y+offset.Y)
+		if clip.Intersect(globalRect).IsEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 // debugBoundsColors cycles through colors by depth for visual distinction.
