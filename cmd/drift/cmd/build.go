@@ -143,12 +143,9 @@ func buildAndroid(ws *workspace.Workspace, opts androidBuildOptions) error {
 
 	checkNDKVersion(ndkHome)
 
-	hostTag := "linux-x86_64"
-	if runtime.GOOS == "darwin" {
-		hostTag = "darwin-x86_64"
-		if runtime.GOARCH == "arm64" {
-			hostTag = "darwin-arm64"
-		}
+	hostTag, err := detectNDKHostTag(ndkHome)
+	if err != nil {
+		return err
 	}
 
 	toolchain := filepath.Join(ndkHome, "toolchains", "llvm", "prebuilt", hostTag, "bin")
@@ -518,6 +515,39 @@ func checkNDKVersion(ndkHome string) {
 			return
 		}
 	}
+}
+
+// detectNDKHostTag determines the NDK prebuilt toolchain directory for the current host.
+// On Apple Silicon, falls back to darwin-x86_64 (Rosetta) if darwin-arm64 isn't available.
+func detectNDKHostTag(ndkHome string) (string, error) {
+	prebuiltBase := filepath.Join(ndkHome, "toolchains", "llvm", "prebuilt")
+
+	// Candidates in order of preference
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		if runtime.GOARCH == "arm64" {
+			candidates = []string{"darwin-arm64", "darwin-x86_64"}
+		} else {
+			candidates = []string{"darwin-x86_64"}
+		}
+	default: // linux
+		// Note: Linux arm64 has no Rosetta equivalent, so no fallback to x86_64
+		if runtime.GOARCH == "arm64" {
+			candidates = []string{"linux-aarch64"}
+		} else {
+			candidates = []string{"linux-x86_64"}
+		}
+	}
+
+	for _, tag := range candidates {
+		path := filepath.Join(prebuiltBase, tag)
+		if _, err := os.Stat(path); err == nil {
+			return tag, nil
+		}
+	}
+
+	return "", fmt.Errorf("no NDK toolchain found in %s (tried: %v)", prebuiltBase, candidates)
 }
 
 func findSkiaLib(projectRoot, platform, arch string, noFetch bool) (string, string, error) {

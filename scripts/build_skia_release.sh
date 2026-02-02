@@ -141,7 +141,17 @@ detect_host_tag() {
     Darwin*)
       case "$host_arch" in
         x86_64) echo "darwin-x86_64" ;;
-        arm64)  echo "darwin-arm64" ;;
+        arm64)
+          # Prefer native arm64, fall back to x86_64 (runs via Rosetta)
+          if [[ -n "${ANDROID_NDK_HOME:-}" && -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-arm64" ]]; then
+            echo "darwin-arm64"
+          elif [[ -n "${ANDROID_NDK_HOME:-}" && -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64" ]]; then
+            echo "darwin-x86_64"
+          else
+            echo "Error: No NDK toolchain found. Set ANDROID_NDK_HOME correctly." >&2
+            exit 1
+          fi
+          ;;
         *)      echo "darwin-x86_64" ;;
       esac
       ;;

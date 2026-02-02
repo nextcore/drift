@@ -40,7 +40,17 @@ if [[ -z "${HOST_TAG:-}" ]]; then
     Darwin*)
       case "$host_arch" in
         x86_64) HOST_TAG="darwin-x86_64" ;;
-        arm64)  HOST_TAG="darwin-arm64" ;;
+        arm64)
+          # Prefer native arm64, fall back to x86_64 (runs via Rosetta)
+          if [[ -n "$ANDROID_NDK_HOME" && -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-arm64" ]]; then
+            HOST_TAG="darwin-arm64"
+          elif [[ -n "$ANDROID_NDK_HOME" && -d "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64" ]]; then
+            HOST_TAG="darwin-x86_64"
+          else
+            echo "No NDK toolchain found for macOS. Set ANDROID_NDK_HOME correctly." >&2
+            exit 1
+          fi
+          ;;
         *)      echo "Unsupported host architecture: $host_arch" >&2; exit 1 ;;
       esac
       ;;
