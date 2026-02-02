@@ -77,9 +77,12 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
             // Request the GL thread to call onDrawFrame() for the next render
             requestRender()
 
-            // Schedule this callback again for the next vsync
-            // This creates the continuous animation loop
-            Choreographer.getInstance().postFrameCallback(this)
+            // Continue the loop only while the engine reports pending work.
+            if (NativeBridge.needsFrame() != 0) {
+                Choreographer.getInstance().postFrameCallback(this)
+            } else {
+                frameLoopActive = false
+            }
         }
     }
 
@@ -113,6 +116,21 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
         updateDeviceScale()
     }
 
+    private var frameLoopActive = false
+
+    fun startFrameLoop() {
+        if (!frameLoopActive) {
+            frameLoopActive = true
+            Choreographer.getInstance().postFrameCallback(frameCallback)
+        }
+    }
+
+    private fun wakeFrameLoop() {
+        NativeBridge.requestFrame()
+        requestRender()
+        startFrameLoop()
+    }
+
     /**
      * Called when the view is attached to a window.
      *
@@ -122,7 +140,7 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         // Start receiving vsync callbacks to drive the render loop
-        Choreographer.getInstance().postFrameCallback(frameCallback)
+        startFrameLoop()
 
         // Refresh scale in case configuration changed while detached.
         updateDeviceScale()
@@ -137,6 +155,7 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
     override fun onDetachedFromWindow() {
         // Stop receiving vsync callbacks
         Choreographer.getInstance().removeFrameCallback(frameCallback)
+        frameLoopActive = false
         super.onDetachedFromWindow()
     }
 
@@ -148,6 +167,7 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
         // In touch exploration, a tap should only move accessibility focus.
         // Consume handled taps so app touch handlers don't fire.
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            wakeFrameLoop()
             if (AccessibilityHandler.handleExploreByTouch(event.x, event.y)) {
                 return true
             }
@@ -159,6 +179,7 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
      * Handle generic motion events including hover events.
      */
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        wakeFrameLoop()
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -181,6 +202,7 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
      *   For CANCEL, all tracked pointers are cancelled using their last known positions.
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        wakeFrameLoop()
         when (event.actionMasked) {
             // Touch began (first finger or additional fingers)
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {

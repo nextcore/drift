@@ -123,6 +123,7 @@ class MainActivity : AppCompatActivity() {
             surfaceView.onResume()
             NativeBridge.requestFrame()
             surfaceView.requestRender()
+            surfaceView.startFrameLoop()
         }
     }
 
@@ -153,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         surfaceView.onResume()
         NativeBridge.requestFrame()
         surfaceView.requestRender()
+        surfaceView.startFrameLoop()
     }
 
     /**

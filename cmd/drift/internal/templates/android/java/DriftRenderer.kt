@@ -53,11 +53,9 @@ class DriftRenderer : GLSurfaceView.Renderer {
             return
         }
 
-        // Skip frame if nothing has changed (no animations, input, or state updates).
-        if (NativeBridge.needsFrame() == 0) {
-            return
-        }
-
+        // Always render - GLSurfaceView swaps buffers after onDrawFrame returns,
+        // so skipping render causes flickering on physical devices with triple-buffering.
+        // The Go engine has layer caching, so rendering unchanged content is efficient.
         val result = NativeBridge.renderFrameSkia(width, height)
         if (result != 0) {
             GLES20.glClearColor(0.8f, 0.1f, 0.1f, 1f)
