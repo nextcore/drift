@@ -7,16 +7,42 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/go-drift/drift/cmd/drift/internal/cache"
 )
 
-// Version information set at build time.
+// Version information set at build time or read from embedded build info.
 var (
-	Version   = "0.1.0-dev"
+	Version   = "dev"
 	BuildTime = "unknown"
 )
+
+func init() {
+	// Read version from Go's embedded build info (set by go install @version)
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		Version = info.Main.Version
+		return
+	}
+	var revision string
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" {
+			revision = setting.Value
+			break
+		}
+	}
+	if revision != "" {
+		if len(revision) > 12 {
+			revision = revision[:12]
+		}
+		Version = "dev+" + revision
+	}
+}
 
 // Command represents a CLI command.
 type Command struct {
