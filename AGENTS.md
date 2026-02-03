@@ -37,3 +37,4 @@ go run cmd/docgen/main.go # Generate Docusaurus docs
 When adding iOS or Android native code, ensure these files in `cmd/drift/internal/templates/` are updated:
 - **iOS**: Info.plist, xcodeproj, and xtool project templates
 - **Android**: AndroidManifest.xml and project templates
+When editing iOS templates, update both `ios/Info.plist.tmpl` and `xtool/Info.plist.tmpl` (and corresponding xcodeproj/xtool templates) in the same change.
