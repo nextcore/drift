@@ -117,6 +117,6 @@ func (r *renderCenter) HitTest(position graphics.Offset, result *layout.HitTestR
 	if r.child != nil && r.child.HitTest(local, result) {
 		return true
 	}
-	result.Add(r)
-	return true
+	// Don't catch hits outside the child - let them pass through to elements below
+	return false
 }

@@ -128,6 +128,6 @@ func (r *renderAlign) HitTest(position graphics.Offset, result *layout.HitTestRe
 	if r.child != nil && r.child.HitTest(local, result) {
 		return true
 	}
-	result.Add(r)
-	return true
+	// Don't catch hits outside the child - let them pass through to elements below
+	return false
 }
