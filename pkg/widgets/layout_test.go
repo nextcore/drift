@@ -213,7 +213,7 @@ func TestFlex_BoundedConstraints_NoPanic(t *testing.T) {
 
 // TestExpanded_ClampsChildSize ensures Expanded clamps a misbehaving child to its constraints.
 func TestExpanded_ClampsChildSize(t *testing.T) {
-	expanded := &renderExpanded{flex: 1}
+	expanded := &renderFlexChild{flex: 1, fit: FlexFitTight}
 	expanded.SetSelf(expanded)
 
 	child := &mockOversizeChild{width: 200, height: 80}
@@ -625,3 +625,198 @@ func (c *mockCanvas) DrawSVG(svgPtr unsafe.Pointer, bounds graphics.Rect)       
 func (c *mockCanvas) DrawSVGTinted(svgPtr unsafe.Pointer, bounds graphics.Rect, tint graphics.Color) {
 }
 func (c *mockCanvas) Size() graphics.Size { return graphics.Size{Width: 800, Height: 600} }
+
+// mockFlexFitChild implements FlexFactor and FlexFitProvider, with a preferred intrinsic size.
+type mockFlexFitChild struct {
+	layout.RenderBoxBase
+	flex           int
+	fit            FlexFit
+	intrinsicWidth float64 // Child's preferred size along main axis
+}
+
+func (m *mockFlexFitChild) FlexFactor() int  { return m.flex }
+func (m *mockFlexFitChild) FlexFit() FlexFit { return m.fit }
+
+func (m *mockFlexFitChild) PerformLayout() {
+	c := m.Constraints()
+	// Use intrinsic width, clamped to constraints
+	w := math.Min(math.Max(m.intrinsicWidth, c.MinWidth), c.MaxWidth)
+	m.SetSize(graphics.Size{Width: w, Height: c.MaxHeight})
+}
+
+func (m *mockFlexFitChild) Paint(ctx *layout.PaintContext) {}
+
+func (m *mockFlexFitChild) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
+	return false
+}
+
+// TestFlexible_LooseFit_ChildSmallerThanAllocated verifies that a loose-fit
+// child can be smaller than its allocated space.
+func TestFlexible_LooseFit_ChildSmallerThanAllocated(t *testing.T) {
+	flex := &renderFlex{
+		direction: AxisHorizontal,
+		axisSize:  MainAxisSizeMax,
+	}
+	flex.SetSelf(flex)
+
+	// Child wants 50px but will be allocated 400px
+	looseChild := &mockFlexFitChild{flex: 1, fit: FlexFitLoose, intrinsicWidth: 50}
+	looseChild.SetSelf(looseChild)
+
+	flex.SetChildren([]layout.RenderObject{looseChild})
+
+	constraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: 100,
+	}
+	flex.Layout(constraints, false)
+
+	// Child should be 50px (its intrinsic size), not 400px
+	childSize := looseChild.Size()
+	if childSize.Width != 50 {
+		t.Errorf("expected loose child width 50, got %v", childSize.Width)
+	}
+}
+
+// TestFlexible_TightFit_ChildFillsAllocated verifies that a tight-fit
+// child must fill its allocated space.
+func TestFlexible_TightFit_ChildFillsAllocated(t *testing.T) {
+	flex := &renderFlex{
+		direction: AxisHorizontal,
+		axisSize:  MainAxisSizeMax,
+	}
+	flex.SetSelf(flex)
+
+	// Child wants 50px but will be forced to 400px due to tight fit
+	tightChild := &mockFlexFitChild{flex: 1, fit: FlexFitTight, intrinsicWidth: 50}
+	tightChild.SetSelf(tightChild)
+
+	flex.SetChildren([]layout.RenderObject{tightChild})
+
+	constraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: 100,
+	}
+	flex.Layout(constraints, false)
+
+	// Child should be 400px (tight constraints), not its preferred 50px
+	childSize := tightChild.Size()
+	if childSize.Width != 400 {
+		t.Errorf("expected tight child width 400, got %v", childSize.Width)
+	}
+}
+
+// TestFlexible_MixedFits verifies that loose and tight children coexist correctly.
+func TestFlexible_MixedFits(t *testing.T) {
+	flex := &renderFlex{
+		direction: AxisHorizontal,
+		axisSize:  MainAxisSizeMax,
+	}
+	flex.SetSelf(flex)
+
+	// Two flex children each get 200px allocated
+	// Loose child takes only 50px, tight child takes full 200px
+	looseChild := &mockFlexFitChild{flex: 1, fit: FlexFitLoose, intrinsicWidth: 50}
+	looseChild.SetSelf(looseChild)
+
+	tightChild := &mockFlexFitChild{flex: 1, fit: FlexFitTight, intrinsicWidth: 50}
+	tightChild.SetSelf(tightChild)
+
+	flex.SetChildren([]layout.RenderObject{looseChild, tightChild})
+
+	constraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: 100,
+	}
+	flex.Layout(constraints, false)
+
+	// Each gets 200px allocated
+	// Loose child uses 50px (its intrinsic size)
+	looseSize := looseChild.Size()
+	if looseSize.Width != 50 {
+		t.Errorf("expected loose child width 50, got %v", looseSize.Width)
+	}
+
+	// Tight child must fill 200px
+	tightSize := tightChild.Size()
+	if tightSize.Width != 200 {
+		t.Errorf("expected tight child width 200, got %v", tightSize.Width)
+	}
+}
+
+// TestExpanded_BackwardCompatibility verifies that Expanded (using renderFlexChild
+// with FlexFitTight) still behaves as before.
+func TestExpanded_BackwardCompatibility(t *testing.T) {
+	flex := &renderFlex{
+		direction: AxisHorizontal,
+		axisSize:  MainAxisSizeMax,
+	}
+	flex.SetSelf(flex)
+
+	// Simulating Expanded widget (always tight)
+	expandedChild := &renderFlexChild{flex: 1, fit: FlexFitTight}
+	expandedChild.SetSelf(expandedChild)
+
+	// Give it a fixed child that wants to be small
+	innerChild := &mockFixedChild{width: 50, height: 30}
+	innerChild.SetSelf(innerChild)
+	expandedChild.SetChild(innerChild)
+
+	flex.SetChildren([]layout.RenderObject{expandedChild})
+
+	constraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: 100,
+	}
+	flex.Layout(constraints, false)
+
+	// Expanded should fill 400px even though child wants 50px
+	expandedSize := expandedChild.Size()
+	if expandedSize.Width != 400 {
+		t.Errorf("expected expanded width 400, got %v", expandedSize.Width)
+	}
+}
+
+// TestFlexible_ZeroValueFitIsLoose verifies that Flexible's zero-value Fit
+// defaults to FlexFitLoose, allowing the child to be smaller than allocated.
+func TestFlexible_ZeroValueFitIsLoose(t *testing.T) {
+	// Verify the zero value is FlexFitLoose
+	var zeroFit FlexFit
+	if zeroFit != FlexFitLoose {
+		t.Fatalf("expected zero value of FlexFit to be FlexFitLoose, got %v", zeroFit)
+	}
+
+	flex := &renderFlex{
+		direction: AxisHorizontal,
+		axisSize:  MainAxisSizeMax,
+	}
+	flex.SetSelf(flex)
+
+	// Create child with zero-value fit (not explicitly set)
+	child := &mockFlexFitChild{flex: 1, intrinsicWidth: 50} // fit is zero value
+	child.SetSelf(child)
+
+	flex.SetChildren([]layout.RenderObject{child})
+
+	constraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: 100,
+	}
+	flex.Layout(constraints, false)
+
+	// Child should be 50px (its intrinsic size), not 400px, because zero-value fit is loose
+	childSize := child.Size()
+	if childSize.Width != 50 {
+		t.Errorf("expected zero-value fit child width 50 (loose), got %v", childSize.Width)
+	}
+}

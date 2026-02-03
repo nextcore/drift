@@ -131,6 +131,44 @@ type FlexFactor interface {
 	FlexFactor() int
 }
 
+// FlexFit controls how a flexible child fills its allocated space within
+// a [Row] or [Column].
+//
+// When a flex container distributes remaining space among flexible children,
+// FlexFit determines whether each child must fill its allocated portion
+// (tight) or may be smaller (loose).
+//
+// See [Flexible] and [Expanded] for widgets that use FlexFit.
+type FlexFit int
+
+const (
+	// FlexFitLoose allows the child to size itself up to the allocated space,
+	// but permits it to be smaller. The child receives constraints with
+	// MinWidth/MinHeight of 0 and MaxWidth/MaxHeight of the allocated space.
+	//
+	// This is the zero value, making it the default for [Flexible].
+	FlexFitLoose FlexFit = iota
+
+	// FlexFitTight forces the child to fill exactly the allocated space.
+	// The child receives tight constraints where Min equals Max for the
+	// main axis dimension.
+	//
+	// This is the behavior of [Expanded].
+	FlexFitTight
+)
+
+// FlexFitProvider reports the fit mode for a flexible render box.
+//
+// Render objects used as flex children can implement this interface to
+// control whether they receive tight or loose constraints from the parent
+// [Row] or [Column].
+//
+// Render objects that don't implement this interface default to [FlexFitTight]
+// for backward compatibility with existing [Expanded] behavior.
+type FlexFitProvider interface {
+	FlexFit() FlexFit
+}
+
 // Row lays out children horizontally from left to right.
 //
 // Row is a flex container where the main axis is horizontal. Children are
@@ -439,8 +477,13 @@ func (r *renderFlex) PerformLayout() {
 		if totalFlex > 0 {
 			allocated = remaining * float64(flexFactors[i]) / float64(totalFlex)
 		}
-		// Flex children get tight constraints in the main axis direction
-		child.Layout(r.flexConstraints(constraints, allocated), true) // true: we read child.Size()
+
+		fit := FlexFitTight // Default for backward compatibility
+		if fp, ok := child.(FlexFitProvider); ok {
+			fit = fp.FlexFit()
+		}
+
+		child.Layout(r.flexConstraints(constraints, allocated, fit), true) // true: we read child.Size()
 		childSize := child.Size()
 		mainSize += r.mainAxis(childSize)
 		crossSize = math.Max(crossSize, r.crossAxis(childSize))
@@ -507,7 +550,12 @@ func (r *renderFlex) crossAxisOffset(childSize graphics.Size) float64 {
 	}
 }
 
-func (r *renderFlex) flexConstraints(constraints layout.Constraints, mainSize float64) layout.Constraints {
+func (r *renderFlex) flexConstraints(constraints layout.Constraints, mainSize float64, fit FlexFit) layout.Constraints {
+	minMain := mainSize
+	if fit == FlexFitLoose {
+		minMain = 0 // Loose: child can be smaller
+	}
+
 	if r.direction == AxisHorizontal {
 		minHeight := 0.0
 		maxHeight := constraints.MaxHeight
@@ -515,7 +563,7 @@ func (r *renderFlex) flexConstraints(constraints layout.Constraints, mainSize fl
 			minHeight = maxHeight
 		}
 		return layout.Constraints{
-			MinWidth:  mainSize,
+			MinWidth:  minMain,
 			MaxWidth:  mainSize,
 			MinHeight: minHeight,
 			MaxHeight: maxHeight,
@@ -529,7 +577,7 @@ func (r *renderFlex) flexConstraints(constraints layout.Constraints, mainSize fl
 	return layout.Constraints{
 		MinWidth:  minWidth,
 		MaxWidth:  maxWidth,
-		MinHeight: mainSize,
+		MinHeight: minMain,
 		MaxHeight: mainSize,
 	}
 }

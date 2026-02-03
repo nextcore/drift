@@ -13,10 +13,16 @@ import (
 // Expanded children proportionally based on their Flex factor. The default Flex
 // is 1; set higher values to allocate more space to specific children.
 //
-// Important: The parent Row or Column must have MainAxisSizeMax for Expanded to
-// receive any space. With MainAxisSizeMin, there is no remaining space to fill.
+// Expanded is equivalent to [Flexible] with Fit set to [FlexFitTight]. Use
+// [Flexible] instead when the child should be allowed to be smaller than its
+// allocated space.
 //
-// Example:
+// Important: The parent Row or Column must have [MainAxisSizeMax] for Expanded
+// to receive any space. With [MainAxisSizeMin], there is no remaining space to fill.
+//
+// # Example
+//
+// Fill remaining space between fixed-size widgets:
 //
 //	Row{
 //	    MainAxisSize: MainAxisSizeMax,
@@ -27,7 +33,9 @@ import (
 //	    },
 //	}
 //
-// Example with different flex factors:
+// # Example with Flex Factors
+//
+// Distribute space proportionally among multiple Expanded children:
 //
 //	Row{
 //	    MainAxisSize: MainAxisSizeMax,
@@ -37,8 +45,15 @@ import (
 //	    },
 //	}
 type Expanded struct {
+	// Child is the widget to expand into the available space.
 	Child core.Widget
-	Flex  int
+
+	// Flex determines the ratio of space allocated to this child relative to
+	// other flexible children. Defaults to 1 if not set or <= 0.
+	//
+	// For example, in a Row with two Expanded children where one has Flex: 1
+	// and the other has Flex: 2, the remaining space is split 1:2.
+	Flex int
 }
 
 // CreateElement returns a RenderObjectElement for this Expanded.
@@ -56,18 +71,22 @@ func (e Expanded) ChildWidget() core.Widget {
 	return e.Child
 }
 
-// CreateRenderObject creates the renderExpanded.
+// CreateRenderObject creates the renderFlexChild.
 func (e Expanded) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
-	expanded := &renderExpanded{flex: e.effectiveFlex()}
-	expanded.SetSelf(expanded)
-	return expanded
+	r := &renderFlexChild{
+		flex: e.effectiveFlex(),
+		fit:  FlexFitTight, // Expanded is always tight
+	}
+	r.SetSelf(r)
+	return r
 }
 
-// UpdateRenderObject updates the renderExpanded.
+// UpdateRenderObject updates the renderFlexChild.
 func (e Expanded) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
-	if expanded, ok := renderObject.(*renderExpanded); ok {
-		expanded.flex = e.effectiveFlex()
-		expanded.MarkNeedsLayout()
+	if r, ok := renderObject.(*renderFlexChild); ok {
+		r.flex = e.effectiveFlex()
+		r.fit = FlexFitTight // Expanded is always tight
+		r.MarkNeedsLayout()
 	}
 }
 
@@ -79,14 +98,17 @@ func (e Expanded) effectiveFlex() int {
 	return e.Flex
 }
 
-type renderExpanded struct {
+// renderFlexChild is the shared render object for Expanded and Flexible widgets.
+// Expanded always uses FlexFitTight; Flexible defaults to FlexFitLoose.
+type renderFlexChild struct {
 	layout.RenderBoxBase
 	child layout.RenderBox
 	flex  int
+	fit   FlexFit
 }
 
 // SetChild sets the child render object.
-func (r *renderExpanded) SetChild(child layout.RenderObject) {
+func (r *renderFlexChild) SetChild(child layout.RenderObject) {
 	setParentOnChild(r.child, nil)
 	if child == nil {
 		r.child = nil
@@ -99,7 +121,7 @@ func (r *renderExpanded) SetChild(child layout.RenderObject) {
 }
 
 // VisitChildren calls the visitor for each child.
-func (r *renderExpanded) VisitChildren(visitor func(layout.RenderObject)) {
+func (r *renderFlexChild) VisitChildren(visitor func(layout.RenderObject)) {
 	if r.child != nil {
 		visitor(r.child)
 	}
@@ -107,10 +129,10 @@ func (r *renderExpanded) VisitChildren(visitor func(layout.RenderObject)) {
 
 // PerformLayout lays out the child with the constraints received from the parent Flex.
 // The parent Flex (Row/Column) already provides correctly-configured constraints:
-// - Main axis: tight to the allocated flex space
+// - Main axis: tight or loose depending on fit
 // - Cross axis: loose or tight depending on CrossAxisAlignment
-// Expanded passes these through and sizes itself to match its child.
-func (r *renderExpanded) PerformLayout() {
+// The render object passes these through and sizes itself to match its child.
+func (r *renderFlexChild) PerformLayout() {
 	constraints := r.Constraints()
 
 	if r.child != nil {
@@ -125,19 +147,25 @@ func (r *renderExpanded) PerformLayout() {
 	}
 }
 
-func (r *renderExpanded) FlexFactor() int {
+// FlexFactor returns the flex factor for this child, implementing [FlexFactor].
+func (r *renderFlexChild) FlexFactor() int {
 	return r.flex
 }
 
+// FlexFit returns the fit mode for this child, implementing [FlexFitProvider].
+func (r *renderFlexChild) FlexFit() FlexFit {
+	return r.fit
+}
+
 // Paint paints the child.
-func (r *renderExpanded) Paint(ctx *layout.PaintContext) {
+func (r *renderFlexChild) Paint(ctx *layout.PaintContext) {
 	if r.child != nil {
 		ctx.PaintChildWithLayer(r.child, graphics.Offset{})
 	}
 }
 
 // HitTest tests if the position hits this widget.
-func (r *renderExpanded) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
+func (r *renderFlexChild) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
 	size := r.Size()
 	if position.X < 0 || position.Y < 0 || position.X > size.Width || position.Y > size.Height {
 		return false

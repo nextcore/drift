@@ -403,6 +403,69 @@ widgets.RowOf(
 )
 ```
 
+### Flexible
+
+`Flexible` allows a child to participate in flex space distribution without requiring it to fill all allocated space. This is useful when you want proportional space allocation but the child may not need all of it.
+
+#### Flexible vs Expanded
+
+| Widget | Default Fit | Constraints | Use Case |
+|--------|-------------|-------------|----------|
+| `Expanded` | Tight | Min = Max = allocated | Child must fill space (panels, containers) |
+| `Flexible` | Loose | Min = 0, Max = allocated | Child can be smaller (text, icons) |
+
+#### Basic Usage
+
+Text takes only the width it needs, while the panel fills the rest:
+
+```go
+widgets.RowOf(
+    widgets.MainAxisAlignmentStart,
+    widgets.CrossAxisAlignmentCenter,
+    widgets.MainAxisSizeMax,
+    widgets.Flexible{Child: widgets.Text{Content: "Short"}},  // Uses only needed width
+    widgets.Expanded{Child: panel},                           // Fills remaining space
+)
+```
+
+#### With Flex Factors
+
+Distribute space proportionally while allowing children to be smaller than allocated:
+
+```go
+widgets.RowOf(
+    widgets.MainAxisAlignmentStart,
+    widgets.CrossAxisAlignmentCenter,
+    widgets.MainAxisSizeMax,
+    widgets.Flexible{Flex: 1, Child: labelA},  // Gets up to 1/3 of space
+    widgets.Flexible{Flex: 2, Child: labelB},  // Gets up to 2/3 of space
+)
+```
+
+#### FlexFit Options
+
+Control fit behavior explicitly with the `Fit` field:
+
+| Fit | Behavior |
+|-----|----------|
+| `FlexFitLoose` (default) | Child can be smaller than allocated space |
+| `FlexFitTight` | Child must fill allocated space (same as Expanded) |
+
+```go
+// Equivalent to Expanded
+widgets.Flexible{
+    Flex:  1,
+    Fit:   widgets.FlexFitTight,
+    Child: content,
+}
+```
+
+#### When to Use Flexible
+
+- Text labels that may vary in length
+- Icons or badges with fixed intrinsic size
+- Any widget where you want proportional space allocation but the widget shouldn't stretch
+
 ## Padding
 
 Add spacing around a widget:
