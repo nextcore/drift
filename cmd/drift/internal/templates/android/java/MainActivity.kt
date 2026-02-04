@@ -108,6 +108,11 @@ class MainActivity : AppCompatActivity() {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
                     isEnabled = true
+                } else {
+                    // Go handled the back button - wake frame loop to render the change
+                    NativeBridge.requestFrame()
+                    surfaceView.requestRender()
+                    surfaceView.startFrameLoop()
                 }
             }
         })
