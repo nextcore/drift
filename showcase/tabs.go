@@ -15,13 +15,20 @@ import (
 //go:embed assets/*.svg assets/*.png
 var assetFS embed.FS
 
+var svgAssetCache = svg.NewIconCache()
+
 func loadSVGAsset(name string) *svg.Icon {
-	f, err := assetFS.Open("assets/" + name)
+	icon, err := svgAssetCache.Get(name, func() (*svg.Icon, error) {
+		f, err := assetFS.Open("assets/" + name)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return svg.Load(f)
+	})
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
-	icon, _ := svg.Load(f)
 	return icon
 }
 

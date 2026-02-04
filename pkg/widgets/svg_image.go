@@ -111,6 +111,11 @@ func (s SvgImage) CreateRenderObject(ctx core.BuildContext) layout.RenderObject 
 
 func (s SvgImage) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if box, ok := renderObject.(*renderSvgImage); ok {
+		// Avoid invalidating layout/paint unless relevant fields actually changed.
+		layoutChanged := box.source != s.Source || box.width != s.Width || box.height != s.Height
+		paintChanged := layoutChanged || box.tintColor != s.TintColor || preserveAspectRatioChanged(box.preserveAspectRatio, s.PreserveAspectRatio)
+		semanticsChanged := box.semanticLabel != s.SemanticLabel || box.excludeFromSemantics != s.ExcludeFromSemantics
+
 		box.source = s.Source
 		box.width = s.Width
 		box.height = s.Height
@@ -119,14 +124,31 @@ func (s SvgImage) UpdateRenderObject(ctx core.BuildContext, renderObject layout.
 		box.semanticLabel = s.SemanticLabel
 		box.excludeFromSemantics = s.ExcludeFromSemantics
 
-		// Apply preserveAspectRatio if set
-		if s.PreserveAspectRatio != nil && s.Source != nil {
+		// Apply preserveAspectRatio if set and changed
+		if paintChanged && s.PreserveAspectRatio != nil && s.Source != nil {
 			s.Source.SetPreserveAspectRatio(*s.PreserveAspectRatio)
 		}
 
-		box.MarkNeedsLayout()
-		box.MarkNeedsPaint()
+		if layoutChanged {
+			box.MarkNeedsLayout()
+		}
+		if paintChanged {
+			box.MarkNeedsPaint()
+		}
+		if semanticsChanged {
+			box.MarkNeedsSemanticsUpdate()
+		}
 	}
+}
+
+func preserveAspectRatioChanged(a, b *svg.PreserveAspectRatio) bool {
+	if a == nil && b == nil {
+		return false
+	}
+	if a == nil || b == nil {
+		return true
+	}
+	return a.Align != b.Align || a.Scale != b.Scale
 }
 
 type renderSvgImage struct {

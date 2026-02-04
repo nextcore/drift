@@ -182,6 +182,30 @@ Themed widgets use disabled colors from theme data. Explicit widgets without
 | `SvgIcon` | Square SVG icons (convenience wrapper) |
 | `Image` | Display images from assets/files |
 
+#### Caching Static SVGs
+
+For static SVG assets (logos, icons), cache loaded icons so rebuilds reuse the
+same underlying SVG DOM:
+
+```go
+var svgCache = svg.NewIconCache()
+
+func loadIcon(name string) *svg.Icon {
+    icon, err := svgCache.Get(name, func() (*svg.Icon, error) {
+        f, err := assetFS.Open("assets/" + name)
+        if err != nil {
+            return nil, err
+        }
+        defer f.Close()
+        return svg.Load(f)
+    })
+    if err != nil {
+        return nil
+    }
+    return icon
+}
+```
+
 ### Progress Indicators
 
 | Widget | Purpose |
