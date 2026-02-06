@@ -49,6 +49,15 @@
   margin-top: 2rem;
 }
 
+.codeExample {
+  width: 560px;
+  max-width: 90vw;
+  height: auto;
+  margin-top: 3rem;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 30px rgba(0, 0, 0, 0.4));
+}
+
 @media (max-width: 600px) {
   .buttons {
     flex-direction: column;

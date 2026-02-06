@@ -12,6 +12,7 @@ const version = siteConfig.customFields?.version as string || 'dev';
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   const logoUrl = useBaseUrl('/img/logo.svg');
+  const carbonUrl = useBaseUrl('/img/carbon.png');
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className={styles.alphaBanner}>
@@ -42,6 +43,11 @@ function HomepageHeader() {
             GitHub
           </Link>
         </div>
+        <img
+          src={carbonUrl}
+          alt="Drift code example"
+          className={styles.codeExample}
+        />
       </div>
     </header>
   );
