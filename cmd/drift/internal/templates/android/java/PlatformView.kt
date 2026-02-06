@@ -219,17 +219,27 @@ object PlatformViewHandler {
         host.post {
             val container = views[viewId] ?: return@post
             val density = context?.resources?.displayMetrics?.density ?: 1f
-            container.view.layoutParams = FrameLayout.LayoutParams(
-                (width * density).toInt(),
-                (height * density).toInt()
-            ).apply {
-                leftMargin = (x * density).toInt()
-                topMargin = (y * density).toInt()
-            }
+            applyViewGeometry(container.view, x, y, width, height, density)
             applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
         }
 
         return Pair(null, null)
+    }
+
+    /**
+     * Position a view using translationX/Y (RenderNode properties) instead of
+     * LayoutParams margins. RenderNode properties sync to the RenderThread without
+     * a full measure/layout traversal, eliminating the 1-frame lag between the GL
+     * surface and the View surface during scrolling. Also provides sub-pixel
+     * precision, avoiding integer-truncation jitter.
+     */
+    private fun applyViewGeometry(view: View, x: Float, y: Float, width: Float, height: Float, density: Float) {
+        view.layoutParams = FrameLayout.LayoutParams(
+            (width * density).toInt(),
+            (height * density).toInt()
+        )
+        view.translationX = x * density
+        view.translationY = y * density
     }
 
     /**
@@ -325,13 +335,7 @@ object PlatformViewHandler {
                 val clipBottom = (geom["clipBottom"] as? Number)?.toFloat()
 
                 val container = views[viewId] ?: continue
-                container.view.layoutParams = FrameLayout.LayoutParams(
-                    (width * density).toInt(),
-                    (height * density).toInt()
-                ).apply {
-                    leftMargin = (x * density).toInt()
-                    topMargin = (y * density).toInt()
-                }
+                applyViewGeometry(container.view, x, y, width, height, density)
                 applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
             }
             lastAppliedSeq = frameSeq
