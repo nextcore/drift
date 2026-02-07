@@ -769,21 +769,6 @@ func buildXtool(ws *workspace.Workspace, opts xtoolBuildOptions) error {
 		return fmt.Errorf("failed to copy app bundle: %w", err)
 	}
 
-	// Sign if --device flag and zsign is available
-	if opts.device && cfg.HasZsign() {
-		fmt.Println("  Signing with zsign...")
-		// User needs to provide certificate and profile paths via environment
-		certPath := os.Getenv("XTOOL_CERT")
-		profilePath := os.Getenv("XTOOL_PROFILE")
-		if certPath != "" && profilePath != "" {
-			if err := cfg.Sign(appDir, certPath, profilePath); err != nil {
-				return err
-			}
-		} else {
-			fmt.Println("  Warning: XTOOL_CERT and XTOOL_PROFILE not set, skipping code signing")
-		}
-	}
-
 	fmt.Println()
 	fmt.Printf("Build successful: %s\n", appDir)
 

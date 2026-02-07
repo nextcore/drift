@@ -15,7 +15,6 @@ type Config struct {
 	XtoolPath string // Path to xtool binary
 	SDKPath   string // Path to iPhoneOS.sdk
 	ClangPath string // Path to xtool's clang
-	ZsignPath string // Path to zsign for code signing (optional)
 }
 
 // Detect locates xtool and the iOS SDK, returning a configuration for cross-compilation.
@@ -39,11 +38,6 @@ func Detect() (*Config, error) {
 		XtoolPath: xtoolPath,
 		SDKPath:   sdkPath,
 		ClangPath: clangPath,
-	}
-
-	// zsign is optional, used for device deployment
-	if zsign, err := findZsign(); err == nil {
-		cfg.ZsignPath = zsign
 	}
 
 	return cfg, nil
@@ -213,55 +207,3 @@ func findClang(sdkPath string) (string, error) {
 	return "", fmt.Errorf("clang not found; install Swift toolchain from https://swift.org/download/ (includes clang with Objective-C support)")
 }
 
-func findZsign() (string, error) {
-	if path, err := exec.LookPath("zsign"); err == nil {
-		return path, nil
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	candidates := []string{
-		filepath.Join(home, ".local", "bin", "zsign"),
-		"/usr/local/bin/zsign",
-	}
-
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-
-	return "", fmt.Errorf("zsign not found")
-}
-
-// HasZsign returns true if zsign is available for code signing.
-func (c *Config) HasZsign() bool {
-	return c.ZsignPath != ""
-}
-
-// Sign signs an .app bundle using zsign with the provided certificate and provisioning profile.
-func (c *Config) Sign(appPath, certPath, profilePath string) error {
-	if c.ZsignPath == "" {
-		return fmt.Errorf("zsign not found; install zsign for device deployment")
-	}
-
-	args := []string{
-		"-k", certPath,
-		"-m", profilePath,
-		"-o", appPath,
-		appPath,
-	}
-
-	cmd := exec.Command(c.ZsignPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("zsign failed: %w", err)
-	}
-
-	return nil
-}
