@@ -91,10 +91,13 @@ func (v *SwitchView) UpdateConfig(config SwitchViewConfig) {
 func (v *SwitchView) handleValueChanged(value bool) {
 	v.mu.Lock()
 	v.value = value
+	client := v.client
 	v.mu.Unlock()
 
-	if v.client != nil {
-		v.client.OnValueChanged(value)
+	if client != nil {
+		Dispatch(func() {
+			client.OnValueChanged(value)
+		})
 	}
 }
 
