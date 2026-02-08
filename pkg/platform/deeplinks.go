@@ -1,8 +1,11 @@
 package platform
 
-import "time"
+import (
+	"context"
+	"time"
 
-var deepLinkService = newDeepLinkService()
+	"github.com/go-drift/drift/pkg/errors"
+)
 
 // DeepLink describes an incoming deep link.
 type DeepLink struct {
@@ -11,113 +14,76 @@ type DeepLink struct {
 	Timestamp time.Time
 }
 
-// GetInitialDeepLink returns the launch deep link, if available.
-func GetInitialDeepLink() (*DeepLink, error) {
-	return deepLinkService.getInitial()
+// DeepLinkService provides deep link event access.
+type DeepLinkService struct {
+	state *deepLinkServiceState
+	links *Stream[DeepLink]
 }
 
-// DeepLinks streams deep link events while the app is running.
-func DeepLinks() <-chan DeepLink {
-	return deepLinkService.linkChannel()
+// DeepLinks is the singleton deep link service.
+var DeepLinks *DeepLinkService
+
+func init() {
+	state := newDeepLinkService()
+	DeepLinks = &DeepLinkService{
+		state: state,
+		links: NewStream("drift/deeplinks/events", state.events, parseDeepLinkWithError),
+	}
 }
 
 type deepLinkServiceState struct {
 	channel *MethodChannel
 	events  *EventChannel
-	linksCh chan DeepLink
 }
 
 func newDeepLinkService() *deepLinkServiceState {
-	service := &deepLinkServiceState{
+	return &deepLinkServiceState{
 		channel: NewMethodChannel("drift/deeplinks"),
 		events:  NewEventChannel("drift/deeplinks/events"),
-		linksCh: make(chan DeepLink, 4),
 	}
-
-	service.events.Listen(EventHandler{OnEvent: func(data any) {
-		if link, ok := parseDeepLink(data); ok {
-			service.linksCh <- link
-		}
-	}})
-
-	return service
 }
 
-func (s *deepLinkServiceState) getInitial() (*DeepLink, error) {
-	result, err := s.channel.Invoke("getInitial", nil)
+// GetInitial returns the launch deep link, if available.
+func (d *DeepLinkService) GetInitial(ctx context.Context) (*DeepLink, error) {
+	result, err := d.state.channel.Invoke("getInitial", nil)
 	if err != nil {
 		return nil, err
 	}
 	if result == nil {
 		return nil, nil
 	}
-	link, ok := parseDeepLink(result)
-	if !ok {
-		return nil, ErrInvalidArguments
+	link, err := parseDeepLinkWithError(result)
+	if err != nil {
+		return nil, err
 	}
 	return &link, nil
 }
 
-func (s *deepLinkServiceState) linkChannel() <-chan DeepLink {
-	return s.linksCh
+// Links returns a stream of deep link events.
+func (d *DeepLinkService) Links() *Stream[DeepLink] {
+	return d.links
 }
 
-func parseDeepLink(data any) (DeepLink, bool) {
+func parseDeepLinkWithError(data any) (DeepLink, error) {
 	m, ok := data.(map[string]any)
 	if !ok {
-		return DeepLink{}, false
+		return DeepLink{}, &errors.ParseError{
+			Channel:  "drift/deeplinks/events",
+			DataType: "DeepLink",
+			Got:      data,
+		}
 	}
-	url := parseDeepLinkString(m["url"])
+	url := parseString(m["url"])
 	if url == "" {
-		return DeepLink{}, false
+		return DeepLink{}, &errors.ParseError{
+			Channel:  "drift/deeplinks/events",
+			DataType: "DeepLink",
+			Got:      data,
+		}
 	}
 	return DeepLink{
 		URL:       url,
-		Source:    parseDeepLinkString(m["source"]),
-		Timestamp: parseDeepLinkTime(m["timestamp"]),
-	}, true
-}
-
-func parseDeepLinkString(value any) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case []byte:
-		return string(v)
-	default:
-		return ""
-	}
-}
-
-func parseDeepLinkTime(value any) time.Time {
-	var millis int64
-	switch v := value.(type) {
-	case int64:
-		millis = v
-	case int:
-		millis = int64(v)
-	case int32:
-		millis = int64(v)
-	case float64:
-		millis = int64(v)
-	case float32:
-		millis = int64(v)
-	case uint64:
-		millis = int64(v)
-	case uint32:
-		millis = int64(v)
-	case uint:
-		millis = int64(v)
-	case int16:
-		millis = int64(v)
-	case int8:
-		millis = int64(v)
-	case uint16:
-		millis = int64(v)
-	case uint8:
-		millis = int64(v)
-	default:
-		return time.Time{}
-	}
-	return time.UnixMilli(millis)
+		Source:    parseString(m["source"]),
+		Timestamp: parseTime(m["timestamp"]),
+	}, nil
 }

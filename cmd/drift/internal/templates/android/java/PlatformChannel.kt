@@ -232,11 +232,6 @@ object PlatformChannelManager {
             CameraHandler.handle(context, method, args)
         }
 
-        // Push channel
-        register("drift/push") { method, args ->
-            PushHandler.handle(context, method, args)
-        }
-
         // Background tasks channel
         register("drift/background") { method, args ->
             BackgroundHandler.handle(context, method, args)

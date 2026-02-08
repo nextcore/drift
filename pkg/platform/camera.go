@@ -30,8 +30,7 @@ type CapturedMedia struct {
 
 // CameraResult represents the result of a camera or gallery operation.
 type CameraResult struct {
-	// RequestID correlates the result with its request (internal use).
-	RequestID string
+	requestID string
 
 	// Type indicates the operation: "capture" for camera, "gallery" for picker.
 	Type string
@@ -137,7 +136,7 @@ func (c *CameraService) CapturePhoto(ctx context.Context, opts CapturePhotoOptio
 				// to a specific caller. Report and continue listening.
 				return
 			}
-			if result.RequestID == requestID {
+			if result.requestID == requestID {
 				select {
 				case resultChan <- result:
 				default:
@@ -216,7 +215,7 @@ func (c *CameraService) PickFromGallery(ctx context.Context, opts PickFromGaller
 				})
 				return
 			}
-			if result.RequestID == requestID {
+			if result.requestID == requestID {
 				select {
 				case resultChan <- result:
 				default:
@@ -279,7 +278,7 @@ func parseCameraResultWithID(data any) (CameraResult, error) {
 	}
 
 	result := CameraResult{
-		RequestID: requestID,
+		requestID: requestID,
 		Type:      parseString(m["type"]),
 		Cancelled: parseBool(m["cancelled"]),
 		Error:     parseString(m["error"]),

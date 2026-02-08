@@ -14,9 +14,11 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 
 object NotificationHandler {
     private const val defaultChannelId = "drift_default"
@@ -30,6 +32,8 @@ object NotificationHandler {
     private const val extraData = "drift_notification_data"
     private const val extraChannel = "drift_notification_channel"
     private const val extraSource = "drift_notification_source"
+    private const val TAG = "DriftNotifications"
+    private var currentPushToken: String? = null
 
     fun handle(context: Context, method: String, args: Any?): Pair<Any?, Exception?> {
         return when (method) {
@@ -38,6 +42,11 @@ object NotificationHandler {
             "cancel" -> cancelLocal(context, args)
             "cancelAll" -> cancelAll(context)
             "setBadge" -> Pair(null, null)
+            "registerForPush" -> registerForPush()
+            "getPushToken" -> getPushToken()
+            "subscribeToTopic" -> subscribeToTopic(args)
+            "unsubscribeFromTopic" -> unsubscribeFromTopic(args)
+            "deletePushToken" -> deletePushToken()
             else -> Pair(null, IllegalArgumentException("Unknown method: $method"))
         }
     }
@@ -80,6 +89,154 @@ object NotificationHandler {
         )
         PlatformChannelManager.sendEvent("drift/notifications/token", payload)
     }
+
+    // region Push notification methods
+
+    private fun registerForPush(): Pair<Any?, Exception?> {
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val token = task.result
+                    currentPushToken = token
+                    Log.d(TAG, "FCM registration token: $token")
+                    handleNewToken(token, isRefresh = false)
+                } else {
+                    Log.e(TAG, "Failed to get FCM token", task.exception)
+                    sendPushError("registration_failed", task.exception?.message ?: "Unknown error")
+                }
+            }
+            return Pair(null, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "Firebase not configured", e)
+            return Pair(null, e)
+        }
+    }
+
+    private fun getPushToken(): Pair<Any?, Exception?> {
+        if (currentPushToken != null) {
+            return Pair(mapOf("token" to currentPushToken), null)
+        }
+
+        var token: String? = null
+        var error: Exception? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    token = task.result
+                    currentPushToken = token
+                } else {
+                    error = task.exception
+                }
+                latch.countDown()
+            }
+
+            latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            error = e
+        }
+
+        return if (error != null) {
+            Pair(null, error)
+        } else {
+            Pair(mapOf("token" to token), null)
+        }
+    }
+
+    private fun subscribeToTopic(args: Any?): Pair<Any?, Exception?> {
+        val argsMap = args as? Map<*, *>
+            ?: return Pair(null, IllegalArgumentException("Invalid arguments"))
+        val topic = argsMap["topic"] as? String
+            ?: return Pair(null, IllegalArgumentException("Missing topic"))
+
+        var error: Exception? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+
+        try {
+            FirebaseMessaging.getInstance().subscribeToTopic(topic).addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    error = task.exception
+                }
+                latch.countDown()
+            }
+
+            latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            error = e
+        }
+
+        return if (error != null) {
+            Pair(null, error)
+        } else {
+            Pair(null, null)
+        }
+    }
+
+    private fun unsubscribeFromTopic(args: Any?): Pair<Any?, Exception?> {
+        val argsMap = args as? Map<*, *>
+            ?: return Pair(null, IllegalArgumentException("Invalid arguments"))
+        val topic = argsMap["topic"] as? String
+            ?: return Pair(null, IllegalArgumentException("Missing topic"))
+
+        var error: Exception? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+
+        try {
+            FirebaseMessaging.getInstance().unsubscribeFromTopic(topic).addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    error = task.exception
+                }
+                latch.countDown()
+            }
+
+            latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            error = e
+        }
+
+        return if (error != null) {
+            Pair(null, error)
+        } else {
+            Pair(null, null)
+        }
+    }
+
+    private fun deletePushToken(): Pair<Any?, Exception?> {
+        var error: Exception? = null
+        val latch = java.util.concurrent.CountDownLatch(1)
+
+        try {
+            FirebaseMessaging.getInstance().deleteToken().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    currentPushToken = null
+                } else {
+                    error = task.exception
+                }
+                latch.countDown()
+            }
+
+            latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            error = e
+        }
+
+        return if (error != null) {
+            Pair(null, error)
+        } else {
+            Pair(null, null)
+        }
+    }
+
+    private fun sendPushError(code: String, message: String) {
+        PlatformChannelManager.sendEvent("drift/notifications/error", mapOf(
+            "code" to code,
+            "message" to message,
+            "platform" to "android"
+        ))
+    }
+
+    // endregion
 
     private fun getSettings(context: Context): Map<String, Any> {
         return mapOf(

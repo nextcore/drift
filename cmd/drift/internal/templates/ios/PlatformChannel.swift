@@ -288,11 +288,6 @@ final class PlatformChannelManager {
             return CameraHandler.handle(method: method, args: args)
         }
 
-        // Push channel
-        register(channel: "drift/push") { method, args in
-            return PushHandler.handle(method: method, args: args)
-        }
-
         // Background tasks channel
         register(channel: "drift/background") { method, args in
             return BackgroundHandler.handle(method: method, args: args)
@@ -611,6 +606,9 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = shared
     }
 
+    private static var currentPushToken: String?
+    private static var subscribedTopics: Set<String> = []
+
     static func handle(method: String, args: Any?) -> (Any?, Error?) {
         switch method {
         case "getSettings":
@@ -623,6 +621,16 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
             return cancelAll()
         case "setBadge":
             return setBadge(args: args)
+        case "registerForPush":
+            return registerForPush()
+        case "getPushToken":
+            return getPushToken()
+        case "subscribeToTopic":
+            return subscribeToTopic(args: args)
+        case "unsubscribeFromTopic":
+            return unsubscribeFromTopic(args: args)
+        case "deletePushToken":
+            return deletePushToken()
         default:
             return (nil, NSError(domain: "Notifications", code: 404, userInfo: [NSLocalizedDescriptionKey: "Unknown method: \(method)"]))
         }
@@ -728,6 +736,66 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         return (nil, nil)
     }
 
+    // MARK: - Push notification methods
+
+    private static func registerForPush() -> (Any?, Error?) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            case .notDetermined:
+                sendPushError("authorization_required", message: "Call Notifications.Permission.Request() before registering for push")
+            case .denied:
+                sendPushError("authorization_denied", message: "Notification permission denied")
+            @unknown default:
+                sendPushError("authorization_unknown", message: "Unknown authorization status")
+            }
+        }
+        return (nil, nil)
+    }
+
+    private static func getPushToken() -> (Any?, Error?) {
+        return (["token": currentPushToken], nil)
+    }
+
+    private static func subscribeToTopic(args: Any?) -> (Any?, Error?) {
+        guard let dict = args as? [String: Any],
+              let topic = dict["topic"] as? String else {
+            return (nil, NSError(domain: "Notifications", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing topic"]))
+        }
+        subscribedTopics.insert(topic)
+        return (nil, nil)
+    }
+
+    private static func unsubscribeFromTopic(args: Any?) -> (Any?, Error?) {
+        guard let dict = args as? [String: Any],
+              let topic = dict["topic"] as? String else {
+            return (nil, NSError(domain: "Notifications", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing topic"]))
+        }
+        subscribedTopics.remove(topic)
+        return (nil, nil)
+    }
+
+    private static func deletePushToken() -> (Any?, Error?) {
+        DispatchQueue.main.async {
+            UIApplication.shared.unregisterForRemoteNotifications()
+        }
+        currentPushToken = nil
+        return (nil, nil)
+    }
+
+    private static func sendPushError(_ code: String, message: String) {
+        PlatformChannelManager.shared.sendEvent(channel: "drift/notifications/error", data: [
+            "code": code,
+            "message": message,
+            "platform": "ios"
+        ])
+    }
+
+    // MARK: - UNUserNotificationCenterDelegate
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -761,20 +829,18 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
 
     static func handleDeviceToken(_ deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        let isRefresh = currentPushToken != nil
+        currentPushToken = token
         PlatformChannelManager.shared.sendEvent(channel: "drift/notifications/token", data: [
             "platform": "ios",
             "token": token,
             "timestamp": currentTimestamp(),
-            "isRefresh": true
+            "isRefresh": isRefresh
         ])
     }
 
     static func handleRemoteNotificationError(_ error: Error) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/notifications/error", data: [
-            "code": "registration_failed",
-            "message": error.localizedDescription,
-            "platform": "ios"
-        ])
+        sendPushError("registration_failed", message: error.localizedDescription)
     }
 
     private static func sendReceived(notification: UNNotification, isForeground: Bool, source: String) {

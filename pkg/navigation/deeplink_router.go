@@ -1,6 +1,7 @@
 package navigation
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -58,24 +59,18 @@ func (c *DeepLinkController) start() {
 	}
 	c.stopCh = make(chan struct{})
 	go func() {
-		link, err := platform.GetInitialDeepLink()
+		link, err := platform.DeepLinks.GetInitial(context.Background())
 		if err != nil {
 			c.handleError(err)
 		} else if link != nil {
 			c.handleLink(*link)
 		}
 
-		for {
-			select {
-			case <-c.stopCh:
-				return
-			case link, ok := <-platform.DeepLinks():
-				if !ok {
-					return
-				}
-				c.handleLink(link)
-			}
-		}
+		unsub := platform.DeepLinks.Links().Listen(func(link platform.DeepLink) {
+			c.handleLink(link)
+		})
+		defer unsub()
+		<-c.stopCh
 	}()
 }
 

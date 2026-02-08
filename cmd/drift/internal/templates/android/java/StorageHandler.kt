@@ -21,11 +21,12 @@ object StorageHandler {
 
     private var pendingSaveData: ByteArray? = null
     private var pendingRequestType: String? = null
+    private var pendingRequestId: String? = null
 
     fun handle(context: Context, method: String, args: Any?): Pair<Any?, Exception?> {
         return when (method) {
             "pickFile" -> pickFile(context, args)
-            "pickDirectory" -> pickDirectory(context)
+            "pickDirectory" -> pickDirectory(context, args)
             "saveFile" -> saveFile(context, args)
             "readFile" -> readFile(context, args)
             "writeFile" -> writeFile(context, args)
@@ -46,6 +47,7 @@ object StorageHandler {
         val allowedTypes = argsMap["allowedTypes"] as? List<String> ?: listOf("*/*")
 
         pendingRequestType = "pickFile"
+        pendingRequestId = argsMap["requestId"] as? String
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -63,11 +65,13 @@ object StorageHandler {
         return Pair(mapOf("pending" to true), null)
     }
 
-    private fun pickDirectory(context: Context): Pair<Any?, Exception?> {
+    private fun pickDirectory(context: Context, args: Any?): Pair<Any?, Exception?> {
         val activity = PlatformChannelManager.currentActivity()
             ?: return Pair(null, IllegalStateException("No activity available"))
 
+        val argsMap = args as? Map<*, *> ?: emptyMap<String, Any>()
         pendingRequestType = "pickDirectory"
+        pendingRequestId = argsMap["requestId"] as? String
 
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         activity.startActivityForResult(intent, PICK_DIRECTORY_REQUEST)
@@ -98,6 +102,7 @@ object StorageHandler {
 
         pendingSaveData = data
         pendingRequestType = "saveFile"
+        pendingRequestId = argsMap["requestId"] as? String
 
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -302,37 +307,52 @@ object StorageHandler {
     }
 
     private fun sendPickFileResult(files: List<Map<String, Any?>>) {
-        PlatformChannelManager.sendEvent("drift/storage/result", mapOf(
+        val event = mutableMapOf<String, Any?>(
             "type" to "pickFile",
             "files" to files
-        ))
+        )
+        pendingRequestId?.let { event["requestId"] = it }
+        PlatformChannelManager.sendEvent("drift/storage/result", event)
+        pendingRequestId = null
     }
 
     private fun sendPickDirectoryResult(path: String?) {
-        PlatformChannelManager.sendEvent("drift/storage/result", mapOf(
+        val event = mutableMapOf<String, Any?>(
             "type" to "pickDirectory",
             "path" to path
-        ))
+        )
+        pendingRequestId?.let { event["requestId"] = it }
+        PlatformChannelManager.sendEvent("drift/storage/result", event)
+        pendingRequestId = null
     }
 
     private fun sendSaveFileResult(path: String) {
-        PlatformChannelManager.sendEvent("drift/storage/result", mapOf(
+        val event = mutableMapOf<String, Any?>(
             "type" to "saveFile",
             "path" to path
-        ))
+        )
+        pendingRequestId?.let { event["requestId"] = it }
+        PlatformChannelManager.sendEvent("drift/storage/result", event)
+        pendingRequestId = null
     }
 
     private fun sendCancelled(requestType: String) {
-        PlatformChannelManager.sendEvent("drift/storage/result", mapOf(
+        val event = mutableMapOf<String, Any?>(
             "type" to requestType,
             "cancelled" to true
-        ))
+        )
+        pendingRequestId?.let { event["requestId"] = it }
+        PlatformChannelManager.sendEvent("drift/storage/result", event)
+        pendingRequestId = null
     }
 
     private fun sendError(requestType: String, message: String) {
-        PlatformChannelManager.sendEvent("drift/storage/result", mapOf(
+        val event = mutableMapOf<String, Any?>(
             "type" to requestType,
             "error" to message
-        ))
+        )
+        pendingRequestId?.let { event["requestId"] = it }
+        PlatformChannelManager.sendEvent("drift/storage/result", event)
+        pendingRequestId = null
     }
 }

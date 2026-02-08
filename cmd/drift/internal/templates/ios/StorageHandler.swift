@@ -9,6 +9,7 @@ final class StorageHandler: NSObject {
 
     private var pendingSaveData: Data?
     private var pendingRequestType: String = "pickFile"
+    private var pendingRequestId: String?
 
     private override init() {
         super.init()
@@ -19,7 +20,7 @@ final class StorageHandler: NSObject {
         case "pickFile":
             return shared.pickFile(args: args)
         case "pickDirectory":
-            return shared.pickDirectory()
+            return shared.pickDirectory(args: args)
         case "saveFile":
             return shared.saveFile(args: args)
         case "readFile":
@@ -43,6 +44,7 @@ final class StorageHandler: NSObject {
         let allowedTypes = dict["allowedTypes"] as? [String] ?? ["public.item"]
 
         pendingRequestType = "pickFile"
+        pendingRequestId = dict["requestId"] as? String
 
         DispatchQueue.main.async {
             self.presentDocumentPicker(allowMultiple: allowMultiple, allowedTypes: allowedTypes)
@@ -73,8 +75,10 @@ final class StorageHandler: NSObject {
         presentPicker(picker)
     }
 
-    private func pickDirectory() -> (Any?, Error?) {
+    private func pickDirectory(args: Any?) -> (Any?, Error?) {
+        let dict = args as? [String: Any] ?? [:]
         pendingRequestType = "pickDirectory"
+        pendingRequestId = dict["requestId"] as? String
 
         DispatchQueue.main.async {
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
@@ -96,6 +100,8 @@ final class StorageHandler: NSObject {
         guard let data = StorageHandler.extractData(from: dict["data"]) else {
             return (nil, NSError(domain: "Storage", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing data"]))
         }
+
+        pendingRequestId = dict["requestId"] as? String
 
         // Save to temp file first, then present export picker
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedName)
@@ -276,38 +282,53 @@ final class StorageHandler: NSObject {
     // MARK: - Event Sending
 
     private func sendPickFileResult(_ files: [[String: Any]]) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: [
+        var event: [String: Any] = [
             "type": "pickFile",
             "files": files
-        ])
+        ]
+        if let reqId = pendingRequestId { event["requestId"] = reqId }
+        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: event)
+        pendingRequestId = nil
     }
 
     private func sendPickDirectoryResult(_ path: String?) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: [
+        var event: [String: Any] = [
             "type": "pickDirectory",
             "path": path as Any
-        ])
+        ]
+        if let reqId = pendingRequestId { event["requestId"] = reqId }
+        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: event)
+        pendingRequestId = nil
     }
 
     private func sendSaveFileResult(_ path: String) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: [
+        var event: [String: Any] = [
             "type": "saveFile",
             "path": path
-        ])
+        ]
+        if let reqId = pendingRequestId { event["requestId"] = reqId }
+        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: event)
+        pendingRequestId = nil
     }
 
     private func sendCancelled(_ requestType: String) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: [
+        var event: [String: Any] = [
             "type": requestType,
             "cancelled": true
-        ])
+        ]
+        if let reqId = pendingRequestId { event["requestId"] = reqId }
+        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: event)
+        pendingRequestId = nil
     }
 
     private func sendError(_ requestType: String, message: String) {
-        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: [
+        var event: [String: Any] = [
             "type": requestType,
             "error": message
-        ])
+        ]
+        if let reqId = pendingRequestId { event["requestId"] = reqId }
+        PlatformChannelManager.shared.sendEvent(channel: "drift/storage/result", data: event)
+        pendingRequestId = nil
     }
 }
 

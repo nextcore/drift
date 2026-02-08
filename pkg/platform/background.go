@@ -1,8 +1,11 @@
 package platform
 
-import "time"
+import (
+	"context"
+	"time"
 
-var backgroundService = newBackgroundService()
+	"github.com/go-drift/drift/pkg/errors"
+)
 
 // TaskType defines the type of background task.
 type TaskType string
@@ -42,70 +45,43 @@ type BackgroundEvent struct {
 	Timestamp time.Time
 }
 
-// ScheduleBackgroundTask schedules a background task.
-func ScheduleBackgroundTask(request TaskRequest) error {
-	return backgroundService.scheduleTask(request)
+// BackgroundService provides background task scheduling and event access.
+type BackgroundService struct {
+	state  *backgroundServiceState
+	events *Stream[BackgroundEvent]
 }
 
-// CancelBackgroundTask cancels a scheduled background task.
-func CancelBackgroundTask(id string) error {
-	return backgroundService.cancelTask(id)
-}
+// Background is the singleton background service.
+var Background *BackgroundService
 
-// CancelAllBackgroundTasks cancels all scheduled background tasks.
-func CancelAllBackgroundTasks() error {
-	return backgroundService.cancelAllTasks()
-}
-
-// CancelBackgroundTasksByTag cancels all tasks with the given tag.
-func CancelBackgroundTasksByTag(tag string) error {
-	return backgroundService.cancelTasksByTag(tag)
-}
-
-// BackgroundTaskEvents returns a channel that receives task events.
-func BackgroundTaskEvents() <-chan BackgroundEvent {
-	return backgroundService.eventChannel()
-}
-
-// CompleteBackgroundTask signals completion of a background task.
-func CompleteBackgroundTask(id string, success bool) error {
-	return backgroundService.completeTask(id, success)
-}
-
-// IsBackgroundRefreshAvailable checks if background refresh is available.
-func IsBackgroundRefreshAvailable() (bool, error) {
-	return backgroundService.isBackgroundRefreshAvailable()
+func init() {
+	state := newBackgroundService()
+	Background = &BackgroundService{
+		state:  state,
+		events: NewStream("drift/background/events", state.events, parseBackgroundEventWithError),
+	}
 }
 
 type backgroundServiceState struct {
 	channel *MethodChannel
 	events  *EventChannel
-	eventCh chan BackgroundEvent
 }
 
 func newBackgroundService() *backgroundServiceState {
-	service := &backgroundServiceState{
+	return &backgroundServiceState{
 		channel: NewMethodChannel("drift/background"),
 		events:  NewEventChannel("drift/background/events"),
-		eventCh: make(chan BackgroundEvent, 4),
 	}
-
-	service.events.Listen(EventHandler{OnEvent: func(data any) {
-		if event, ok := parseBackgroundEvent(data); ok {
-			service.eventCh <- event
-		}
-	}})
-
-	return service
 }
 
-func (s *backgroundServiceState) scheduleTask(request TaskRequest) error {
+// Schedule schedules a background task.
+func (b *BackgroundService) Schedule(ctx context.Context, request TaskRequest) error {
 	taskType := string(request.TaskType)
 	if taskType == "" {
 		taskType = string(TaskTypeOneTime)
 	}
 
-	_, err := s.channel.Invoke("scheduleTask", map[string]any{
+	_, err := b.state.channel.Invoke("scheduleTask", map[string]any{
 		"id":               request.ID,
 		"taskType":         taskType,
 		"tag":              request.Tag,
@@ -124,35 +100,40 @@ func (s *backgroundServiceState) scheduleTask(request TaskRequest) error {
 	return err
 }
 
-func (s *backgroundServiceState) cancelTask(id string) error {
-	_, err := s.channel.Invoke("cancelTask", map[string]any{
+// Cancel cancels a scheduled background task.
+func (b *BackgroundService) Cancel(ctx context.Context, id string) error {
+	_, err := b.state.channel.Invoke("cancelTask", map[string]any{
 		"id": id,
 	})
 	return err
 }
 
-func (s *backgroundServiceState) cancelAllTasks() error {
-	_, err := s.channel.Invoke("cancelAllTasks", nil)
+// CancelAll cancels all scheduled background tasks.
+func (b *BackgroundService) CancelAll(ctx context.Context) error {
+	_, err := b.state.channel.Invoke("cancelAllTasks", nil)
 	return err
 }
 
-func (s *backgroundServiceState) cancelTasksByTag(tag string) error {
-	_, err := s.channel.Invoke("cancelTasksByTag", map[string]any{
+// CancelByTag cancels all tasks with the given tag.
+func (b *BackgroundService) CancelByTag(ctx context.Context, tag string) error {
+	_, err := b.state.channel.Invoke("cancelTasksByTag", map[string]any{
 		"tag": tag,
 	})
 	return err
 }
 
-func (s *backgroundServiceState) completeTask(id string, success bool) error {
-	_, err := s.channel.Invoke("completeTask", map[string]any{
+// Complete signals completion of a background task.
+func (b *BackgroundService) Complete(ctx context.Context, id string, success bool) error {
+	_, err := b.state.channel.Invoke("completeTask", map[string]any{
 		"id":      id,
 		"success": success,
 	})
 	return err
 }
 
-func (s *backgroundServiceState) isBackgroundRefreshAvailable() (bool, error) {
-	result, err := s.channel.Invoke("isBackgroundRefreshAvailable", nil)
+// IsRefreshAvailable checks if background refresh is available.
+func (b *BackgroundService) IsRefreshAvailable(ctx context.Context) (bool, error) {
+	result, err := b.state.channel.Invoke("isBackgroundRefreshAvailable", nil)
 	if err != nil {
 		return false, err
 	}
@@ -162,19 +143,24 @@ func (s *backgroundServiceState) isBackgroundRefreshAvailable() (bool, error) {
 	return false, nil
 }
 
-func (s *backgroundServiceState) eventChannel() <-chan BackgroundEvent {
-	return s.eventCh
+// Events returns a stream of background task events.
+func (b *BackgroundService) Events() *Stream[BackgroundEvent] {
+	return b.events
 }
 
-func parseBackgroundEvent(data any) (BackgroundEvent, bool) {
+func parseBackgroundEventWithError(data any) (BackgroundEvent, error) {
 	m, ok := data.(map[string]any)
 	if !ok {
-		return BackgroundEvent{}, false
+		return BackgroundEvent{}, &errors.ParseError{
+			Channel:  "drift/background/events",
+			DataType: "BackgroundEvent",
+			Got:      data,
+		}
 	}
 	return BackgroundEvent{
 		TaskID:    parseString(m["taskId"]),
 		EventType: parseString(m["eventType"]),
 		Data:      parseMap(m["data"]),
 		Timestamp: parseTime(m["timestamp"]),
-	}, true
+	}, nil
 }

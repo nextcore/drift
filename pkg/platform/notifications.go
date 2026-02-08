@@ -233,6 +233,47 @@ func (n *NotificationsService) Errors() *Stream[NotificationError] {
 	return n.errors
 }
 
+// RegisterForPush registers the device for push notifications.
+// On iOS, call Permission.Request() first. On Android, this triggers FCM token retrieval.
+func (n *NotificationsService) RegisterForPush(ctx context.Context) error {
+	_, err := n.state.channel.Invoke("registerForPush", nil)
+	return err
+}
+
+// GetPushToken returns the current push token if available.
+func (n *NotificationsService) GetPushToken(ctx context.Context) (string, error) {
+	result, err := n.state.channel.Invoke("getPushToken", nil)
+	if err != nil {
+		return "", err
+	}
+	if m, ok := result.(map[string]any); ok {
+		return parseString(m["token"]), nil
+	}
+	return "", nil
+}
+
+// SubscribeToTopic subscribes to a push notification topic.
+func (n *NotificationsService) SubscribeToTopic(ctx context.Context, topic string) error {
+	_, err := n.state.channel.Invoke("subscribeToTopic", map[string]any{
+		"topic": topic,
+	})
+	return err
+}
+
+// UnsubscribeFromTopic unsubscribes from a push notification topic.
+func (n *NotificationsService) UnsubscribeFromTopic(ctx context.Context, topic string) error {
+	_, err := n.state.channel.Invoke("unsubscribeFromTopic", map[string]any{
+		"topic": topic,
+	})
+	return err
+}
+
+// DeletePushToken deletes the current push token.
+func (n *NotificationsService) DeletePushToken(ctx context.Context) error {
+	_, err := n.state.channel.Invoke("deletePushToken", nil)
+	return err
+}
+
 func parseNotificationEventWithError(data any) (NotificationEvent, error) {
 	m, ok := data.(map[string]any)
 	if !ok {

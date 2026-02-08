@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/drift"
 	"github.com/go-drift/drift/pkg/graphics"
@@ -45,51 +47,18 @@ func (s *storageState) InitState() {
 	// Get app directories
 	go func() {
 		dirs := make(map[string]string)
-		if path, err := platform.GetAppDirectory(platform.AppDirectoryDocuments); err == nil {
+		if path, err := platform.Storage.GetAppDirectory(platform.AppDirectoryDocuments); err == nil {
 			dirs["Documents"] = path
 		}
-		if path, err := platform.GetAppDirectory(platform.AppDirectoryCache); err == nil {
+		if path, err := platform.Storage.GetAppDirectory(platform.AppDirectoryCache); err == nil {
 			dirs["Cache"] = path
 		}
-		if path, err := platform.GetAppDirectory(platform.AppDirectoryTemp); err == nil {
+		if path, err := platform.Storage.GetAppDirectory(platform.AppDirectoryTemp); err == nil {
 			dirs["Temp"] = path
 		}
 		drift.Dispatch(func() {
 			s.appDirs.Set(dirs)
 		})
-	}()
-
-	// Listen for storage results
-	go func() {
-		for result := range platform.StorageResults() {
-			drift.Dispatch(func() {
-				if result.Cancelled {
-					s.statusText.Set("Operation cancelled")
-					return
-				}
-				if result.Error != "" {
-					s.statusText.Set("Error: " + result.Error)
-					return
-				}
-
-				switch result.Type {
-				case "pickFile":
-					if len(result.Files) > 0 {
-						file := result.Files[0]
-						s.selectedFile.Set(&file)
-						s.selectedPath.Set("")
-						s.statusText.Set("File selected: " + file.Name)
-					}
-				case "pickDirectory":
-					s.selectedFile.Set(nil)
-					s.selectedPath.Set(result.Path)
-					s.statusText.Set("Directory selected")
-				case "saveFile":
-					s.selectedPath.Set(result.Path)
-					s.statusText.Set("File saved")
-				}
-			})
-		}
 	}()
 }
 
@@ -278,32 +247,70 @@ func (s *storageState) infoRow(label, value string, colors theme.ColorScheme) co
 func (s *storageState) pickFile() {
 	s.statusText.Set("Opening file picker...")
 
-	err := platform.PickFile(platform.PickFileOptions{
-		AllowMultiple: false,
-	})
-	if err != nil {
-		s.statusText.Set("Error: " + err.Error())
-	}
+	go func() {
+		result, err := platform.Storage.PickFile(context.Background(), platform.PickFileOptions{
+			AllowMultiple: false,
+		})
+		drift.Dispatch(func() {
+			if err != nil {
+				s.statusText.Set("Error: " + err.Error())
+				return
+			}
+			if result.Cancelled {
+				s.statusText.Set("Operation cancelled")
+				return
+			}
+			if len(result.Files) > 0 {
+				file := result.Files[0]
+				s.selectedFile.Set(&file)
+				s.selectedPath.Set("")
+				s.statusText.Set("File selected: " + file.Name)
+			}
+		})
+	}()
 }
 
 func (s *storageState) pickDirectory() {
 	s.statusText.Set("Opening directory picker...")
 
-	err := platform.PickDirectory()
-	if err != nil {
-		s.statusText.Set("Error: " + err.Error())
-	}
+	go func() {
+		result, err := platform.Storage.PickDirectory(context.Background())
+		drift.Dispatch(func() {
+			if err != nil {
+				s.statusText.Set("Error: " + err.Error())
+				return
+			}
+			if result.Cancelled {
+				s.statusText.Set("Operation cancelled")
+				return
+			}
+			s.selectedFile.Set(nil)
+			s.selectedPath.Set(result.Path)
+			s.statusText.Set("Directory selected")
+		})
+	}()
 }
 
 func (s *storageState) saveFile() {
 	s.statusText.Set("Opening save dialog...")
 
-	data := []byte("Hello from Drift!\n\nThis file was saved using the Storage API.")
-	err := platform.SaveFile(data, platform.SaveFileOptions{
-		SuggestedName: "drift-demo.txt",
-		MimeType:      "text/plain",
-	})
-	if err != nil {
-		s.statusText.Set("Error: " + err.Error())
-	}
+	go func() {
+		data := []byte("Hello from Drift!\n\nThis file was saved using the Storage API.")
+		result, err := platform.Storage.SaveFile(context.Background(), data, platform.SaveFileOptions{
+			SuggestedName: "drift-demo.txt",
+			MimeType:      "text/plain",
+		})
+		drift.Dispatch(func() {
+			if err != nil {
+				s.statusText.Set("Error: " + err.Error())
+				return
+			}
+			if result.Cancelled {
+				s.statusText.Set("Operation cancelled")
+				return
+			}
+			s.selectedPath.Set(result.Path)
+			s.statusText.Set("File saved")
+		})
+	}()
 }
