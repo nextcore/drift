@@ -22,13 +22,13 @@ type loginState struct {
 func (s *loginState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Form{
         Autovalidate: true,
-        Child:  loginForm{parent: s},
+        Child:  loginForm{state: s},
     }
 }
 
 // Separate widget to access FormOf(ctx)
 type loginForm struct {
-    parent *loginState
+    state *loginState
 }
 
 func (f loginForm) Build(ctx core.BuildContext) core.Widget {
@@ -53,7 +53,7 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
                 return ""
             }).
             WithOnSaved(func(value string) {
-                f.parent.email = value
+                f.state.email = value
             }),
         widgets.VSpace(16),
 
@@ -68,14 +68,14 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
                 return ""
             }).
             WithOnSaved(func(value string) {
-                f.parent.password = value
+                f.state.password = value
             }),
         widgets.VSpace(24),
 
         theme.ButtonOf(ctx, "Submit", func() {
             if form.Validate() {
                 form.Save()
-                // Use f.parent.email and f.parent.password
+                // Use f.state.email and f.state.password
             }
         }),
     )

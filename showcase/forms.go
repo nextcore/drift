@@ -77,7 +77,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 		// Form wraps the fields and provides validation/save/reset
 		widgets.Form{
 			Autovalidate: true,
-			Child:        formContent{parent: s},
+			Child:        formContent{state: s},
 		},
 
 		widgets.VSpace(24),
@@ -205,7 +205,7 @@ func (s *formsState) handleReset(form *widgets.FormState) {
 
 // formContent is a separate widget so it can access FormOf(ctx).
 type formContent struct {
-	parent *formsState
+	state *formsState
 }
 
 func (f formContent) CreateElement() core.Element {
@@ -240,7 +240,7 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 				return ""
 			}).
 			WithOnSaved(func(value string) {
-				f.parent.data.Username = value
+				f.state.data.Username = value
 			}),
 		widgets.VSpace(16),
 
@@ -258,7 +258,7 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 				return ""
 			}).
 			WithOnSaved(func(value string) {
-				f.parent.data.Email = value
+				f.state.data.Email = value
 			}),
 		widgets.VSpace(16),
 
@@ -278,20 +278,20 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 				return ""
 			}).
 			WithOnSaved(func(value string) {
-				f.parent.data.Password = value
+				f.state.data.Password = value
 			}),
 		widgets.VSpace(24),
 
 		// Buttons
 		theme.ButtonOf(ctx, "Submit", func() {
 			if form != nil {
-				f.parent.handleSubmit(form)
+				f.state.handleSubmit(form)
 			}
 		}),
 		widgets.VSpace(8),
 		theme.ButtonOf(ctx, "Reset", func() {
 			if form != nil {
-				f.parent.handleReset(form)
+				f.state.handleReset(form)
 			}
 		}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 		widgets.VSpace(16),
@@ -301,7 +301,7 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 			Color: colors.SurfaceVariant,
 			Child: widgets.PaddingAll(12,
 				widgets.Text{
-					Content: f.parent.statusText.Get(),
+					Content: f.state.statusText.Get(),
 					Style: graphics.TextStyle{
 						Color:    colors.OnSurfaceVariant,
 						FontSize: 14,
