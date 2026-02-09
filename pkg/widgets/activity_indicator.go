@@ -172,6 +172,8 @@ func (a activityIndicatorRender) UpdateRenderObject(ctx core.BuildContext, rende
 	}
 }
 
+var _ layout.PlatformViewOwner = (*renderActivityIndicator)(nil)
+
 type renderActivityIndicator struct {
 	layout.RenderBoxBase
 	state     *activityIndicatorState
@@ -213,6 +215,16 @@ func (r *renderActivityIndicator) HitTest(position graphics.Offset, result *layo
 	}
 	result.Add(r)
 	return true
+}
+
+// PlatformViewID implements PlatformViewOwner.
+func (r *renderActivityIndicator) PlatformViewID() int64 {
+	if r.state != nil && r.state.platformView != nil {
+		if id := r.state.platformView.ViewID(); id != 0 {
+			return id
+		}
+	}
+	return -1
 }
 
 func (r *renderActivityIndicator) HandlePointer(event gestures.PointerEvent) {

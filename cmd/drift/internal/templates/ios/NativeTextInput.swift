@@ -7,7 +7,7 @@ import UIKit
 
 /// Manages stable pointer IDs for forwarded touches.
 /// UITouch.hash is not guaranteed stable, so we map touches to monotonically increasing IDs.
-private class TouchPointerIDManager {
+class TouchPointerIDManager {
     static let shared = TouchPointerIDManager()
     private var touchToID: [ObjectIdentifier: Int64] = [:]
     private var nextID: Int64 = 1_000_000 // Start high to avoid collision with native pointer IDs
@@ -29,15 +29,8 @@ private class TouchPointerIDManager {
 }
 
 /// UITextField subclass with configurable padding.
-/// When not focused, distinguishes between taps (focus + cursor) and scrolls (forward to Drift).
 class PaddedTextField: UITextField {
     var padding: UIEdgeInsets = .zero
-
-    // Touch tracking for tap vs scroll detection
-    private var trackedTouch: UITouch?
-    private var touchStartPoint: CGPoint?
-    private var isForwardingToDrift = false
-    private let touchSlop: CGFloat = 12.0 // Matches Drift's DefaultTouchSlop
 
     override func textRect(forBounds bounds: CGRect) -> CGRect {
         return bounds.inset(by: padding)
@@ -50,123 +43,11 @@ class PaddedTextField: UITextField {
     override func placeholderRect(forBounds bounds: CGRect) -> CGRect {
         return bounds.inset(by: padding)
     }
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else {
-            super.touchesBegan(touches, with: event)
-            return
-        }
-
-        if isFirstResponder {
-            // Already focused - handle normally
-            super.touchesBegan(touches, with: event)
-            return
-        }
-
-        // Start tracking for tap vs scroll detection
-        trackedTouch = touch
-        touchStartPoint = touch.location(in: self)
-        isForwardingToDrift = false
-        super.touchesBegan(touches, with: event)
-    }
-
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = trackedTouch, touches.contains(touch),
-              let startPoint = touchStartPoint else {
-            super.touchesMoved(touches, with: event)
-            return
-        }
-
-        if isForwardingToDrift {
-            // Already forwarding - send to superview
-            forwardTouchToSuperview(touch, phase: 1)
-            return
-        }
-
-        if isFirstResponder {
-            super.touchesMoved(touches, with: event)
-            return
-        }
-
-        // Check if movement exceeds slop
-        let currentPoint = touch.location(in: self)
-        let dx = abs(currentPoint.x - startPoint.x)
-        let dy = abs(currentPoint.y - startPoint.y)
-
-        if dx > touchSlop || dy > touchSlop {
-            // Movement exceeded slop - this is a scroll, forward to Drift
-            isForwardingToDrift = true
-
-            // Cancel our handling
-            super.touchesCancelled(touches, with: event)
-
-            // Send down at original position, then move at current position
-            forwardTouchToSuperview(touch, phase: 0, overridePoint: startPoint)
-            forwardTouchToSuperview(touch, phase: 1)
-        } else {
-            super.touchesMoved(touches, with: event)
-        }
-    }
-
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = trackedTouch, touches.contains(touch) else {
-            super.touchesEnded(touches, with: event)
-            return
-        }
-
-        if isForwardingToDrift {
-            forwardTouchToSuperview(touch, phase: 2)
-            cleanupTouchState(touch)
-            return
-        }
-
-        // Normal tap - let UITextField handle it (focus + cursor positioning)
-        super.touchesEnded(touches, with: event)
-        cleanupTouchState(touch)
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let touch = trackedTouch, touches.contains(touch) {
-            if isForwardingToDrift {
-                forwardTouchToSuperview(touch, phase: 3)
-            } else {
-                super.touchesCancelled(touches, with: event)
-            }
-            cleanupTouchState(touch)
-        } else {
-            super.touchesCancelled(touches, with: event)
-        }
-    }
-
-    private func cleanupTouchState(_ touch: UITouch) {
-        TouchPointerIDManager.shared.releaseID(for: touch)
-        trackedTouch = nil
-        touchStartPoint = nil
-        isForwardingToDrift = false
-    }
-
-    private func forwardTouchToSuperview(_ touch: UITouch, phase: Int32, overridePoint: CGPoint? = nil) {
-        // Platform views are direct children of the host view (DriftMetalView)
-        guard let metalView = superview else { return }
-
-        let point = overridePoint ?? touch.location(in: self)
-        let screenPoint = convert(point, to: metalView)
-        let scale = metalView.contentScaleFactor
-        let pointerID = TouchPointerIDManager.shared.getID(for: touch)
-
-        DriftPointerEvent(
-            pointerID,
-            phase,
-            Double(screenPoint.x * scale),
-            Double(screenPoint.y * scale)
-        )
-    }
 }
 
 // MARK: - Padded Text View
 
 /// UITextView subclass with configurable padding via textContainerInset.
-/// When not focused, distinguishes between taps (focus + cursor) and scrolls (forward to Drift).
 class PaddedTextView: UITextView {
     var placeholderLabel: UILabel?
     var placeholderColor: UIColor = UIColor(white: 0.6, alpha: 1.0)
@@ -176,12 +57,6 @@ class PaddedTextView: UITextView {
             updatePlaceholder()
         }
     }
-
-    // Touch tracking for tap vs scroll detection
-    private var trackedTouch: UITouch?
-    private var touchStartPoint: CGPoint?
-    private var isForwardingToDrift = false
-    private let touchSlop: CGFloat = 12.0 // Matches Drift's DefaultTouchSlop
 
     override var text: String! {
         didSet { updatePlaceholder() }
@@ -208,117 +83,6 @@ class PaddedTextView: UITextView {
 
         placeholderLabel = label
         updatePlaceholder()
-    }
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else {
-            super.touchesBegan(touches, with: event)
-            return
-        }
-
-        if isFirstResponder {
-            // Already focused - handle normally
-            super.touchesBegan(touches, with: event)
-            return
-        }
-
-        // Start tracking for tap vs scroll detection
-        trackedTouch = touch
-        touchStartPoint = touch.location(in: self)
-        isForwardingToDrift = false
-        super.touchesBegan(touches, with: event)
-    }
-
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = trackedTouch, touches.contains(touch),
-              let startPoint = touchStartPoint else {
-            super.touchesMoved(touches, with: event)
-            return
-        }
-
-        if isForwardingToDrift {
-            // Already forwarding - send to superview
-            forwardTouchToSuperview(touch, phase: 1)
-            return
-        }
-
-        if isFirstResponder {
-            super.touchesMoved(touches, with: event)
-            return
-        }
-
-        // Check if movement exceeds slop
-        let currentPoint = touch.location(in: self)
-        let dx = abs(currentPoint.x - startPoint.x)
-        let dy = abs(currentPoint.y - startPoint.y)
-
-        if dx > touchSlop || dy > touchSlop {
-            // Movement exceeded slop - this is a scroll, forward to Drift
-            isForwardingToDrift = true
-
-            // Cancel our handling
-            super.touchesCancelled(touches, with: event)
-
-            // Send down at original position, then move at current position
-            forwardTouchToSuperview(touch, phase: 0, overridePoint: startPoint)
-            forwardTouchToSuperview(touch, phase: 1)
-        } else {
-            super.touchesMoved(touches, with: event)
-        }
-    }
-
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = trackedTouch, touches.contains(touch) else {
-            super.touchesEnded(touches, with: event)
-            return
-        }
-
-        if isForwardingToDrift {
-            forwardTouchToSuperview(touch, phase: 2)
-            cleanupTouchState(touch)
-            return
-        }
-
-        // Normal tap - let UITextView handle it (focus + cursor positioning)
-        super.touchesEnded(touches, with: event)
-        cleanupTouchState(touch)
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let touch = trackedTouch, touches.contains(touch) {
-            if isForwardingToDrift {
-                forwardTouchToSuperview(touch, phase: 3)
-            } else {
-                super.touchesCancelled(touches, with: event)
-            }
-            cleanupTouchState(touch)
-        } else {
-            super.touchesCancelled(touches, with: event)
-        }
-    }
-
-    private func cleanupTouchState(_ touch: UITouch) {
-        TouchPointerIDManager.shared.releaseID(for: touch)
-        trackedTouch = nil
-        touchStartPoint = nil
-        isForwardingToDrift = false
-    }
-
-    private func forwardTouchToSuperview(_ touch: UITouch, phase: Int32, overridePoint: CGPoint? = nil) {
-        // Platform views are direct children of the host view (DriftMetalView)
-        guard let metalView = superview else { return }
-
-        let point = overridePoint ?? touch.location(in: self)
-        let screenPoint = convert(point, to: metalView)
-        let scale = metalView.contentScaleFactor
-        let pointerID = TouchPointerIDManager.shared.getID(for: touch)
-
-        DriftPointerEvent(
-            pointerID,
-            phase,
-            Double(screenPoint.x * scale),
-            Double(screenPoint.y * scale)
-        )
     }
 }
 

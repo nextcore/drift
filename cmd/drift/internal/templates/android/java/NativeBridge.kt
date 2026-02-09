@@ -196,6 +196,20 @@ object NativeBridge {
     external fun needsFrame(): Int
 
     /**
+     * Queries the Go engine's hit test to determine if a platform view is the
+     * topmost target at the given pixel coordinates.
+     *
+     * Called synchronously from TouchInterceptorView on ACTION_DOWN before
+     * deciding whether to intercept touches.
+     *
+     * @param viewID The platform view ID to check.
+     * @param x      X coordinate in pixels (relative to the surface view).
+     * @param y      Y coordinate in pixels (relative to the surface view).
+     * @return 1 if the view is topmost (allow touch), 0 if obscured (block touch).
+     */
+    external fun hitTestPlatformView(viewID: Long, x: Double, y: Double): Int
+
+    /**
      * Signals the Go render thread that platform view geometry has been applied.
      *
      * Called from the main thread after applying geometry updates so the

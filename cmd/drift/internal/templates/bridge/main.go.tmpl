@@ -44,6 +44,14 @@ func DriftBackButtonPressed() C.int {
 	return 0
 }
 
+//export DriftHitTestPlatformView
+func DriftHitTestPlatformView(viewID C.int64_t, x C.double, y C.double) C.int {
+	if engine.HitTestPlatformView(int64(viewID), float64(x), float64(y)) {
+		return 1 // topmost, allow touch
+	}
+	return 0 // obscured, block touch
+}
+
 //export DriftRequestFrame
 func DriftRequestFrame() {
 	engine.RequestFrame()

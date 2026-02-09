@@ -628,6 +628,8 @@ func (n textInputRender) UpdateRenderObject(ctx core.BuildContext, renderObject 
 	}
 }
 
+var _ layout.PlatformViewOwner = (*renderTextInput)(nil)
+
 type renderTextInput struct {
 	layout.RenderBoxBase
 	width        float64
@@ -717,6 +719,16 @@ func (r *renderTextInput) HitTest(position graphics.Offset, result *layout.HitTe
 	}
 	result.Add(r)
 	return true
+}
+
+// PlatformViewID implements PlatformViewOwner.
+func (r *renderTextInput) PlatformViewID() int64 {
+	if r.state != nil && r.state.platformView != nil {
+		if id := r.state.platformView.ViewID(); id != 0 {
+			return id
+		}
+	}
+	return -1
 }
 
 // HandlePointer implements PointerHandler for gesture recognition.

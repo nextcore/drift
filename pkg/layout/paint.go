@@ -25,6 +25,14 @@ type PointerHandler interface {
 	HandlePointer(event gestures.PointerEvent)
 }
 
+// PlatformViewOwner identifies a render object that owns a native platform view.
+// Used by the hit test query to determine if a platform view is the topmost target.
+// Implementations return the platform view's positive ID, or -1 if the native view
+// has not been created yet.
+type PlatformViewOwner interface {
+	PlatformViewID() int64
+}
+
 // PaintContext provides the canvas and state tracking for painting render objects.
 // It maintains transform and clip stacks for culling and platform view geometry,
 // and supports layer-based recording when RecordingLayer is set.

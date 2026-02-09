@@ -51,7 +51,6 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Container layout that holds the surface view and platform views.
-     * Uses DriftContainer to handle touch forwarding for text inputs.
      */
     private lateinit var container: DriftContainer
 
@@ -73,7 +72,6 @@ class MainActivity : AppCompatActivity() {
         DeepLinkHandler.handleIntent(intent, "launch")
 
         // Create a container for the surface view and platform views.
-        // DriftContainer handles touch forwarding for unfocused text inputs.
         container = DriftContainer(this)
 
         surfaceView = DriftSurfaceView(this)
@@ -81,15 +79,15 @@ class MainActivity : AppCompatActivity() {
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT
         ))
-        container.setSurfaceView(surfaceView)
 
         setContentView(container)
 
         PlatformChannelManager.setView(surfaceView)
         PlatformChannelManager.setOnFrameNeeded { surfaceView.wakeFrameLoop() }
 
-        // Initialize platform view handler with the container
+        // Initialize platform view handler with the container and surface view
         PlatformViewHandler.init(this, container)
+        PlatformViewHandler.setSurfaceView(surfaceView)
 
         // Initialize accessibility support
         AccessibilityHandler.initialize(this, surfaceView)

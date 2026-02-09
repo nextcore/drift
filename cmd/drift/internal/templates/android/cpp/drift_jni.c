@@ -150,6 +150,18 @@ typedef void (*DriftRequestFrameFn)(void);
 typedef int (*DriftNeedsFrameFn)(void);
 typedef void (*DriftGeometryAppliedFn)(void);
 
+/**
+ * Function pointer type for DriftHitTestPlatformView.
+ * Matches the signature exported by Go:
+ *   func DriftHitTestPlatformView(viewID C.int64_t, x C.double, y C.double) C.int
+ *
+ * @param viewID Platform view ID to check
+ * @param x      X coordinate in pixels
+ * @param y      Y coordinate in pixels
+ * @return 1 if topmost (allow touch), 0 if obscured (block touch)
+ */
+typedef int (*DriftHitTestPlatformViewFn)(int64_t viewID, double x, double y);
+
 /* Cached function pointers. NULL until resolved. */
 static DriftRenderFn drift_render_frame = NULL;
 static DriftPointerFn drift_pointer_event = NULL;
@@ -168,6 +180,8 @@ static DriftRequestFrameFn drift_request_frame = NULL;
 static DriftNeedsFrameFn drift_needs_frame = NULL;
 static int drift_needs_frame_resolved = 0;
 static DriftGeometryAppliedFn drift_geometry_applied = NULL;
+static DriftHitTestPlatformViewFn drift_hit_test_platform_view = NULL;
+static int drift_hit_test_platform_view_resolved = 0;
 
 /* Handle to the loaded Go shared library. NULL until loaded. */
 static void *drift_handle = NULL;
@@ -1193,6 +1207,71 @@ Java_{{.JNIPackage}}_NativeBridge_needsFrame(
     }
 
     return (jint)drift_needs_frame();
+}
+
+/**
+ * Resolves the DriftHitTestPlatformView function from the Go shared library.
+ *
+ * @return 0 if the function was successfully resolved, 1 on failure.
+ */
+static int resolve_drift_hit_test_platform_view(void) {
+    if (drift_hit_test_platform_view) {
+        return 0;
+    }
+
+    /* Only attempt resolution once to avoid log spam */
+    if (drift_hit_test_platform_view_resolved) {
+        return 1;
+    }
+    drift_hit_test_platform_view_resolved = 1;
+
+    if (!drift_handle) {
+        drift_handle = dlopen("libdrift.so", RTLD_NOW | RTLD_GLOBAL);
+        if (!drift_handle) {
+            __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "dlopen libdrift.so failed: %s", dlerror());
+        }
+    }
+
+    if (drift_handle) {
+        drift_hit_test_platform_view = (DriftHitTestPlatformViewFn)dlsym(drift_handle, "DriftHitTestPlatformView");
+    } else {
+        drift_hit_test_platform_view = (DriftHitTestPlatformViewFn)dlsym(RTLD_DEFAULT, "DriftHitTestPlatformView");
+    }
+
+    if (!drift_hit_test_platform_view) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "DriftHitTestPlatformView not found: %s", dlerror());
+    }
+
+    return drift_hit_test_platform_view ? 0 : 1;
+}
+
+/**
+ * JNI implementation for NativeBridge.hitTestPlatformView().
+ *
+ * Queries the Go engine's hit test to determine if a platform view is the
+ * topmost target at the given pixel coordinates.
+ *
+ * @param viewID Platform view ID to check
+ * @param x      X coordinate in pixels
+ * @param y      Y coordinate in pixels
+ * @return 1 if topmost (allow touch), 0 if obscured (block touch)
+ */
+JNIEXPORT jint JNICALL
+Java_{{.JNIPackage}}_NativeBridge_hitTestPlatformView(
+    JNIEnv *env,
+    jclass clazz,
+    jlong viewID,
+    jdouble x,
+    jdouble y
+) {
+    (void)env;
+    (void)clazz;
+
+    if (resolve_drift_hit_test_platform_view() != 0) {
+        return 1; /* Fail-safe: allow touch if we can't check */
+    }
+
+    return (jint)drift_hit_test_platform_view((int64_t)viewID, x, y);
 }
 
 /**

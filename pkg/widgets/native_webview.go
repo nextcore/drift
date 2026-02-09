@@ -72,6 +72,8 @@ func (n NativeWebView) UpdateRenderObject(ctx core.BuildContext, renderObject la
 	}
 }
 
+var _ layout.PlatformViewOwner = (*renderNativeWebView)(nil)
+
 type renderNativeWebView struct {
 	layout.RenderBoxBase
 	controller *platform.WebViewController
@@ -104,6 +106,14 @@ func (r *renderNativeWebView) Paint(ctx *layout.PaintContext) {
 	if r.controller != nil && r.controller.ViewID() != 0 {
 		ctx.EmbedPlatformView(r.controller.ViewID(), size)
 	}
+}
+
+// PlatformViewID implements PlatformViewOwner.
+func (r *renderNativeWebView) PlatformViewID() int64 {
+	if r.controller != nil && r.controller.ViewID() != 0 {
+		return r.controller.ViewID()
+	}
+	return -1
 }
 
 func (r *renderNativeWebView) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {

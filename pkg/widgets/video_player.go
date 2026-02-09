@@ -67,6 +67,8 @@ func (v VideoPlayer) UpdateRenderObject(ctx core.BuildContext, renderObject layo
 	}
 }
 
+var _ layout.PlatformViewOwner = (*renderVideoPlayer)(nil)
+
 type renderVideoPlayer struct {
 	layout.RenderBoxBase
 	controller *platform.VideoPlayerController
@@ -92,6 +94,14 @@ func (r *renderVideoPlayer) Paint(ctx *layout.PaintContext) {
 	if r.controller != nil && r.controller.ViewID() != 0 {
 		ctx.EmbedPlatformView(r.controller.ViewID(), size)
 	}
+}
+
+// PlatformViewID implements PlatformViewOwner.
+func (r *renderVideoPlayer) PlatformViewID() int64 {
+	if r.controller != nil && r.controller.ViewID() != 0 {
+		return r.controller.ViewID()
+	}
+	return -1
 }
 
 func (r *renderVideoPlayer) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {

@@ -23,8 +23,10 @@ import kotlin.math.floor
  */
 object PlatformViewHandler {
     private val views = mutableMapOf<Int, PlatformViewContainer>()
+    private val interceptors = mutableMapOf<Int, TouchInterceptorView>()
     private var context: Context? = null
     private var hostView: ViewGroup? = null
+    private var surfaceView: View? = null
 
     // Frame sequence tracking for geometry batches
     private var lastAppliedSeq: Long = 0
@@ -49,6 +51,10 @@ object PlatformViewHandler {
     fun init(context: Context, hostView: ViewGroup) {
         this.context = context
         this.hostView = hostView
+    }
+
+    fun setSurfaceView(view: View) {
+        this.surfaceView = view
     }
 
     fun handle(method: String, args: Any?): Pair<Any?, Exception?> {
@@ -212,12 +218,17 @@ object PlatformViewHandler {
             return Pair(null, IllegalArgumentException("Unknown view type: $viewType"))
         }
 
-        // Add to host view on main thread
+        // Add to host view on main thread, wrapped in a TouchInterceptorView
         host.post {
             val container = creator()
             views[viewId] = container
-            container.view.visibility = View.GONE // Hidden until positioned
-            host.addView(container.view)
+
+            val interceptor = TouchInterceptorView(ctx, viewId)
+            interceptor.surfaceView = surfaceView
+            interceptor.addView(container.view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            interceptor.visibility = View.GONE // Hidden until positioned
+            interceptors[viewId] = interceptor
+            host.addView(interceptor)
 
             // Notify Go that view is created
             PlatformChannelManager.sendEvent(
@@ -239,7 +250,12 @@ object PlatformViewHandler {
         host.post {
             val container = views.remove(viewId) ?: return@post
             container.dispose()
-            host.removeView(container.view)
+            val interceptor = interceptors.remove(viewId)
+            if (interceptor != null) {
+                host.removeView(interceptor)
+            } else {
+                host.removeView(container.view)
+            }
         }
 
         return Pair(null, null)
@@ -261,8 +277,9 @@ object PlatformViewHandler {
         host.post {
             val container = views[viewId] ?: return@post
             val density = context?.resources?.displayMetrics?.density ?: 1f
-            applyViewGeometry(container.view, x, y, width, height, density)
-            applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
+            val targetView = interceptors[viewId] ?: container.view
+            applyViewGeometry(targetView, x, y, width, height, density)
+            applyClipBounds(targetView, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
         }
 
         return Pair(null, null)
@@ -377,8 +394,9 @@ object PlatformViewHandler {
                 val clipBottom = (geom["clipBottom"] as? Number)?.toFloat()
 
                 val container = views[viewId] ?: continue
-                applyViewGeometry(container.view, x, y, width, height, density)
-                applyClipBounds(container.view, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
+                val targetView = interceptors[viewId] ?: container.view
+                applyViewGeometry(targetView, x, y, width, height, density)
+                applyClipBounds(targetView, x, y, width, height, clipLeft, clipTop, clipRight, clipBottom, density)
             }
             lastAppliedSeq = frameSeq
         }
@@ -408,7 +426,8 @@ object PlatformViewHandler {
 
         host.post {
             val container = views[viewId] ?: return@post
-            container.view.visibility = if (visible) View.VISIBLE else View.GONE
+            val targetView = interceptors[viewId] ?: container.view
+            targetView.visibility = if (visible) View.VISIBLE else View.GONE
         }
 
         return Pair(null, null)
@@ -421,6 +440,7 @@ object PlatformViewHandler {
 
         host.post {
             val container = views[viewId] ?: return@post
+            // Apply enabled/alpha to the inner view, not the interceptor wrapper
             container.view.isEnabled = enabled
             container.view.alpha = if (enabled) 1.0f else 0.5f
         }
