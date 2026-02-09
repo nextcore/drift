@@ -142,6 +142,14 @@ func (v *TextInputView) Selection() (base, extent int) {
 	return v.selBase, v.selExt
 }
 
+// Snapshot returns the current text and selection under a single lock,
+// ensuring a consistent read when both are needed together.
+func (v *TextInputView) Snapshot() (text string, selBase, selExt int) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.text, v.selBase, v.selExt
+}
+
 // Focus requests keyboard focus for the text input.
 func (v *TextInputView) Focus() {
 	GetPlatformViewRegistry().InvokeViewMethod(v.viewID, "focus", nil)

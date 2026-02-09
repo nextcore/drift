@@ -256,15 +256,31 @@ func (s *textInputState) Dispose() {
 func (s *textInputState) DidChangeDependencies() {}
 
 func (s *textInputState) DidUpdateWidget(oldWidget core.StatefulWidget) {
-	// Update platform view config if needed
-	if s.platformView != nil {
-		w := s.element.Widget().(TextInput)
-		s.updatePlatformViewConfig(w)
+	if s.platformView == nil {
+		return
+	}
+	w := s.element.Widget().(TextInput)
+	old := oldWidget.(TextInput)
 
-		// Sync controller value if it changed programmatically
-		if w.Controller != nil {
+	// Only send config when it actually changed. Redundant config updates
+	// cause setInputType on Android which, for password fields, re-applies
+	// PasswordTransformationMethod and disrupts cursor position.
+	if s.buildPlatformViewConfig(old) != s.buildPlatformViewConfig(w) {
+		s.updatePlatformViewConfig(w)
+	}
+
+	// Only sync controller value to native when it differs from what the
+	// platform view already has. This avoids echoing back values that
+	// originated from the native side (user typing), which can cause
+	// cursor position races during rapid input.
+	if w.Controller != nil {
+		val := w.Controller.Value()
+		currentText, currentBase, currentExt := s.platformView.Snapshot()
+		if val.Text != currentText ||
+			val.Selection.BaseOffset != currentBase ||
+			val.Selection.ExtentOffset != currentExt {
 			s.updatingController = true
-			s.platformView.SetValue(w.Controller.Value())
+			s.platformView.SetValue(val)
 			s.updatingController = false
 		}
 	}

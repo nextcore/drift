@@ -212,8 +212,12 @@ class NativeTextInputContainer(
         // Alignment
         gravity = config.gravity
 
-        // Input type
-        inputType = config.inputType
+        // Only set inputType when it changed. Redundant setInputType on password
+        // fields re-applies PasswordTransformationMethod (Android skips the
+        // short-circuit for password types), which disrupts cursor position.
+        if (inputType != config.inputType) {
+            inputType = config.inputType
+        }
 
         // IME options
         imeOptions = config.imeOptions
