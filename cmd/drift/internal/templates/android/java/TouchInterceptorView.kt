@@ -30,6 +30,7 @@ class TouchInterceptorView(
 ) : FrameLayout(context) {
 
     var surfaceView: View? = null
+    var enableUnfocusedTextScrollForwarding: Boolean = true
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     // Touch interception state
@@ -65,7 +66,7 @@ class TouchInterceptorView(
 
                 // Topmost: check if an unfocused EditText is the target
                 val editText = findEditTextAtPosition(ev.x, ev.y)
-                if (editText != null && !editText.hasFocus()) {
+                if (enableUnfocusedTextScrollForwarding && editText != null && !editText.hasFocus()) {
                     // Track for tap-vs-scroll detection
                     slopTracking = true
                     touchStartX = ev.x

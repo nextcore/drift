@@ -131,6 +131,8 @@ object PlatformViewHandler {
                         "updateConfig" -> {
                             @Suppress("UNCHECKED_CAST")
                             container.updateConfig(args as Map<String, Any?>)
+                            val multiline = args["multiline"] as? Boolean ?: false
+                            interceptors[viewId]?.enableUnfocusedTextScrollForwarding = !multiline
                         }
                     }
                 }
@@ -224,6 +226,10 @@ object PlatformViewHandler {
             views[viewId] = container
 
             val interceptor = TouchInterceptorView(ctx, viewId)
+            if (viewType == "textinput") {
+                val multiline = params["multiline"] as? Boolean ?: false
+                interceptor.enableUnfocusedTextScrollForwarding = !multiline
+            }
             interceptor.surfaceView = surfaceView
             interceptor.addView(container.view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             interceptor.visibility = View.GONE // Hidden until positioned

@@ -36,6 +36,7 @@ func DriftHitTestPlatformView(_ viewID: Int64, _ x: Double, _ y: Double) -> Int3
 /// the recognizer fails silently and the text field handles everything natively.
 class TouchInterceptorView: UIView {
     let viewId: Int
+    var enableUnfocusedTextScrollForwarding: Bool = true
 
     // When true, the interceptor received the touch (obscured case).
     private var blocked: Bool = false
@@ -108,7 +109,7 @@ class TouchInterceptorView: UIView {
         // so scrolls starting on the field forward to the Drift engine rather
         // than being consumed by the native view.
         blocked = false
-        scrollRecognizer.isEnabled = findUnfocusedTextInput(at: point) != nil
+        scrollRecognizer.isEnabled = enableUnfocusedTextScrollForwarding && findUnfocusedTextInput(at: point) != nil
         return super.hitTest(point, with: event)
     }
 
@@ -386,6 +387,8 @@ enum PlatformViewHandler {
                     textInputContainer.blur()
                 case "updateConfig":
                     textInputContainer.updateConfig(args)
+                    let multiline = args["multiline"] as? Bool ?? false
+                    interceptors[viewId]?.enableUnfocusedTextScrollForwarding = !multiline
                 default:
                     break
                 }
@@ -492,6 +495,10 @@ enum PlatformViewHandler {
         DispatchQueue.main.async {
             if let host = hostView {
                 let interceptor = TouchInterceptorView(viewId: viewId)
+                if viewType == "textinput" {
+                    let multiline = params["multiline"] as? Bool ?? false
+                    interceptor.enableUnfocusedTextScrollForwarding = !multiline
+                }
                 interceptor.addSubview(view.view)
                 // Child fills interceptor
                 view.view.translatesAutoresizingMaskIntoConstraints = false
