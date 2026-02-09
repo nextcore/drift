@@ -52,6 +52,7 @@ const sidebars: SidebarsConfig = {
             'catalog/layout/expanded-flexible',
             'catalog/layout/center-align',
             'catalog/layout/safearea',
+            'catalog/layout/layout-builder',
           ],
         },
         {
