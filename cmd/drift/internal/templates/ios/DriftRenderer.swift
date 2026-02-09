@@ -62,7 +62,12 @@ final class DriftRenderer {
     }
 
     /// Renders a frame and presents it to the drawable.
-    func draw(to drawable: CAMetalDrawable, size: CGSize, scale: CGFloat) {
+    ///
+    /// When `synchronous` is true (during rotation), the drawable is presented
+    /// within the current Core Animation transaction so the content matches
+    /// the animated bounds. This requires waiting for the GPU command to be
+    /// scheduled before presenting, which adds a small amount of latency.
+    func draw(to drawable: CAMetalDrawable, size: CGSize, scale: CGFloat, synchronous: Bool = false) {
         guard skiaReady else { return }
 
         let width = Int(size.width * scale)
@@ -74,8 +79,16 @@ final class DriftRenderer {
         guard result == 0 else { return }
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
-        commandBuffer.present(drawable)
-        commandBuffer.commit()
-        // Triple buffering handles frame pacing naturally - no need to wait.
+        if synchronous {
+            // Present within the current CATransaction so the frame is
+            // synchronized with the rotation animation.
+            commandBuffer.commit()
+            commandBuffer.waitUntilScheduled()
+            drawable.present()
+        } else {
+            // Normal async presentation for lowest latency.
+            commandBuffer.present(drawable)
+            commandBuffer.commit()
+        }
     }
 }

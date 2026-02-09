@@ -106,6 +106,20 @@ final class DriftViewController: UIViewController {
         SafeAreaHandler.sendInsetsUpdate()
     }
 
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+
+        // Enable synchronous drawable presentation so each frame is
+        // synchronized with the rotation animation. Without this, Core
+        // Animation distorts a stale snapshot of the old content.
+        metalView.setPresentsWithTransaction(true)
+
+        coordinator.animate(alongsideTransition: nil, completion: { [weak self] _ in
+            // Restore async presentation for normal low-latency rendering.
+            self?.metalView.setPresentsWithTransaction(false)
+        })
+    }
+
     /// Called when the view is removed from the window.
     ///
     /// Stops the display link to conserve battery and CPU when the

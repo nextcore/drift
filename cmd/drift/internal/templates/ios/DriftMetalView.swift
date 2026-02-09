@@ -55,6 +55,10 @@ func DriftSetDeviceScale(_ scale: Double)
 @_silgen_name("DriftNeedsFrame")
 func DriftNeedsFrame() -> Int32
 
+/// FFI declaration for requesting a new frame from the Go engine.
+@_silgen_name("DriftRequestFrame")
+func DriftRequestFrame()
+
 /// A UIView backed by a CAMetalLayer for displaying Drift engine content.
 ///
 /// Marked as `final` for performance optimization since no subclassing is expected.
@@ -177,6 +181,10 @@ final class DriftMetalView: UIView {
         // 2x for standard Retina, 3x for Plus/Max devices.
         contentScaleFactor = UIScreen.main.scale
 
+        // Black background fills any gaps visible during rotation transitions
+        // before the engine renders at the new size.
+        backgroundColor = .black
+
         // Inform the Go engine of the device scale for consistent sizing.
         DriftSetDeviceScale(Double(contentScaleFactor))
     }
@@ -188,15 +196,33 @@ final class DriftMetalView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
 
-        // Calculate the drawable size in pixels (not points).
-        // bounds is in points; multiply by scale to get pixels.
+        // Remove any in-flight Core Animation transforms on this layer.
+        // During rotation, UIKit adds a bounds/position animation that
+        // distorts the rendered content. Stripping it here makes the
+        // Metal layer jump directly to the new geometry.
+        layer.removeAllAnimations()
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         metalLayer.drawableSize = CGSize(
             width: bounds.width * contentScaleFactor,
             height: bounds.height * contentScaleFactor
         )
+        CATransaction.commit()
 
         // Keep the Go engine scale in sync with the view's scale factor.
         DriftSetDeviceScale(Double(contentScaleFactor))
+
+        // Request a frame so the engine re-renders at the new size.
+        DriftRequestFrame()
+    }
+
+    /// Enables synchronous drawable presentation for the duration of a
+    /// rotation animation. When true, each presented frame is synchronized
+    /// with the Core Animation transaction so content matches the animated
+    /// bounds and does not skew.
+    func setPresentsWithTransaction(_ enabled: Bool) {
+        metalLayer.presentsWithTransaction = enabled
     }
 
     /// Renders a single frame to the Metal layer.
@@ -215,7 +241,12 @@ final class DriftMetalView: UIView {
         guard let drawable = metalLayer.nextDrawable() else { return }
 
         // Delegate rendering to the DriftRenderer.
-        renderer.draw(to: drawable, size: bounds.size, scale: contentScaleFactor)
+        renderer.draw(
+            to: drawable,
+            size: bounds.size,
+            scale: contentScaleFactor,
+            synchronous: metalLayer.presentsWithTransaction
+        )
     }
 
     // MARK: - Touch Handling
