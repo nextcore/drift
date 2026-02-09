@@ -71,6 +71,20 @@ widgets.Row{
 | `Fit` | `FlexFit` | How the child fills allocated space |
 | `Child` | `core.Widget` | Child widget |
 
+## Spacer
+
+`Spacer()` is a convenience helper equivalent to `Expanded{Child: SizedBox{}}`. Use it to fill remaining space in a Row or Column:
+
+```go
+widgets.Row{
+    Children: []core.Widget{
+        title,
+        widgets.Spacer(),  // pushes button to the right
+        button,
+    },
+}
+```
+
 ## Expanded vs Flexible
 
 | Widget | Default Fit | Constraints | Use Case |

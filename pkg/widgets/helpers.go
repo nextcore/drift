@@ -130,9 +130,10 @@ func PaddingOnly(left, top, right, bottom float64, child core.Widget) Padding {
 	return Padding{Padding: layout.EdgeInsetsOnly(left, top, right, bottom), Child: child}
 }
 
-// Spacer creates a fixed-size spacer (alias for VSpace).
-func Spacer(size float64) SizedBox {
-	return SizedBox{Height: size}
+// Spacer fills remaining space along the main axis of a [Row] or [Column].
+// It is equivalent to Expanded{Child: SizedBox{}}.
+func Spacer() Expanded {
+	return Expanded{Child: SizedBox{}}
 }
 
 // Ptr returns a pointer to the given float64 value.

@@ -23,7 +23,7 @@ widgets.SizedBox{
     Child: content,
 }
 
-// Spacer (no child)
+// Fixed-size spacer (no child)
 widgets.SizedBox{Height: 16}
 ```
 
@@ -37,7 +37,7 @@ widgets.SizedBox{Height: 16}
 
 ## Common Patterns
 
-### Vertical Spacer
+### Fixed-Size Spacer
 
 ```go
 widgets.ColumnOf(
@@ -56,6 +56,20 @@ The `VSpace` and `HSpace` helpers are shorthand for this pattern:
 widgets.VSpace(16)  // equivalent to SizedBox{Height: 16}
 widgets.HSpace(8)   // equivalent to SizedBox{Width: 8}
 ```
+
+To fill *remaining* space in a Row or Column, use `Spacer()` instead:
+
+```go
+widgets.Row{
+    Children: []core.Widget{
+        label,
+        widgets.Spacer(),  // fills remaining horizontal space
+        button,
+    },
+}
+```
+
+See [Expanded & Flexible](/docs/catalog/layout/expanded-flexible) for more on flexible space distribution.
 
 ### Constraining Child Size
 
