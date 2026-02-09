@@ -486,7 +486,9 @@ enum PlatformViewHandler {
 
         views[viewId] = view
 
-        // Add to host view on main thread, wrapped in a TouchInterceptorView
+        // Add to host view on main thread, wrapped in a TouchInterceptorView.
+        // Notify Go only after the interceptor is attached so resendGeometry
+        // targets the actual host view (not the unattached child).
         DispatchQueue.main.async {
             if let host = hostView {
                 let interceptor = TouchInterceptorView(viewId: viewId)
@@ -503,16 +505,15 @@ enum PlatformViewHandler {
                 interceptors[viewId] = interceptor
                 host.addSubview(interceptor)
             }
-        }
 
-        // Notify Go that view is created
-        PlatformChannelManager.shared.sendEvent(
-            channel: "drift/platform_views",
-            data: [
-                "method": "onViewCreated",
-                "viewId": viewId
-            ]
-        )
+            PlatformChannelManager.shared.sendEvent(
+                channel: "drift/platform_views",
+                data: [
+                    "method": "onViewCreated",
+                    "viewId": viewId
+                ]
+            )
+        }
 
         return (["created": true], nil)
     }
