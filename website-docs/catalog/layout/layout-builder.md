@@ -46,9 +46,6 @@ Switch between layouts based on available width:
 ```go
 widgets.LayoutBuilder{
     Builder: func(ctx core.BuildContext, c layout.Constraints) core.Widget {
-        if c.MaxWidth >= 900 {
-            return desktopLayout(ctx)
-        }
         if c.MaxWidth >= 600 {
             return tabletLayout(ctx)
         }
