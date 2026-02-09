@@ -297,10 +297,13 @@ class TextInputViewConfig(params: Map<String, Any?>) {
         }
 
     val gravity: Int
-        get() = when (textAlignment) {
-            1 -> Gravity.CENTER_HORIZONTAL or Gravity.CENTER_VERTICAL
-            2 -> Gravity.END or Gravity.CENTER_VERTICAL
-            else -> Gravity.START or Gravity.CENTER_VERTICAL
+        get() {
+            val vertical = if (multiline) Gravity.TOP else Gravity.CENTER_VERTICAL
+            return when (textAlignment) {
+                1 -> Gravity.CENTER_HORIZONTAL or vertical
+                2 -> Gravity.END or vertical
+                else -> Gravity.START or vertical
+            }
         }
 
     val inputType: Int
