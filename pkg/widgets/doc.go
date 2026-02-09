@@ -9,7 +9,7 @@
 //
 // Drift widgets use a two-tier construction pattern:
 //
-// ## Tier 1: Struct Literal (canonical, full control)
+// # Tier 1: Struct Literal (canonical, full control)
 //
 //	btn := Button{
 //	    Label:     "Submit",
@@ -22,7 +22,7 @@
 // This is the PRIMARY way to create widgets. All fields are accessible.
 // For themed styling, use theme.XxxOf constructors from pkg/theme instead.
 //
-// ## Tier 2: Layout Helpers (ergonomics for layout widgets)
+// # Tier 2: Layout Helpers (ergonomics for layout widgets)
 //
 // Layout helpers remain for ergonomic creation of Row, Column, and Stack:
 //
@@ -35,7 +35,7 @@
 //
 // Also: RowOf, StackOf, VSpace, HSpace, Centered.
 //
-// ## WithX Chaining (for themed widgets)
+// # WithX Chaining (for themed widgets)
 //
 // WithX methods on widgets allow overriding themed defaults:
 //
