@@ -21,6 +21,7 @@ type ThemeData struct {
 	DropdownTheme    *DropdownThemeData
 	BottomSheetTheme *BottomSheetThemeData
 	DividerTheme     *DividerThemeData
+	DialogTheme      *DialogThemeData
 }
 
 // DefaultLightTheme returns the default light theme.
@@ -58,6 +59,7 @@ func (t *ThemeData) CopyWith(colorScheme *ColorScheme, textTheme *TextTheme, bri
 		DropdownTheme:    t.DropdownTheme,
 		BottomSheetTheme: t.BottomSheetTheme,
 		DividerTheme:     t.DividerTheme,
+		DialogTheme:      t.DialogTheme,
 	}
 	if colorScheme != nil {
 		result.ColorScheme = *colorScheme
@@ -133,6 +135,15 @@ func (t *ThemeData) DividerThemeOf() DividerThemeData {
 		return *t.DividerTheme
 	}
 	return DefaultDividerTheme(t.ColorScheme)
+}
+
+// DialogThemeOf returns the dialog theme, falling back to [DefaultDialogTheme]
+// when [ThemeData.DialogTheme] is nil.
+func (t *ThemeData) DialogThemeOf() DialogThemeData {
+	if t.DialogTheme != nil {
+		return *t.DialogTheme
+	}
+	return DefaultDialogTheme(t.ColorScheme)
 }
 
 // BottomSheetThemeOf returns the bottom sheet theme, deriving from ColorScheme if not set.

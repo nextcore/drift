@@ -90,6 +90,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Feedback',
           items: [
+            'catalog/feedback/dialog',
             'catalog/feedback/progress-indicators',
             'catalog/feedback/error-boundary',
           ],

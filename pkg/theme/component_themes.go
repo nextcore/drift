@@ -294,6 +294,60 @@ func DefaultDividerTheme(colors ColorScheme) DividerThemeData {
 	}
 }
 
+// DialogThemeData defines default styling for [overlay.Dialog] and
+// [overlay.AlertDialog] widgets.
+//
+// Override individual fields by setting DialogTheme on [ThemeData]:
+//
+//	custom := theme.DialogThemeData{
+//	    BackgroundColor: colors.Surface,
+//	    BorderRadius:    16,
+//	    Elevation:       2,
+//	    Padding:         layout.EdgeInsetsAll(16),
+//	}
+//	themeData.DialogTheme = &custom
+type DialogThemeData struct {
+	// BackgroundColor is the dialog surface color.
+	// Default: ColorScheme.SurfaceContainerHigh.
+	BackgroundColor graphics.Color
+	// BorderRadius is the corner radius in pixels.
+	// Default: 28 (Material 3).
+	BorderRadius float64
+	// Elevation is the shadow elevation level (1-5).
+	// Passed to [graphics.BoxShadowElevation]. Default: 3.
+	Elevation int
+	// Padding is the inner padding applied to the dialog container.
+	// Default: 24px on all sides.
+	Padding layout.EdgeInsets
+	// TitleContentSpacing is the vertical gap between title and content
+	// in [overlay.AlertDialog]. Default: 16.
+	TitleContentSpacing float64
+	// ContentActionsSpacing is the vertical gap above the actions row
+	// in [overlay.AlertDialog]. Default: 24.
+	ContentActionsSpacing float64
+	// ActionSpacing is the horizontal gap between action buttons
+	// in [overlay.AlertDialog]. Default: 8.
+	ActionSpacing float64
+	// AlertDialogWidth is the default width for [overlay.AlertDialog] when
+	// its Width field is zero. Default: 280 (Material 3 minimum).
+	AlertDialogWidth float64
+}
+
+// DefaultDialogTheme returns DialogThemeData derived from a [ColorScheme].
+// Used when [ThemeData.DialogTheme] is nil.
+func DefaultDialogTheme(colors ColorScheme) DialogThemeData {
+	return DialogThemeData{
+		BackgroundColor:       colors.SurfaceContainerHigh,
+		BorderRadius:          28,
+		Elevation:             3,
+		Padding:               layout.EdgeInsetsAll(24),
+		TitleContentSpacing:   16,
+		ContentActionsSpacing: 24,
+		ActionSpacing:         8,
+		AlertDialogWidth:      280,
+	}
+}
+
 // DefaultBottomSheetTheme returns BottomSheetThemeData derived from a ColorScheme.
 func DefaultBottomSheetTheme(colors ColorScheme) BottomSheetThemeData {
 	return BottomSheetThemeData{

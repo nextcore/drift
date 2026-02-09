@@ -189,6 +189,75 @@ func showDialog(ctx core.BuildContext) {
 - Removes both entries when the route is popped
 - Handles the case where overlay isn't ready yet (defers insertion)
 
+## Dialogs
+
+`ShowDialog` handles the overlay plumbing for modal dialogs: it creates a
+`ModalBarrier` entry and a centered dialog entry, inserts both into the
+overlay, and returns an idempotent `dismiss` function.
+
+### Quick Alert
+
+`ShowAlertDialog` builds themed title, content, and action buttons automatically:
+
+```go
+overlay.ShowAlertDialog(ctx, overlay.AlertDialogOptions{
+    Title:        "Delete item?",
+    Content:      "This action cannot be undone.",
+    ConfirmLabel: "Delete",
+    OnConfirm:    func() { deleteItem() },
+    CancelLabel:  "Cancel",
+    Destructive:  true,
+})
+```
+
+### Custom Dialog Content
+
+Use `ShowDialog` with a builder for full control. The `Dialog` widget provides
+themed card chrome (surface color, border radius, shadow, padding):
+
+```go
+overlay.ShowDialog(ctx, overlay.DialogOptions{
+    BarrierColor: graphics.RGBA(0, 0, 0, 0.5),
+    Builder: func(ctx core.BuildContext, dismiss func()) core.Widget {
+        textTheme := theme.ThemeOf(ctx).TextTheme
+        return overlay.Dialog{
+            Child: widgets.Column{
+                MainAxisSize: widgets.MainAxisSizeMin,
+                Children: []core.Widget{
+                    theme.TextOf(ctx, "Title", textTheme.HeadlineSmall),
+                    widgets.VSpace(16),
+                    theme.TextOf(ctx, "Body text", textTheme.BodyMedium),
+                    widgets.VSpace(24),
+                    theme.ButtonOf(ctx, "OK", dismiss),
+                },
+            },
+        }
+    },
+})
+```
+
+Skip the `Dialog` widget entirely for completely custom chrome:
+
+```go
+overlay.ShowDialog(ctx, overlay.DialogOptions{
+    BarrierColor: graphics.RGBA(0, 0, 0, 0.5),
+    Builder: func(ctx core.BuildContext, dismiss func()) core.Widget {
+        return widgets.Container{
+            Width: 400, Color: myColor, BorderRadius: 8,
+            Child: myContent(dismiss),
+        }
+    },
+})
+```
+
+### Persistent Dialogs
+
+Set `Persistent: true` to prevent barrier taps from dismissing the dialog. The
+user must interact with the dialog content (e.g., tap a button) to close it.
+
+See the [Dialog catalog page](/docs/catalog/feedback/dialog) for the full
+property reference.
+
 ## Bottom Sheets
 
 Bottom sheets are built on overlays and modal routes, and can be presented using
@@ -311,26 +380,22 @@ func (s *tooltipState) Dispose() {
 
 ### Stacked Overlays
 
-Multiple overlay entries stack in order (first inserted = bottom, last inserted = top):
+Multiple overlay entries stack in order (first inserted = bottom, last inserted = top).
+`ShowDialog` handles the common barrier+dialog pattern automatically. For manual
+stacking (e.g., a toast below a dialog), insert entries directly:
 
 ```go
-// Toast appears below dialog
+// Toast appears below everything
 toastEntry := overlay.NewOverlayEntry(buildToast)
 overlayState.Insert(toastEntry, nil, nil)
 
-// Barrier blocks interaction with toast and page content
-barrierEntry := overlay.NewOverlayEntry(func(ctx core.BuildContext) core.Widget {
-    return overlay.ModalBarrier{
-        Color:       graphics.RGBA(0, 0, 0, 128),
-        Dismissible: false,
-    }
+// Dialog with barrier appears above the toast
+overlay.ShowDialog(ctx, overlay.DialogOptions{
+    BarrierColor: graphics.RGBA(0, 0, 0, 0.5),
+    Builder: func(ctx core.BuildContext, dismiss func()) core.Widget {
+        return overlay.Dialog{Child: dialogContent(dismiss)}
+    },
 })
-overlayState.Insert(barrierEntry, nil, nil)
-
-// Dialog appears above barrier
-dialogEntry := overlay.NewOverlayEntry(buildDialog)
-dialogEntry.Opaque = true  // Block hits from reaching page content
-overlayState.Insert(dialogEntry, nil, nil)
 ```
 
 ### Using InitialEntries
@@ -357,12 +422,12 @@ Operations during build are handled safely:
 
 ## Best Practices
 
-1. **Always use NewOverlayEntry()**: This assigns unique IDs for stable keying
-2. **Clean up in Dispose**: Remove entries when your widget is disposed
-3. **Use Opaque for modals**: Set `Opaque=true` for modal content to block page interaction
-4. **Handle missing overlay**: Always check if `OverlayOf(ctx)` returns nil
+1. **Use ShowDialog for dialogs**: It handles barrier+entry creation, Opaque flag, and dismiss cleanup automatically
+2. **Always use NewOverlayEntry()**: When creating entries manually, use the constructor for unique IDs and stable keying
+3. **Clean up in Dispose**: Remove entries when your widget is disposed
+4. **Handle missing overlay**: Always check if `OverlayOf(ctx)` returns nil (ShowDialog does this for you)
 5. **Use ModalRoute for navigation**: When modals are part of navigation flow, use `ModalRoute`
-6. **Use barriers with modals**: Always pair opaque content with a ModalBarrier for dismiss handling
+6. **Use barriers with modals**: ShowDialog pairs barriers automatically; if building modal entries manually, always pair opaque content with a ModalBarrier for dismiss handling
 
 ## API Reference
 
@@ -404,6 +469,46 @@ type OverlayEntry struct {
 func (e *OverlayEntry) Remove()
 func (e *OverlayEntry) MarkNeedsBuild()
 ```
+
+### overlay.ShowDialog
+
+```go
+func ShowDialog(ctx core.BuildContext, opts DialogOptions) (dismiss func())
+```
+
+Displays a modal dialog with a barrier. Returns an idempotent dismiss function.
+
+### overlay.ShowAlertDialog
+
+```go
+func ShowAlertDialog(ctx core.BuildContext, opts AlertDialogOptions) (dismiss func())
+```
+
+Displays a standard alert dialog with themed title, content, and action buttons.
+
+### overlay.Dialog
+
+```go
+type Dialog struct {
+    Child core.Widget
+    Width float64
+}
+```
+
+Card chrome widget that reads from `DialogThemeData`.
+
+### overlay.AlertDialog
+
+```go
+type AlertDialog struct {
+    Title   core.Widget
+    Content core.Widget
+    Actions []core.Widget
+    Width   float64
+}
+```
+
+Title/content/actions layout inside a `Dialog`. Width defaults to 280.
 
 ### overlay.ModalBarrier
 
