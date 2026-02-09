@@ -19,6 +19,7 @@ func WriteIOS(root string, settings Settings) error {
 		AndroidPackage: settings.AppID,
 		IOSBundleID:    settings.Bundle,
 		Orientation:    settings.Orientation,
+		AllowHTTP:      settings.AllowHTTP,
 	})
 
 	writeTemplateFile := func(templatePath, destPath string, perm os.FileMode) error {

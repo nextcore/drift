@@ -38,6 +38,7 @@ func WriteXtool(root string, settings Settings) error {
 		AndroidPackage: settings.AppID,
 		IOSBundleID:    settings.Bundle,
 		Orientation:    settings.Orientation,
+		AllowHTTP:      settings.AllowHTTP,
 	})
 
 	// Helper to write template file

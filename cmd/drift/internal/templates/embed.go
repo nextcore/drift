@@ -18,6 +18,7 @@ type TemplateInput struct {
 	AndroidPackage string
 	IOSBundleID    string
 	Orientation    string
+	AllowHTTP      bool
 }
 
 // TemplateData contains the data for template substitution.
@@ -29,6 +30,7 @@ type TemplateData struct {
 	BundleID    string // e.g., "com.example.my_app"
 	URLScheme   string // e.g., "my-app"
 	Orientation string // "portrait", "landscape", or "all"
+	AllowHTTP   bool   // allow cleartext HTTP traffic
 }
 
 // NewTemplateData creates template data from the given input, deriving
@@ -42,6 +44,7 @@ func NewTemplateData(in TemplateInput) *TemplateData {
 		BundleID:    in.IOSBundleID,
 		URLScheme:   sanitizeURLScheme(in.AppName),
 		Orientation: in.Orientation,
+		AllowHTTP:   in.AllowHTTP,
 	}
 }
 

@@ -23,6 +23,7 @@ type AppConfig struct {
 	Name        string `yaml:"name,omitempty"`
 	ID          string `yaml:"id,omitempty"`
 	Orientation string `yaml:"orientation,omitempty"`
+	AllowHTTP   bool   `yaml:"allow_http,omitempty"`
 }
 
 // EngineConfig contains engine settings.
@@ -37,6 +38,7 @@ type Resolved struct {
 	AppName       string
 	AppID         string
 	Orientation   string
+	AllowHTTP     bool
 	EngineVersion string
 }
 
@@ -104,6 +106,7 @@ func Resolve(dir string) (*Resolved, error) {
 		AppName:       appName,
 		AppID:         appID,
 		Orientation:   orientation,
+		AllowHTTP:     cfg.App.AllowHTTP,
 		EngineVersion: engineVersion,
 	}, nil
 }

@@ -179,6 +179,7 @@ engine:
 | `app.name` | Display name of your app |
 | `app.id` | Bundle/package identifier |
 | `app.orientation` | Supported orientations: `portrait` (default), `landscape`, or `all` |
+| `app.allow_http` | Allow cleartext HTTP traffic (`true`/`false`, default `false`) |
 | `engine.version` | Drift engine version (`latest` or specific tag) |
 
 ## CLI Reference

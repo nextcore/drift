@@ -61,6 +61,7 @@ func Prepare(root string, cfg *config.Resolved, platform string) (*Workspace, er
 		AppID:       cfg.AppID,
 		Bundle:      cfg.AppID,
 		Orientation: cfg.Orientation,
+		AllowHTTP:   cfg.AllowHTTP,
 	}
 
 	switch platform {
@@ -123,6 +124,7 @@ func writeBridgeFiles(dir string, cfg *config.Resolved) error {
 		AndroidPackage: cfg.AppID,
 		IOSBundleID:    cfg.AppID,
 		Orientation:    cfg.Orientation,
+		AllowHTTP:      cfg.AllowHTTP,
 	})
 
 	for _, file := range bridgeFiles {

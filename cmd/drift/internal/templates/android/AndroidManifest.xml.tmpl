@@ -41,6 +41,9 @@
     <application
         android:allowBackup="true"
         android:label="{{.AppName}}"
+        {{- if .AllowHTTP}}
+        android:usesCleartextTraffic="true"
+        {{- end}}
         android:theme="@style/AppTheme">
         <provider
             android:name="androidx.core.content.FileProvider"

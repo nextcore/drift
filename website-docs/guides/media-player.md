@@ -282,6 +282,19 @@ controller.OnError = func(code, message string) {
 }
 ```
 
+## Cleartext HTTP URLs
+
+Android (API 28+) and iOS block cleartext HTTP traffic by default. If you load an `http://` URL, the native player will report a `source_error`. HTTPS URLs work without any extra configuration.
+
+To allow HTTP URLs, set `allow_http: true` in your `drift.yaml`:
+
+```yaml
+app:
+  allow_http: true
+```
+
+This adds `android:usesCleartextTraffic="true"` to the Android manifest and an `NSAppTransportSecurity` exception to the iOS Info.plist. Use HTTPS whenever possible and only enable this setting when your media source does not support it.
+
 ## Next Steps
 
 - [Platform Services](/docs/guides/platform) - Permissions, clipboard, haptics, and other platform APIs

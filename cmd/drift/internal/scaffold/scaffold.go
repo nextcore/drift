@@ -6,4 +6,5 @@ type Settings struct {
 	AppID       string
 	Bundle      string
 	Orientation string
+	AllowHTTP   bool
 }
