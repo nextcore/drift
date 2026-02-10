@@ -169,6 +169,37 @@ widgets.DecoratedBox{
 }
 ```
 
+### Centered Text Card
+
+```go
+widgets.DecoratedBox{
+    Color:        colors.Surface,
+    BorderRadius: 12,
+    Child: widgets.PaddingAll(24,
+        widgets.ColumnOf(
+            widgets.MainAxisAlignmentStart,
+            widgets.CrossAxisAlignmentStretch,
+            widgets.MainAxisSizeMin,
+            widgets.Text{
+                Content: "Welcome",
+                Style:   textTheme.HeadlineLarge,
+                Wrap:    true,
+                Align:   graphics.TextAlignCenter,
+            },
+            widgets.VSpace(8),
+            widgets.Text{
+                Content: "A cross-platform UI framework for Go",
+                Style:   textTheme.BodyMedium,
+                Wrap:    true,
+                Align:   graphics.TextAlignCenter,
+            },
+        ),
+    ),
+}
+```
+
+Text alignment requires `Wrap: true`. Without wrapping, text renders on a single line and has no paragraph width to align within. See the [Theming guide](/docs/guides/theming#text-alignment) for all alignment options.
+
 ### List Item
 
 ```go

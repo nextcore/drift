@@ -300,6 +300,7 @@ func NewParagraph(
 	colors []uint32,
 	positions []float32,
 	shadow *ParagraphShadow,
+	textAlign int,
 ) (*Paragraph, error) {
 	return nil, errStubNotSupported
 }

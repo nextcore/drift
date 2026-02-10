@@ -723,6 +723,7 @@ func NewParagraph(
 	colors []uint32,
 	positions []float32,
 	shadow *ParagraphShadow,
+	textAlign int,
 ) (*Paragraph, error) {
 	cstr := C.CString(text)
 	defer C.free(unsafe.Pointer(cstr))
@@ -768,6 +769,7 @@ func NewParagraph(
 		shadowDx,
 		shadowDy,
 		shadowSigma,
+		C.int(textAlign),
 	)
 	if paragraph == nil {
 		return nil, errors.New("skia: failed to create paragraph")

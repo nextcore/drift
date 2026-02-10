@@ -28,9 +28,10 @@ import (
 //	theme.TextOf(ctx, "Welcome", textTheme.HeadlineMedium)
 //	// Returns Text with Wrap: true (text wraps by default)
 //
-// # Text Wrapping and Line Limits
+// # Text Wrapping, Line Limits, and Alignment
 //
-// The Wrap and MaxLines fields control how text flows and truncates:
+// The Wrap, MaxLines, and Align fields control how text flows, truncates,
+// and aligns:
 //
 //   - Wrap=false (default): Text renders on a single line, extending beyond
 //     the constraint width. Use for labels, buttons, and short text.
@@ -40,6 +41,10 @@ import (
 //
 //   - MaxLines: Limits the number of visible lines. When Wrap=true and text
 //     exceeds MaxLines, it truncates. When MaxLines=0 (default), no limit applies.
+//
+//   - Align: Controls horizontal alignment of lines within the paragraph.
+//     Alignment only takes effect when Wrap is true, because unwrapped text
+//     has no paragraph width to align within. Use [Text.WithAlign] for chaining.
 //
 // Common patterns:
 //
@@ -51,11 +56,18 @@ import (
 //
 //	// Preview text limited to 2 lines
 //	Text{Content: description, Wrap: true, MaxLines: 2}
+//
+//	// Centered wrapping text
+//	Text{Content: longText, Wrap: true, Align: graphics.TextAlignCenter}
 type Text struct {
 	// Content is the text string to display.
 	Content string
 	// Style controls the font, size, color, and other text properties.
 	Style graphics.TextStyle
+	// Align controls paragraph-level horizontal text alignment.
+	// Zero value is left-aligned. Only takes effect when Wrap is true;
+	// unwrapped text has no paragraph width to align within.
+	Align graphics.TextAlign
 	// MaxLines limits the number of visible lines (0 = unlimited).
 	// Lines beyond this limit are not rendered.
 	MaxLines int
@@ -90,8 +102,16 @@ func (t Text) WithMaxLines(maxLines int) Text {
 	return t
 }
 
+// WithAlign returns a copy of the text with the specified alignment.
+// Alignment only takes effect when Wrap is true. See [graphics.TextAlign]
+// for the available alignment options.
+func (t Text) WithAlign(align graphics.TextAlign) Text {
+	t.Align = align
+	return t
+}
+
 func (t Text) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
-	text := &renderText{text: t.Content, style: t.Style, maxLines: t.MaxLines, wrap: t.Wrap}
+	text := &renderText{text: t.Content, style: t.Style, align: t.Align, maxLines: t.MaxLines, wrap: t.Wrap}
 	text.SetSelf(text)
 	return text
 }
@@ -100,6 +120,7 @@ func (t Text) UpdateRenderObject(ctx core.BuildContext, renderObject layout.Rend
 	if text, ok := renderObject.(*renderText); ok {
 		text.text = t.Content
 		text.style = t.Style
+		text.align = t.Align
 		text.maxLines = t.MaxLines
 		text.wrap = t.Wrap
 		text.MarkNeedsLayout()
@@ -111,6 +132,7 @@ type renderText struct {
 	layout.RenderBoxBase
 	text     string
 	style    graphics.TextStyle
+	align    graphics.TextAlign
 	layout   *graphics.TextLayout
 	maxLines int
 	wrap     bool
@@ -120,9 +142,28 @@ type renderText struct {
 type textLayoutCache struct {
 	text     string
 	style    graphics.TextStyle
+	align    graphics.TextAlign
 	maxWidth float64
 	maxLines int
 	wrap     bool
+}
+
+// textLayoutSize returns the widget size for a laid-out paragraph. When text
+// alignment is non-left, Skia positions lines within the full paragraph layout
+// width, so the widget must claim that width for its bounds to agree with the
+// rendered text positions.
+func textLayoutSize(layoutSize graphics.Size, align graphics.TextAlign, maxWidth float64) graphics.Size {
+	switch align {
+	case graphics.TextAlignLeft, graphics.TextAlignStart:
+		// Left-flush alignments: use the tight (longest-line) width.
+		// TextAlignStart resolves to left in LTR; if RTL support is added,
+		// this case will need to check the text direction.
+	default:
+		if maxWidth > 0 {
+			layoutSize.Width = maxWidth
+		}
+	}
+	return layoutSize
 }
 
 func (r *renderText) PerformLayout() {
@@ -134,12 +175,13 @@ func (r *renderText) PerformLayout() {
 	current := textLayoutCache{
 		text:     r.text,
 		style:    r.style,
+		align:    r.align,
 		maxWidth: maxWidth,
 		maxLines: r.maxLines,
 		wrap:     r.wrap,
 	}
 	if r.layout != nil && r.cache == current {
-		r.SetSize(constraints.Constrain(r.layout.Size))
+		r.SetSize(constraints.Constrain(textLayoutSize(r.layout.Size, r.align, maxWidth)))
 		return
 	}
 	r.cache = current
@@ -152,7 +194,11 @@ func (r *renderText) PerformLayout() {
 		return
 	}
 
-	layout, err := graphics.LayoutTextWithConstraintsAndMaxLines(r.text, r.style, manager, maxWidth, r.maxLines)
+	layout, err := graphics.LayoutTextWithOptions(r.text, r.style, manager, graphics.ParagraphOptions{
+		MaxWidth:  maxWidth,
+		MaxLines:  r.maxLines,
+		TextAlign: r.align,
+	})
 	if err != nil {
 		r.layout = nil
 		r.SetSize(constraints.Constrain(graphics.Size{}))
@@ -160,7 +206,7 @@ func (r *renderText) PerformLayout() {
 	}
 
 	r.layout = layout
-	r.SetSize(constraints.Constrain(layout.Size))
+	r.SetSize(constraints.Constrain(textLayoutSize(layout.Size, r.align, maxWidth)))
 }
 
 func (r *renderText) Paint(ctx *layout.PaintContext) {

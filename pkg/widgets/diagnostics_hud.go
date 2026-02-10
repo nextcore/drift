@@ -179,7 +179,7 @@ func (r *renderDiagnosticsHUD) Paint(ctx *layout.PaintContext) {
 			}
 			manager, _ := graphics.DefaultFontManagerErr()
 			if manager != nil {
-				r.textLayout, _ = graphics.LayoutTextWithConstraints(fpsLabel, textStyle, manager, 0)
+				r.textLayout, _ = graphics.LayoutText(fpsLabel, textStyle, manager)
 			}
 		}
 

@@ -1232,7 +1232,8 @@ DriftSkiaParagraph drift_skia_paragraph_create(
     uint32_t shadow_argb,
     float shadow_dx,
     float shadow_dy,
-    float shadow_sigma
+    float shadow_sigma,
+    int text_align
 ) {
     auto collection = get_paragraph_collection();
     if (!collection) {
@@ -1242,6 +1243,8 @@ DriftSkiaParagraph drift_skia_paragraph_create(
     if (max_lines > 0) {
         paragraph_style.setMaxLines(static_cast<size_t>(max_lines));
     }
+    // text_align values match skia::textlayout::TextAlign enum directly.
+    paragraph_style.setTextAlign(static_cast<skia::textlayout::TextAlign>(text_align));
     skia::textlayout::TextStyle text_style;
     text_style.setFontSize(size);
     SkFontStyle::Slant slant = (style == 1) ? SkFontStyle::kItalic_Slant : SkFontStyle::kUpright_Slant;

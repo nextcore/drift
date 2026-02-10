@@ -77,6 +77,14 @@ text := widgets.Text{
     Content: "Hello, Drift",
     Style:   graphics.TextStyle{Color: colors.OnSurface, FontSize: 16},
 }
+
+// Wrapping, centered text
+description := widgets.Text{
+    Content: "A cross-platform UI framework for Go",
+    Style:   graphics.TextStyle{Color: colors.OnSurface, FontSize: 14},
+    Wrap:    true,
+    Align:   graphics.TextAlignCenter,
+}
 ```
 
 ### 2. Layout Helpers

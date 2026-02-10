@@ -215,7 +215,8 @@ DriftSkiaParagraph drift_skia_paragraph_create(
     uint32_t shadow_argb,
     float shadow_dx,
     float shadow_dy,
-    float shadow_sigma
+    float shadow_sigma,
+    int text_align
 );
 void drift_skia_paragraph_layout(DriftSkiaParagraph paragraph, float width);
 int drift_skia_paragraph_get_metrics(DriftSkiaParagraph paragraph, float* height, float* longest_line, float* max_intrinsic_width, int* line_count);

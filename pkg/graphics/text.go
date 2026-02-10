@@ -79,6 +79,54 @@ func (s FontStyle) String() string {
 	}
 }
 
+// TextAlign controls paragraph-level horizontal alignment for wrapped text.
+//
+// Alignment only has a visible effect when the text is laid out with a
+// constrained width (i.e., when [widgets.Text].Wrap is true). Without
+// wrapping there is no paragraph width to align within.
+//
+// Values are ordered to match Skia's textlayout::TextAlign enum so they
+// can be passed through the C bridge without translation.
+type TextAlign int
+
+const (
+	// TextAlignLeft aligns lines to the left edge of the paragraph.
+	TextAlignLeft TextAlign = iota
+	// TextAlignRight aligns lines to the right edge of the paragraph.
+	TextAlignRight
+	// TextAlignCenter centers each line horizontally within the paragraph.
+	TextAlignCenter
+	// TextAlignJustify stretches lines so both edges are flush with the
+	// paragraph bounds. The last line of a paragraph is left-aligned.
+	TextAlignJustify
+	// TextAlignStart aligns lines to the start edge based on text direction.
+	// Currently behaves like [TextAlignLeft] (LTR only).
+	TextAlignStart
+	// TextAlignEnd aligns lines to the end edge based on text direction.
+	// Currently behaves like [TextAlignRight] (LTR only).
+	TextAlignEnd
+)
+
+// String returns a human-readable representation of the text alignment.
+func (a TextAlign) String() string {
+	switch a {
+	case TextAlignLeft:
+		return "left"
+	case TextAlignCenter:
+		return "center"
+	case TextAlignRight:
+		return "right"
+	case TextAlignJustify:
+		return "justify"
+	case TextAlignStart:
+		return "start"
+	case TextAlignEnd:
+		return "end"
+	default:
+		return fmt.Sprintf("TextAlign(%d)", int(a))
+	}
+}
+
 // TextStyle describes how text should be rendered.
 type TextStyle struct {
 	Color              Color
@@ -184,18 +232,32 @@ func (m *FontManager) Face(style TextStyle) (font.Face, error) {
 	return nil, stderrors.New("skia backend does not expose font faces")
 }
 
-// LayoutText measures and shapes the given text using the provided font manager.
+// ParagraphOptions controls paragraph-level layout behavior such as line
+// wrapping, line limits, and horizontal alignment. The zero value produces
+// an unconstrained, left-aligned, single-pass layout.
+type ParagraphOptions struct {
+	// MaxWidth is the width available for line wrapping.
+	// 0 means no width constraint (text will not wrap).
+	MaxWidth float64
+	// MaxLines limits the number of visible lines.
+	// 0 means unlimited (all lines are shown).
+	MaxLines int
+	// TextAlign controls horizontal alignment of lines within the paragraph.
+	// The zero value ([TextAlignLeft]) aligns lines to the left edge.
+	TextAlign TextAlign
+}
+
+// LayoutText measures and shapes text using the provided font manager.
+// It uses default paragraph options (no wrapping, left-aligned, unlimited lines).
+// For wrapping or alignment control, use [LayoutTextWithOptions].
 func LayoutText(text string, style TextStyle, manager *FontManager) (*TextLayout, error) {
-	return LayoutTextWithConstraints(text, style, manager, 0)
+	return LayoutTextWithOptions(text, style, manager, ParagraphOptions{})
 }
 
-// LayoutTextWithConstraints measures and wraps text within the given width.
-func LayoutTextWithConstraints(text string, style TextStyle, manager *FontManager, maxWidth float64) (*TextLayout, error) {
-	return LayoutTextWithConstraintsAndMaxLines(text, style, manager, maxWidth, 0)
-}
-
-// LayoutTextWithConstraintsAndMaxLines measures and wraps text within the given width and line limit.
-func LayoutTextWithConstraintsAndMaxLines(text string, style TextStyle, manager *FontManager, maxWidth float64, maxLines int) (*TextLayout, error) {
+// LayoutTextWithOptions measures, wraps, and aligns text according to the
+// given [ParagraphOptions]. The returned [TextLayout] contains computed
+// metrics and a native paragraph handle for rendering.
+func LayoutTextWithOptions(text string, style TextStyle, manager *FontManager, opts ParagraphOptions) (*TextLayout, error) {
 	if manager == nil {
 		return nil, stderrors.New("font manager required")
 	}
@@ -212,7 +274,7 @@ func LayoutTextWithConstraintsAndMaxLines(text string, style TextStyle, manager 
 	if weight < 100 {
 		weight = int(FontWeightNormal)
 	}
-	layout, err := layoutParagraph(text, style, family, size, weight, maxWidth, maxLines)
+	layout, err := layoutParagraph(text, style, family, size, weight, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -229,10 +291,13 @@ func LayoutTextWithConstraintsAndMaxLines(text string, style TextStyle, manager 
 // layoutParagraph creates a Skia paragraph for text shaping and line breaking.
 // It returns a TextLayout containing both the computed metrics and the native
 // paragraph handle for later graphics.
-func layoutParagraph(text string, style TextStyle, family string, size float64, weight int, maxWidth float64, maxLines int) (*TextLayout, error) {
+func layoutParagraph(text string, style TextStyle, family string, size float64, weight int, opts ParagraphOptions) (*TextLayout, error) {
+	maxWidth := opts.MaxWidth
 	if maxWidth < 0 || math.IsInf(maxWidth, 0) {
 		maxWidth = 0
 	}
+	maxLines := opts.MaxLines
+	textAlign := opts.TextAlign
 
 	var shadow *skia.ParagraphShadow
 	if style.Shadow != nil {
@@ -267,6 +332,7 @@ func layoutParagraph(text string, style TextStyle, family string, size float64, 
 		startX, startY, endX, endY, centerX, centerY, radius,
 		colors, positions,
 		shadow,
+		int(textAlign),
 	)
 	if err != nil {
 		return nil, err
@@ -307,6 +373,7 @@ func layoutParagraph(text string, style TextStyle, family string, size float64, 
 			startX, startY, endX, endY, centerX, centerY, radius,
 			colors, positions,
 			shadow,
+			int(textAlign),
 		)
 		if err != nil {
 			return nil, err

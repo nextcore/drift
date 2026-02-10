@@ -117,7 +117,36 @@ textTheme := theme.TextThemeOf(ctx)
 
 widgets.Text{Content: "Welcome", Style: textTheme.HeadlineLarge}
 widgets.Text{Content: "Body content", Style: textTheme.BodyMedium}
+
+// Centered text using theme.TextOf (Wrap is enabled by default)
+theme.TextOf(ctx, "Centered heading", textTheme.HeadlineMedium).
+    WithAlign(graphics.TextAlignCenter)
 ```
+
+### Text Alignment
+
+The `Align` field on `Text` controls horizontal alignment of wrapped lines.
+Alignment only takes effect when `Wrap` is true, because unwrapped text has
+no paragraph width to align within.
+
+```go
+// Left-aligned (default)
+widgets.Text{Content: longText, Wrap: true}
+
+// Centered
+widgets.Text{Content: longText, Wrap: true, Align: graphics.TextAlignCenter}
+
+// Right-aligned
+widgets.Text{Content: longText, Wrap: true, Align: graphics.TextAlignRight}
+
+// Justified (last line is left-aligned)
+widgets.Text{Content: longText, Wrap: true, Align: graphics.TextAlignJustify}
+```
+
+Available alignments: `TextAlignLeft` (default), `TextAlignRight`,
+`TextAlignCenter`, `TextAlignJustify`, `TextAlignStart`, and `TextAlignEnd`.
+`TextAlignStart` and `TextAlignEnd` are direction-aware variants that
+currently behave like Left and Right respectively (LTR only).
 
 ## Custom Themes
 
