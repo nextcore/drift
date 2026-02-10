@@ -284,6 +284,10 @@ private class ScrollForwardingRecognizer: UIGestureRecognizer {
 
 /// Handles platform view channel methods from Go.
 enum PlatformViewHandler {
+    /// Whether any platform views are currently active.
+    /// Used by DriftMetalView to enable synchronized presentation.
+    static var hasPlatformViews: Bool { !views.isEmpty }
+
     private static var views: [Int: PlatformViewContainer] = [:]
     private static var interceptors: [Int: TouchInterceptorView] = [:]
     private static weak var hostView: UIView?

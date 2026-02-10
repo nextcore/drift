@@ -264,7 +264,6 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
      *   For CANCEL, all tracked pointers are cancelled using their last known positions.
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        renderNow()
         when (event.actionMasked) {
             // Touch began (first finger or additional fingers)
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
@@ -310,7 +309,10 @@ class DriftSurfaceView(context: Context) : GLSurfaceView(context) {
             else -> return false
         }
 
-        // Return true to indicate we handled this event
+        // Render after dispatching the pointer event so the GL thread sees
+        // the latest scroll position. Previously renderNow() ran first,
+        // which could render a frame with the old offset.
+        renderNow()
         return true
     }
 

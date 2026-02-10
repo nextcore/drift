@@ -263,6 +263,15 @@ final class DriftMetalView: UIView {
         // presenting stale drawable content when nothing has changed.
         guard DriftNeedsFrame() != 0 else { return false }
 
+        // Synchronize Metal presentation with Core Animation when platform
+        // views are active. Without this, the Metal drawable and UIKit view
+        // position updates present on independent schedules, causing native
+        // views to visibly drift from GPU-rendered content during scrolling.
+        // The offset grows with scroll velocity (same time gap, larger pixel
+        // displacement). With synchronization, both present atomically.
+        let syncPresentation = PlatformViewHandler.hasPlatformViews
+        metalLayer.presentsWithTransaction = syncPresentation
+
         // Get the next available drawable from the layer.
         // This may block briefly if all drawables are in use.
         // Returns nil if the layer is not configured or the app is backgrounded.
@@ -273,7 +282,7 @@ final class DriftMetalView: UIView {
             to: drawable,
             size: bounds.size,
             scale: contentScaleFactor,
-            synchronous: metalLayer.presentsWithTransaction
+            synchronous: syncPresentation
         )
         return true
     }
