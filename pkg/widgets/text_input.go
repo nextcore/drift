@@ -397,6 +397,10 @@ func (s *textInputState) registerAsClient() {
 func (s *textInputState) buildPlatformViewConfig(w TextInput) platform.TextInputViewConfig {
 	// Fully explicit: use field values directly, no fallbacks.
 	// Callers (TextField, theme.TextFieldOf) must provide all visual values.
+	inputAction := w.InputAction
+	if w.Multiline && inputAction == platform.TextInputActionNone {
+		inputAction = platform.TextInputActionNewline
+	}
 	return platform.TextInputViewConfig{
 		FontFamily:       w.Style.FontFamily,
 		FontSize:         w.Style.FontSize,
@@ -408,7 +412,7 @@ func (s *textInputState) buildPlatformViewConfig(w TextInput) platform.TextInput
 		Obscure:          w.Obscure,
 		Autocorrect:      w.Autocorrect,
 		KeyboardType:     w.KeyboardType,
-		InputAction:      w.InputAction,
+		InputAction:      inputAction,
 		Capitalization:   w.Capitalization,
 		PaddingLeft:      w.Padding.Left,
 		PaddingTop:       w.Padding.Top,
