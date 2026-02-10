@@ -592,6 +592,11 @@ enum PlatformViewHandler {
         clipLeft: CGFloat?, clipTop: CGFloat?,
         clipRight: CGFloat?, clipBottom: CGFloat?
     ) {
+        // Suppress implicit animations on frame/isHidden/mask changes.
+        // Uses the implicit transaction to avoid deadlocking with
+        // presentsWithTransaction on the Metal layer.
+        CATransaction.setDisableActions(true)
+
         // No clip provided - clear any existing mask, but don't change visibility
         // (visibility is controlled by SetVisible or by full clipping below)
         guard let clipLeft = clipLeft,
@@ -661,6 +666,11 @@ enum PlatformViewHandler {
         }
 
         let applyGeometries = {
+            // Suppress implicit animations on frame/isHidden/mask changes.
+            // Uses the implicit transaction to avoid deadlocking with
+            // presentsWithTransaction on the Metal layer.
+            CATransaction.setDisableActions(true)
+
             for geom in geometries {
                 guard let viewId = geom["viewId"] as? Int,
                       let container = views[viewId] else {
