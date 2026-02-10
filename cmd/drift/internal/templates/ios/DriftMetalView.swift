@@ -59,6 +59,23 @@ func DriftNeedsFrame() -> Int32
 @_silgen_name("DriftRequestFrame")
 func DriftRequestFrame()
 
+/// FFI declaration for registering the schedule-frame callback with the Go engine.
+/// The Go engine calls this handler when it needs the platform to produce a frame.
+@_silgen_name("DriftSetScheduleFrameHandler")
+func DriftSetScheduleFrameHandler(_ handler: @convention(c) () -> Void)
+
+/// Callback invoked when the Go engine needs a frame. Set by DriftViewController.
+/// This assumes a single DriftViewController instance, which is Drift's architecture.
+var driftScheduleFrameCallback: (() -> Void)?
+
+/// C-callable function registered with Go via DriftSetScheduleFrameHandler.
+/// Dispatches to the main thread since CADisplayLink must be controlled from there.
+func nativeScheduleFrame() {
+    DispatchQueue.main.async {
+        driftScheduleFrameCallback?()
+    }
+}
+
 /// A UIView backed by a CAMetalLayer for displaying Drift engine content.
 ///
 /// Marked as `final` for performance optimization since no subclassing is expected.
@@ -213,8 +230,9 @@ final class DriftMetalView: UIView {
         // Keep the Go engine scale in sync with the view's scale factor.
         DriftSetDeviceScale(Double(contentScaleFactor))
 
-        // Request a frame so the engine re-renders at the new size.
+        // Request and render a frame so the engine re-renders at the new size.
         DriftRequestFrame()
+        renderFrame()
     }
 
     /// Enables synchronous drawable presentation for the duration of a
@@ -229,16 +247,19 @@ final class DriftMetalView: UIView {
     ///
     /// Called by DriftViewController on each display link callback.
     /// Gets a drawable from the layer and delegates rendering to DriftRenderer.
-    func renderFrame() {
+    ///
+    /// - Returns: true if a frame was rendered, false if skipped.
+    @discardableResult
+    func renderFrame() -> Bool {
         // Check if a new frame is needed before acquiring a drawable.
         // This avoids unnecessary GPU work and prevents flickering from
         // presenting stale drawable content when nothing has changed.
-        guard DriftNeedsFrame() != 0 else { return }
+        guard DriftNeedsFrame() != 0 else { return false }
 
         // Get the next available drawable from the layer.
         // This may block briefly if all drawables are in use.
         // Returns nil if the layer is not configured or the app is backgrounded.
-        guard let drawable = metalLayer.nextDrawable() else { return }
+        guard let drawable = metalLayer.nextDrawable() else { return false }
 
         // Delegate rendering to the DriftRenderer.
         renderer.draw(
@@ -247,6 +268,7 @@ final class DriftMetalView: UIView {
             scale: contentScaleFactor,
             synchronous: metalLayer.presentsWithTransaction
         )
+        return true
     }
 
     // MARK: - Touch Handling
@@ -338,5 +360,10 @@ final class DriftMetalView: UIView {
         if phase == 3 {
             touchToPointerID.removeAll()
         }
+
+        // Render immediately rather than waiting for the next display link
+        // callback, matching the Android embedder's renderNow() pattern.
+        DriftRequestFrame()
+        renderFrame()
     }
 }

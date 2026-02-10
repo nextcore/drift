@@ -8,6 +8,9 @@
 ///
 /// Rendering Pipeline:
 ///
+///     Go engine calls scheduleFrame callback
+///         │
+///         ▼ scheduleFrame() unpauses display link
 ///     CADisplayLink (vsync signal)
 ///         │
 ///         ▼ drawFrame() selector
@@ -22,16 +25,17 @@
 ///         ▼ DriftRenderFrame (FFI)
 ///     Go Engine
 ///
-/// Display Link:
-///   CADisplayLink is a timer synchronized to the display's refresh rate
-///   (typically 60Hz, or 120Hz on ProMotion devices). Using it ensures:
-///     - Smooth animation without tearing
-///     - Efficient battery usage (no spinning on the CPU)
-///     - Automatic adaptation to display refresh rate
+/// On-Demand Scheduling:
+///   The CADisplayLink starts paused and is unpaused only when the Go engine
+///   requests a frame via the schedule-frame callback. After rendering, if no
+///   more frames are needed (e.g. animations have finished), the display link
+///   is paused again. This avoids waking the CPU/GPU every vsync when the UI
+///   is idle, matching the Android embedder's on-demand pattern.
 ///
 /// Lifecycle:
-///   - viewDidLoad: Starts the display link when view is ready
-///   - viewDidDisappear: Stops the display link to save resources
+///   - viewDidLoad: Creates the display link (paused) and registers callbacks
+///   - viewWillAppear: Unpauses after reappearing (e.g. modal dismissal)
+///   - viewDidDisappear: Invalidates the display link to save resources
 
 import UIKit
 
@@ -82,8 +86,12 @@ final class DriftViewController: UIViewController {
         // Initialize accessibility support
         AccessibilityHandler.shared.initialize(hostView: view)
         applySystemUIStyle(SystemUIHandler.currentStyle)
-        // Start the render loop
+        // Register the schedule-frame callback so the Go engine can request frames
+        driftScheduleFrameCallback = { [weak self] in self?.scheduleFrame() }
+        DriftSetScheduleFrameHandler(nativeScheduleFrame)
+        // Create the display link (starts paused) and request the first frame
         startDisplayLink()
+        scheduleFrame()
     }
 
     /// Tracks whether the initial safe area insets have been sent to the Go side.
@@ -107,6 +115,7 @@ final class DriftViewController: UIViewController {
         if displayLink == nil {
             startDisplayLink()
         }
+        scheduleFrame()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -147,23 +156,22 @@ final class DriftViewController: UIViewController {
         stopDisplayLink()
     }
 
-    /// Creates and starts the display link for vsync-synchronized rendering.
+    /// Creates the display link for vsync-synchronized rendering.
     ///
-    /// The display link will call drawFrame() at the display's refresh rate.
+    /// The link starts paused and is unpaused on demand by scheduleFrame().
     /// It's added to the main run loop in `.common` mode so it continues
     /// running even during UI tracking (e.g., scrolling).
     private func startDisplayLink() {
-        // Create a display link that calls our drawFrame method on each vsync.
-        // The target is `self` and the selector is the method to call.
         let link = CADisplayLink(target: self, selector: #selector(drawFrame))
-
-        // Add to the main run loop in common mode.
-        // Common mode includes default and tracking modes, so rendering
-        // continues even during UI interactions like scrolling.
         link.add(to: .main, forMode: .common)
-
-        // Store the link so we can invalidate it later.
+        link.isPaused = true
         displayLink = link
+    }
+
+    /// Unpauses the display link so the next vsync triggers a frame render.
+    /// Called from the Go engine's schedule-frame callback.
+    func scheduleFrame() {
+        displayLink?.isPaused = false
     }
 
     /// Stops and releases the display link.
@@ -192,11 +200,13 @@ final class DriftViewController: UIViewController {
 
     /// Called by the display link on each vsync to render a frame.
     ///
-    /// This method bridges the CADisplayLink callback to the Metal view's
-    /// render method. It's marked @objc because Objective-C selectors
-    /// are used by CADisplayLink.
+    /// After rendering, pauses the display link if no more frames are needed
+    /// (e.g. animations have finished). The link will be unpaused again when
+    /// the Go engine calls the schedule-frame callback.
     @objc private func drawFrame() {
-        // Delegate actual rendering to the Metal view.
         metalView.renderFrame()
+        if DriftNeedsFrame() == 0 {
+            displayLink?.isPaused = true
+        }
     }
 }
