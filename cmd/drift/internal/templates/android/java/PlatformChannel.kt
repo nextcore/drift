@@ -276,6 +276,11 @@ object PlatformChannelManager {
         register("drift/audio_player") { method, args ->
             AudioPlayerHandler.handle(context, method, args)
         }
+
+        // URL Launcher channel
+        register("drift/url_launcher") { method, args ->
+            URLLauncherHandler.handle(context, method, args)
+        }
     }
 
     private fun setupLifecycleObserver() {
@@ -666,6 +671,40 @@ object SafeAreaHandler {
             "left" to (insets.left / density).toDouble(),
             "right" to (insets.right / density).toDouble()
         ))
+    }
+}
+
+// MARK: - URL Launcher Handler
+
+object URLLauncherHandler {
+    fun handle(context: Context, method: String, args: Any?): Pair<Any?, Exception?> {
+        return when (method) {
+            "openURL" -> {
+                val argsMap = args as? Map<*, *>
+                val url = argsMap?.get("url") as? String
+                    ?: return Pair(null, IllegalArgumentException("Missing url argument"))
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    Pair(null, null)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    Pair(null, IllegalArgumentException("No application can handle this URL: $url"))
+                }
+            }
+
+            "canOpenURL" -> {
+                val argsMap = args as? Map<*, *>
+                val url = argsMap?.get("url") as? String
+                    ?: return Pair(null, IllegalArgumentException("Missing url argument"))
+                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                val canOpen = intent.resolveActivity(context.packageManager) != null
+                Pair(mapOf("canOpen" to canOpen), null)
+            }
+
+            else -> Pair(null, IllegalArgumentException("Unknown method: $method"))
+        }
     }
 }
 

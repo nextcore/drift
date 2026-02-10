@@ -22,6 +22,16 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- URL schemes the app can query via canOpenURL.
+	     Add custom schemes here if needed (e.g. geo, comgooglemaps).
+	     facetime is iOS-only so it has no Android <queries> counterpart. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>mailto</string>
+		<string>tel</string>
+		<string>sms</string>
+		<string>facetime</string>
+	</array>
 {{- if .AllowHTTP}}
 	<key>NSAppTransportSecurity</key>
 	<dict>

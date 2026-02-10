@@ -322,6 +322,11 @@ final class PlatformChannelManager {
         register(channel: "drift/audio_player") { method, args in
             return AudioPlayerHandler.handle(method: method, args: args)
         }
+
+        // URL Launcher channel
+        register(channel: "drift/url_launcher") { method, args in
+            return URLLauncherHandler.handle(method: method, args: args)
+        }
     }
 }
 
@@ -1045,6 +1050,36 @@ enum SafeAreaHandler {
                 "right": Double(insets.right)
             ]
         )
+    }
+}
+
+// MARK: - URL Launcher Handler
+
+enum URLLauncherHandler {
+    static func handle(method: String, args: Any?) -> (Any?, Error?) {
+        switch method {
+        case "openURL":
+            guard let dict = args as? [String: Any],
+                  let urlString = dict["url"] as? String,
+                  let url = URL(string: urlString) else {
+                return (nil, NSError(domain: "URLLauncher", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid url argument"]))
+            }
+            DispatchQueue.main.async {
+                UIApplication.shared.open(url)
+            }
+            return (nil, nil)
+
+        case "canOpenURL":
+            guard let dict = args as? [String: Any],
+                  let urlString = dict["url"] as? String,
+                  let url = URL(string: urlString) else {
+                return (nil, NSError(domain: "URLLauncher", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid url argument"]))
+            }
+            return (["canOpen": UIApplication.shared.canOpenURL(url)], nil)
+
+        default:
+            return (nil, NSError(domain: "URLLauncher", code: 404, userInfo: [NSLocalizedDescriptionKey: "Unknown method: \(method)"]))
+        }
     }
 }
 
