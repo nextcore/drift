@@ -131,14 +131,15 @@ func gradientBorderCard(ctx core.BuildContext, title, description, route string,
 		cyanAlpha = 0.1
 	}
 
-	return widgets.GestureDetector{
-		OnTap: func() {
+	return widgets.Tappable(
+		"",
+		func() {
 			nav := navigation.NavigatorOf(ctx)
 			if nav != nil {
 				nav.PushNamed(route, nil)
 			}
 		},
-		Child: widgets.Container{
+		widgets.Container{
 			BorderGradient: borderGradient,
 			BorderWidth:    1,
 			BorderRadius:   12,
@@ -188,7 +189,7 @@ func gradientBorderCard(ctx core.BuildContext, title, description, route string,
 				},
 			},
 		},
-	}
+	)
 }
 
 // themeToggleButton creates the theme toggle pill button.
@@ -260,14 +261,15 @@ func demoCard(ctx core.BuildContext, demo Demo, colors theme.ColorScheme) core.W
 		},
 	}
 
-	return widgets.GestureDetector{
-		OnTap: func() {
+	return widgets.Tappable(
+		"",
+		func() {
 			nav := navigation.NavigatorOf(ctx)
 			if nav != nil {
 				nav.PushNamed(demo.Route, nil)
 			}
 		},
-		Child: widgets.DecoratedBox{
+		widgets.DecoratedBox{
 			BorderColor:  colors.OutlineVariant, // Border stroke color; transparent = no border
 			BorderWidth:  1,                     // Border stroke width in pixels; 0 = no border
 			BorderRadius: 12,
@@ -336,7 +338,7 @@ func demoCard(ctx core.BuildContext, demo Demo, colors theme.ColorScheme) core.W
 				},
 			},
 		},
-	}
+	)
 }
 
 // permissionBadge renders a colored badge showing permission status.
