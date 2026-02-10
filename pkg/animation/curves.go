@@ -1,5 +1,7 @@
 package animation
 
+import "math"
+
 // Easing curves transform linear animation progress into natural-feeling motion.
 //
 // Each curve is a function that takes a value t in [0, 1] and returns a
@@ -48,19 +50,36 @@ func CubicBezier(x1, y1, x2, y2 float64) func(float64) float64 {
 		}
 
 		u := t
-		for i := 0; i < 5; i++ {
+		// Newton-Raphson converges quickly for most values.
+		for i := 0; i < 8; i++ {
 			x := sampleCurve(x1, x2, u) - t
+			if math.Abs(x) < 1e-7 {
+				return sampleCurve(y1, y2, clampUnit(u))
+			}
 			dx := sampleCurveDerivative(x1, x2, u)
-			if dx == 0 {
+			if math.Abs(dx) < 1e-7 {
 				break
 			}
 			u -= x / dx
-			if u <= 0 || u >= 1 {
-				break
-			}
 		}
 
-		return sampleCurve(y1, y2, clampUnit(u))
+		// Fallback to bisection to guarantee a stable solution in [0,1].
+		lo, hi := 0.0, 1.0
+		u = clampUnit(u)
+		for i := 0; i < 12; i++ {
+			x := sampleCurve(x1, x2, u) - t
+			if math.Abs(x) < 1e-7 {
+				break
+			}
+			if x > 0 {
+				hi = u
+			} else {
+				lo = u
+			}
+			u = (lo + hi) * 0.5
+		}
+
+		return sampleCurve(y1, y2, u)
 	}
 }
 
