@@ -47,7 +47,7 @@ func Detect() (*Config, error) {
 func (c *Config) CGOEnv() []string {
 	// Use --target for cross-compilation (works on Linux clang)
 	// -arch is macOS-specific and won't work on Linux
-	target := "--target=arm64-apple-ios14.0"
+	target := "--target=arm64-apple-ios16.0"
 	cflags := fmt.Sprintf("%s -isysroot %s", target, c.SDKPath)
 	// Use -x objective-c++ to compile .mm files correctly
 	// Also add framework search path

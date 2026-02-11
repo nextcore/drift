@@ -33,7 +33,7 @@ bridge-ios:
 	@test -f "$(SKIA_DIR)/out/ios/arm64/libskia.a" || (echo "libskia.a not found. Run scripts/build_skia_ios.sh first."; exit 1)
 	cd $(SKIA_DIR) && xcrun clang++ -arch arm64 \
 		-isysroot "$$(xcrun --sdk iphoneos --show-sdk-path)" \
-		-miphoneos-version-min=14.0 \
+		-miphoneos-version-min=16.0 \
 		-std=c++17 -fPIC -DSKIA_METAL \
 		-I. -I./include \
 		-c ../../$(BRIDGE_DIR)/skia_metal.mm \
@@ -51,7 +51,7 @@ bridge-ios-sim:
 	@test -f "$(SKIA_DIR)/out/ios-simulator/arm64/libskia.a" || (echo "libskia.a not found. Run scripts/build_skia_ios.sh first."; exit 1)
 	cd $(SKIA_DIR) && xcrun clang++ -arch arm64 \
 		-isysroot "$$(xcrun --sdk iphonesimulator --show-sdk-path)" \
-		-mios-simulator-version-min=14.0 \
+		-mios-simulator-version-min=16.0 \
 		-std=c++17 -fPIC -DSKIA_METAL \
 		-I. -I./include \
 		-c ../../$(BRIDGE_DIR)/skia_metal.mm \
@@ -88,7 +88,7 @@ bridge-xtool:
 	$(eval XTOOL_CLANG := $(shell which clang++ 2>/dev/null || echo /opt/swift/usr/bin/clang++))
 	$(eval XTOOL_SDK := $(shell ls -d ~/.xtool/sdk/iPhoneOS*.sdk 2>/dev/null | head -1))
 	@test -n "$(XTOOL_SDK)" || (echo "iOS SDK not found in ~/.xtool/sdk/"; exit 1)
-	cd $(SKIA_DIR) && $(XTOOL_CLANG) -target arm64-apple-ios14.0 \
+	cd $(SKIA_DIR) && $(XTOOL_CLANG) -target arm64-apple-ios16.0 \
 		-isysroot $(XTOOL_SDK) \
 		-std=c++17 -fPIC -DSKIA_METAL \
 		-I. -I./include \

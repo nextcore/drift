@@ -79,9 +79,9 @@ func compileGoForIOS(cfg iosCompileConfig) error {
 		iosArch = "arm64"
 	}
 
-	versionMinFlag := "-mios-simulator-version-min=14.0"
+	versionMinFlag := "-mios-simulator-version-min=16.0"
 	if cfg.device {
-		versionMinFlag = "-miphoneos-version-min=14.0"
+		versionMinFlag = "-miphoneos-version-min=16.0"
 	}
 	cgoCflags := fmt.Sprintf("-isysroot %s -arch %s %s", sdkRoot, iosArch, versionMinFlag)
 	cgoCxxflags := fmt.Sprintf("-isysroot %s -arch %s %s -std=c++17 -x objective-c++", sdkRoot, iosArch, versionMinFlag)

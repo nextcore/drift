@@ -195,12 +195,7 @@ enum PermissionHandler {
     // MARK: - Photos
 
     private static func photosStatus() -> String {
-        let status: PHAuthorizationStatus
-        if #available(iOS 14, *) {
-            status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        } else {
-            status = PHPhotoLibrary.authorizationStatus()
-        }
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
 
         switch status {
         case .authorized:
@@ -219,28 +214,20 @@ enum PermissionHandler {
     }
 
     private static func requestPhotos() {
-        if #available(iOS 14, *) {
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
-                let statusStr: String
-                switch status {
-                case .authorized:
-                    statusStr = "granted"
-                case .limited:
-                    statusStr = "limited"
-                case .restricted:
-                    statusStr = "restricted"
-                default:
-                    // Use permanently_denied for consistency with photosStatus()
-                    statusStr = "permanently_denied"
-                }
-                sendPermissionChange("photos", status: statusStr)
-            }
-        } else {
-            PHPhotoLibrary.requestAuthorization { status in
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+            let statusStr: String
+            switch status {
+            case .authorized:
+                statusStr = "granted"
+            case .limited:
+                statusStr = "limited"
+            case .restricted:
+                statusStr = "restricted"
+            default:
                 // Use permanently_denied for consistency with photosStatus()
-                let statusStr = status == .authorized ? "granted" : "permanently_denied"
-                sendPermissionChange("photos", status: statusStr)
+                statusStr = "permanently_denied"
             }
+            sendPermissionChange("photos", status: statusStr)
         }
     }
 

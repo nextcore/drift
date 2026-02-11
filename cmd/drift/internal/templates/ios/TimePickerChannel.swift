@@ -81,9 +81,7 @@ enum TimePickerHandler {
         let timePicker = UIDatePicker()
         timePicker.datePickerMode = .time
         timePicker.date = initialDate
-        if #available(iOS 13.4, *) {
-            timePicker.preferredDatePickerStyle = .wheels
-        }
+        timePicker.preferredDatePickerStyle = .wheels
 
         // Apply 12/24 hour format preference
         // nil = system default, true = 24-hour, false = 12-hour

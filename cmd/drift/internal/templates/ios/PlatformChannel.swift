@@ -583,10 +583,7 @@ enum SystemUIHandler {
         case "light":
             return .lightContent
         case "dark":
-            if #available(iOS 13.0, *) {
-                return .darkContent
-            }
-            return .default
+            return .darkContent
         default:
             return .default
         }
@@ -814,11 +811,7 @@ final class NotificationHandler: NSObject, UNUserNotificationCenterDelegate {
         let source = notification.request.trigger is UNPushNotificationTrigger ? "remote" : "local"
         NotificationHandler.sendReceived(notification: notification, isForeground: true, source: source)
 
-        if #available(iOS 14.0, *) {
-            completionHandler([.banner, .list, .sound, .badge])
-        } else {
-            completionHandler([.alert, .sound, .badge])
-        }
+        completionHandler([.banner, .list, .sound, .badge])
     }
 
     func userNotificationCenter(

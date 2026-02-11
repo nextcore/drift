@@ -82,9 +82,7 @@ enum DatePickerHandler {
         let datePicker = UIDatePicker()
         datePicker.datePickerMode = .date
         datePicker.date = initialDate
-        if #available(iOS 13.4, *) {
-            datePicker.preferredDatePickerStyle = .inline
-        }
+        datePicker.preferredDatePickerStyle = .inline
         if let min = minDate {
             datePicker.minimumDate = min
         }

@@ -173,7 +173,7 @@ for arg; do
     *) args+=("\$arg") ;;
   esac
 done
-[[ -n "\$arch" && ! " \${args[*]} " =~ " --target=" ]] && args=("--target=\${arch}-apple-ios14.0${target_suffix}" "\${args[@]}")
+[[ -n "\$arch" && ! " \${args[*]} " =~ " --target=" ]] && args=("--target=\${arch}-apple-ios16.0${target_suffix}" "\${args[@]}")
 exec $real_clang "\${args[@]}"
 EOF
   chmod +x "$WRAPPER_DIR/$name"
@@ -188,7 +188,7 @@ cd "$SKIA_DIR"
 python3 tools/git-sync-deps
 
 # Common Skia build args
-COMMON_ARGS='is_official_build=true skia_use_metal=true skia_use_system_harfbuzz=false skia_use_harfbuzz=true skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_use_icu=false skia_use_libgrapheme=true skia_enable_skparagraph=true skia_enable_skshaper=true'
+COMMON_ARGS='is_official_build=true skia_use_metal=true ios_min_target="16.0" skia_use_system_harfbuzz=false skia_use_harfbuzz=true skia_use_system_expat=false skia_use_system_libpng=false skia_use_system_zlib=false skia_use_system_freetype2=false skia_use_system_libjpeg_turbo=false skia_use_libjpeg_turbo_decode=true skia_use_libjpeg_turbo_encode=true skia_use_system_libwebp=false skia_use_libwebp_decode=true skia_use_libwebp_encode=true skia_enable_svg=true skia_use_expat=true skia_use_icu=false skia_use_libgrapheme=true skia_enable_skparagraph=true skia_enable_skshaper=true'
 
 # For cross-compilation, we need to tell GN where the toolchain is
 # Use wrapper scripts that translate -arch to --target
@@ -223,7 +223,7 @@ compile_bridge_device() {
   echo "Compiling bridge for iOS device $arch..."
   echo "Skia out dir: $SKIA_DIR/$out_dir"
 
-  "$CLANGXX" -target "${arch}-apple-ios14.0" \
+  "$CLANGXX" -target "${arch}-apple-ios16.0" \
     -isysroot "$IPHONEOS_SDK" \
     -std=c++17 -fPIC -DSKIA_METAL \
     -I. -I./include \
@@ -258,7 +258,7 @@ compile_bridge_simulator() {
   echo "Compiling bridge for iOS simulator $arch..."
   echo "Skia out dir: $SKIA_DIR/$out_dir"
 
-  "$CLANGXX" -target "${arch}-apple-ios14.0-simulator" \
+  "$CLANGXX" -target "${arch}-apple-ios16.0-simulator" \
     -isysroot "$IPHONESIMULATOR_SDK" \
     -std=c++17 -fPIC -DSKIA_METAL \
     -I. -I./include \
