@@ -162,6 +162,30 @@ class NativeTextInputContainer: NSObject, PlatformViewContainer, UITextFieldDele
         view.removeFromSuperview()
     }
 
+    func onGeometryChanged() {
+        guard isMultiline, let tv = textView else { return }
+
+        // Refresh text layout immediately after host geometry updates so
+        // UIScrollView metrics stay consistent with resized bounds.
+        tv.layoutIfNeeded()
+
+        // If UIKit keeps stale scrollability after a bounds change, toggling
+        // isScrollEnabled forces UIScrollView to rebuild scroll state.
+        // Preserve the original setting.
+        let wasScrollEnabled = tv.isScrollEnabled
+        tv.isScrollEnabled = false
+        tv.isScrollEnabled = wasScrollEnabled
+
+        let insets = tv.adjustedContentInset
+        let minY = -insets.top
+        let maxY = max(minY, tv.contentSize.height - tv.bounds.height + insets.bottom)
+        let clampedY = min(max(tv.contentOffset.y, minY), maxY)
+
+        if clampedY != tv.contentOffset.y {
+            tv.setContentOffset(CGPoint(x: tv.contentOffset.x, y: clampedY), animated: false)
+        }
+    }
+
     // MARK: - View Methods
 
     func setText(_ text: String) {

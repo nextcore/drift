@@ -578,6 +578,7 @@ enum PlatformViewHandler {
                 clipRight: clipRight.map { CGFloat($0) },
                 clipBottom: clipBottom.map { CGFloat($0) }
             )
+            container.onGeometryChanged()
         }
 
         return (nil, nil)
@@ -703,6 +704,7 @@ enum PlatformViewHandler {
                     clipRight: clipRight.map { CGFloat($0) },
                     clipBottom: clipBottom.map { CGFloat($0) }
                 )
+                container.onGeometryChanged()
             }
             lastAppliedSeq = frameSeq
         }
@@ -768,6 +770,11 @@ protocol PlatformViewContainer {
     var viewId: Int { get }
     var view: UIView { get }
     func dispose()
+    func onGeometryChanged()
+}
+
+extension PlatformViewContainer {
+    func onGeometryChanged() {}
 }
 
 // MARK: - Native Web View Container
