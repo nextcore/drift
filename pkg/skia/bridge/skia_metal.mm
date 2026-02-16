@@ -546,6 +546,8 @@ sk_sp<SkImageFilter> parse_image_filter(const float* data, int len, int& consume
     return filter;
 }
 
+#include "skia_rich_paragraph_impl.h"
+
 }  // namespace
 
 // Provide a weak definition for the default font families used by skparagraph.
@@ -1339,6 +1341,15 @@ void drift_skia_paragraph_destroy(DriftSkiaParagraph paragraph) {
         return;
     }
     delete reinterpret_cast<skia::textlayout::Paragraph*>(paragraph);
+}
+
+DriftSkiaParagraph drift_skia_rich_paragraph_create(
+    const DriftTextSpan* spans,
+    int span_count,
+    int max_lines,
+    int text_align
+) {
+    return drift_skia_rich_paragraph_create_impl(spans, span_count, max_lines, text_align);
 }
 
 DriftSkiaPath drift_skia_path_create(int fill_type) {
