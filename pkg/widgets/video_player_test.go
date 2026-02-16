@@ -44,3 +44,21 @@ func TestVideoPlayer_WithController(t *testing.T) {
 		t.Error("expected non-zero ViewID from controller")
 	}
 }
+
+func TestVideoPlayer_HideControls(t *testing.T) {
+	platform.SetupTestBridge(t.Cleanup)
+
+	c := platform.NewVideoPlayerController()
+	defer c.Dispose()
+
+	w := VideoPlayer{
+		Controller:   c,
+		Height:       225,
+		HideControls: true,
+	}
+
+	elem := w.CreateElement()
+	if elem == nil {
+		t.Error("expected non-nil element")
+	}
+}

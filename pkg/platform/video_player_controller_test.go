@@ -236,6 +236,7 @@ func TestVideoPlayerController_TransportMethods(t *testing.T) {
 		{"SetVolume", func() error { return c.SetVolume(0.5) }},
 		{"SetLooping", func() error { return c.SetLooping(true) }},
 		{"SetPlaybackSpeed", func() error { return c.SetPlaybackSpeed(1.5) }},
+		{"SetShowControls", func() error { return c.SetShowControls(false) }},
 		{"Stop", func() error { return c.Stop() }},
 	} {
 		if err := tc.fn(); err != nil {
@@ -411,6 +412,7 @@ func TestVideoPlayerController_MethodsReturnErrDisposedAfterDispose(t *testing.T
 		{"SetVolume", func() error { return c.SetVolume(0.5) }},
 		{"SetLooping", func() error { return c.SetLooping(true) }},
 		{"SetPlaybackSpeed", func() error { return c.SetPlaybackSpeed(1.5) }},
+		{"SetShowControls", func() error { return c.SetShowControls(false) }},
 	} {
 		if err := tc.fn(); err != ErrDisposed {
 			t.Errorf("%s after Dispose: got %v, want ErrDisposed", tc.name, err)

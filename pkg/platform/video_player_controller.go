@@ -251,6 +251,17 @@ func (c *VideoPlayerController) SetPlaybackSpeed(rate float64) error {
 	return v.SetPlaybackSpeed(rate)
 }
 
+// SetShowControls shows or hides the native transport controls.
+func (c *VideoPlayerController) SetShowControls(show bool) error {
+	c.mu.RLock()
+	v := c.view
+	c.mu.RUnlock()
+	if v == nil {
+		return ErrDisposed
+	}
+	return v.SetShowControls(show)
+}
+
 // Dispose releases the video player and its native resources. After disposal,
 // this controller must not be reused. Dispose is idempotent; calling it more
 // than once is safe.

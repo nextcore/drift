@@ -114,6 +114,14 @@ func (v *videoPlayerView) SetPlaybackSpeed(rate float64) error {
 	return err
 }
 
+// SetShowControls shows or hides the native transport controls.
+func (v *videoPlayerView) SetShowControls(show bool) error {
+	_, err := GetPlatformViewRegistry().InvokeViewMethod(v.viewID, "setShowControls", map[string]any{
+		"show": show,
+	})
+	return err
+}
+
 // Load loads a new media URL, replacing the current media item.
 // The native player prepares the new URL immediately. If looping was
 // enabled, it remains active for the new item.

@@ -370,7 +370,7 @@ enum PlatformViewHandler {
         } else if container is NativeActivityIndicatorContainer {
             supportedMethods = ["setAnimating", "updateConfig"]
         } else if container is NativeVideoPlayerContainer {
-            supportedMethods = ["play", "pause", "stop", "seekTo", "setVolume", "setLooping", "setPlaybackSpeed", "load"]
+            supportedMethods = ["play", "pause", "stop", "seekTo", "setVolume", "setLooping", "setPlaybackSpeed", "setShowControls", "load"]
         } else {
             supportedMethods = []
         }
@@ -475,6 +475,10 @@ enum PlatformViewHandler {
                 case "setPlaybackSpeed":
                     if let rate = (args["rate"] as? NSNumber)?.floatValue {
                         videoContainer.setPlaybackSpeed(rate)
+                    }
+                case "setShowControls":
+                    if let show = args["show"] as? Bool {
+                        videoContainer.setShowControls(show)
                     }
                 case "load":
                     if let urlString = args["url"] as? String {

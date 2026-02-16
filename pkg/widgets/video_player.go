@@ -33,6 +33,11 @@ type VideoPlayer struct {
 
 	// Height of the video player in logical pixels.
 	Height float64
+
+	// HideControls hides the native transport controls (play/pause, seek bar,
+	// time display). Use this when building custom Drift widget controls on
+	// top of the video surface.
+	HideControls bool
 }
 
 // CreateElement creates the element for this render object widget.
@@ -48,9 +53,13 @@ func (v VideoPlayer) Key() any {
 // CreateRenderObject creates the render object for this widget.
 func (v VideoPlayer) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	r := &renderVideoPlayer{
-		controller: v.Controller,
-		width:      v.Width,
-		height:     v.Height,
+		controller:   v.Controller,
+		width:        v.Width,
+		height:       v.Height,
+		hideControls: v.HideControls,
+	}
+	if v.HideControls && v.Controller != nil {
+		v.Controller.SetShowControls(false)
 	}
 	r.SetSelf(r)
 	return r
@@ -62,6 +71,12 @@ func (v VideoPlayer) UpdateRenderObject(ctx core.BuildContext, renderObject layo
 		r.controller = v.Controller
 		r.width = v.Width
 		r.height = v.Height
+		if v.HideControls != r.hideControls {
+			r.hideControls = v.HideControls
+			if v.Controller != nil {
+				v.Controller.SetShowControls(!v.HideControls)
+			}
+		}
 		r.MarkNeedsLayout()
 		r.MarkNeedsPaint()
 	}
@@ -71,9 +86,10 @@ var _ layout.PlatformViewOwner = (*renderVideoPlayer)(nil)
 
 type renderVideoPlayer struct {
 	layout.RenderBoxBase
-	controller *platform.VideoPlayerController
-	width      float64
-	height     float64
+	controller   *platform.VideoPlayerController
+	width        float64
+	height       float64
+	hideControls bool
 }
 
 func (r *renderVideoPlayer) PerformLayout() {

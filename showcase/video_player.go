@@ -29,11 +29,12 @@ func (v videoPlayerPage) CreateState() core.State {
 
 type videoPlayerState struct {
 	core.StateBase
-	videoStatus     *core.ManagedState[string]
-	videoStateLabel string
-	videoController *platform.VideoPlayerController
-	videoLooping    bool
-	videoMuted      bool
+	videoStatus         *core.ManagedState[string]
+	videoStateLabel     string
+	videoController     *platform.VideoPlayerController
+	videoLooping        bool
+	videoMuted          bool
+	videoControlsHidden bool
 }
 
 func (s *videoPlayerState) InitState() {
@@ -73,8 +74,9 @@ func (s *videoPlayerState) Build(ctx core.BuildContext) core.Widget {
 			Children: []core.Widget{
 				widgets.Expanded{
 					Child: widgets.VideoPlayer{
-						Controller: s.videoController,
-						Height:     220,
+						Controller:   s.videoController,
+						Height:       220,
+						HideControls: s.videoControlsHidden,
 					},
 				},
 			},
@@ -137,6 +139,11 @@ func (s *videoPlayerState) Build(ctx core.BuildContext) core.Widget {
 				smallButton(ctx, toggleLabel("Loop", "Unloop", s.videoLooping), func() {
 					s.videoLooping = !s.videoLooping
 					s.videoController.SetLooping(s.videoLooping)
+				}, colors),
+				widgets.HSpace(6),
+				smallButton(ctx, toggleLabel("Hide Controls", "Show Controls", s.videoControlsHidden), func() {
+					s.videoControlsHidden = !s.videoControlsHidden
+					s.videoController.SetShowControls(!s.videoControlsHidden)
 				}, colors),
 			},
 		},

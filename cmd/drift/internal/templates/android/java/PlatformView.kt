@@ -28,7 +28,7 @@ object PlatformViewHandler {
     private val textInputMethods = setOf("setText", "setSelection", "setValue", "focus", "blur", "updateConfig")
     private val switchMethods = setOf("setValue", "updateConfig")
     private val activityIndicatorMethods = setOf("setAnimating", "updateConfig")
-    private val videoPlayerMethods = setOf("play", "pause", "stop", "seekTo", "setVolume", "setLooping", "setPlaybackSpeed", "load")
+    private val videoPlayerMethods = setOf("play", "pause", "stop", "seekTo", "setVolume", "setLooping", "setPlaybackSpeed", "setShowControls", "load")
 
     fun init(context: Context, hostView: ViewGroup, surfaceView: View, overlayController: InputOverlayController) {
         this.context = context
@@ -158,6 +158,10 @@ object PlatformViewHandler {
                         "setPlaybackSpeed" -> {
                             val rate = (args["rate"] as? Number)?.toFloat() ?: 1.0f
                             container.setPlaybackSpeed(rate)
+                        }
+                        "setShowControls" -> {
+                            val show = args["show"] as? Boolean ?: true
+                            container.setShowControls(show)
                         }
                         "load" -> {
                             val url = args["url"] as? String

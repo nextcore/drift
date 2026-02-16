@@ -121,6 +121,7 @@ func TestVideoPlayerView_TransportMethods(t *testing.T) {
 		{"SetVolume", func() error { return v.SetVolume(0.5) }},
 		{"SetLooping", func() error { return v.SetLooping(true) }},
 		{"SetPlaybackSpeed", func() error { return v.SetPlaybackSpeed(1.5) }},
+		{"SetShowControls", func() error { return v.SetShowControls(false) }},
 		{"Stop", func() error { return v.Stop() }},
 	} {
 		if err := tc.fn(); err != nil {

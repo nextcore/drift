@@ -98,6 +98,7 @@ Set all callbacks before calling `Load`, `Play`, or any other playback method. C
 | `Controller` | `*platform.VideoPlayerController` | The controller that provides the native surface and playback control |
 | `Width` | `float64` | Player width in logical pixels |
 | `Height` | `float64` | Player height in logical pixels |
+| `HideControls` | `bool` | Hide native transport controls. Use when building custom Drift widget controls on top of the video surface. |
 
 ### VideoPlayerController Methods
 
@@ -113,6 +114,7 @@ All methods are safe for concurrent use. Set callback fields before calling `Loa
 | `SetVolume(volume float64) error` | Set volume (0.0 to 1.0). Values outside this range are clamped by the native player. |
 | `SetLooping(looping bool) error` | Enable or disable looping |
 | `SetPlaybackSpeed(rate float64) error` | Set playback speed (1.0 = normal). Must be positive; behavior for zero or negative values is platform-dependent. |
+| `SetShowControls(show bool) error` | Show or hide native transport controls at runtime. |
 | `State() PlaybackState` | Current playback state |
 | `Position() time.Duration` | Current playback position |
 | `Duration() time.Duration` | Total media duration |
@@ -280,6 +282,43 @@ controller.OnError = func(code, message string) {
     }
     log.Printf("playback error [%s]: %s", code, message)
 }
+```
+
+## Custom Controls
+
+To build your own playback controls in Drift widgets, set `HideControls: true` on the `VideoPlayer` widget. This hides the native transport UI (play/pause button, seek bar, time display) and leaves a bare video surface that you can overlay with Drift widgets using `Stack` and `Positioned`:
+
+```go
+widgets.Stack{
+    Children: []core.Widget{
+        widgets.VideoPlayer{
+            Controller:   s.controller,
+            Height:       300,
+            HideControls: true,
+        },
+        widgets.Positioned{
+            Bottom: 8,
+            Left:   8,
+            Child: widgets.Row{
+                Children: []core.Widget{
+                    theme.ButtonOf(ctx, "Play", func() {
+                        s.controller.Play()
+                    }),
+                    theme.ButtonOf(ctx, "Pause", func() {
+                        s.controller.Pause()
+                    }),
+                },
+            },
+        },
+    },
+}
+```
+
+You can also toggle controls at runtime via the controller:
+
+```go
+s.controller.SetShowControls(false) // hide
+s.controller.SetShowControls(true)  // show again
 ```
 
 ## Cleartext HTTP URLs

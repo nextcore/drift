@@ -273,6 +273,10 @@ class NativeVideoPlayerContainer: NSObject, PlatformViewContainer {
         }
     }
 
+    func setShowControls(_ show: Bool) {
+        playerVC.showsPlaybackControls = show
+    }
+
     func load(_ urlString: String) {
         guard let url = URL(string: urlString) else { return }
         loadItem(url: url)
