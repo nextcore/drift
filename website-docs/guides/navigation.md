@@ -20,11 +20,11 @@ func App() core.Widget {
         OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
             switch settings.Name {
             case "/":
-                return navigation.NewMaterialPageRoute(buildHome, settings)
+                return navigation.NewAnimatedPageRoute(buildHome, settings)
             case "/details":
-                return navigation.NewMaterialPageRoute(buildDetails, settings)
+                return navigation.NewAnimatedPageRoute(buildDetails, settings)
             case "/settings":
-                return navigation.NewMaterialPageRoute(buildSettings, settings)
+                return navigation.NewAnimatedPageRoute(buildSettings, settings)
             default:
                 return nil
             }
@@ -119,10 +119,10 @@ func App() core.Widget {
         OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
             switch settings.Name {
             case "/":
-                return navigation.NewMaterialPageRoute(buildHome, settings)
+                return navigation.NewAnimatedPageRoute(buildHome, settings)
             case "/details":
                 // Access arguments from settings
-                return navigation.NewMaterialPageRoute(func(ctx core.BuildContext) core.Widget {
+                return navigation.NewAnimatedPageRoute(func(ctx core.BuildContext) core.Widget {
                     args := settings.Arguments.(map[string]any)
                     id := args["id"].(int)
                     title := args["title"].(string)
@@ -226,7 +226,7 @@ navigation.Navigator{
     InitialRoute: "/",
     OnGenerateRoute: generateRoute,
     OnUnknownRoute: func(settings navigation.RouteSettings) navigation.Route {
-        return navigation.NewMaterialPageRoute(
+        return navigation.NewAnimatedPageRoute(
             func(ctx core.BuildContext) core.Widget {
                 return widgets.Column{
                     Children: []core.Widget{
@@ -613,9 +613,9 @@ navigation.Tab{
     OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
         switch settings.Name {
         case "/":
-            return navigation.NewMaterialPageRoute(buildHome, settings)
+            return navigation.NewAnimatedPageRoute(buildHome, settings)
         case "/details":
-            return navigation.NewMaterialPageRoute(buildDetails, settings)
+            return navigation.NewAnimatedPageRoute(buildDetails, settings)
         }
         return nil
     },
@@ -664,10 +664,10 @@ navigation.Navigator{
     OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
         switch settings.Name {
         case "/":
-            return navigation.NewMaterialPageRoute(buildMainTabs, settings)
+            return navigation.NewAnimatedPageRoute(buildMainTabs, settings)
         case "/onboarding":
             // Onboarding has its own nested navigator
-            return navigation.NewMaterialPageRoute(buildOnboarding, settings)
+            return navigation.NewAnimatedPageRoute(buildOnboarding, settings)
         }
         return nil
     },
@@ -681,11 +681,11 @@ func buildOnboarding(ctx core.BuildContext) core.Widget {
         OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
             switch settings.Name {
             case "/welcome":
-                return navigation.NewMaterialPageRoute(buildWelcome, settings)
+                return navigation.NewAnimatedPageRoute(buildWelcome, settings)
             case "/setup":
-                return navigation.NewMaterialPageRoute(buildSetup, settings)
+                return navigation.NewAnimatedPageRoute(buildSetup, settings)
             case "/complete":
-                return navigation.NewMaterialPageRoute(buildComplete, settings)
+                return navigation.NewAnimatedPageRoute(buildComplete, settings)
             }
             return nil
         },

@@ -18,7 +18,7 @@ func LinearCurve(t float64) float64 {
 }
 
 // IOSNavigationCurve approximates iOS navigation transition easing.
-var IOSNavigationCurve = CubicBezier(0.32, 0.72, 0.0, 1.0)
+var IOSNavigationCurve = CubicBezier(0.22, 1.0, 0.36, 1.0)
 
 // Ease is a standard cubic bezier curve for general-purpose easing.
 // Equivalent to CSS ease.

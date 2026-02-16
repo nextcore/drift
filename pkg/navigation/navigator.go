@@ -148,9 +148,9 @@ func RootNavigator() NavigatorState {
 //	    OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
 //	        switch settings.Name {
 //	        case "/":
-//	            return navigation.NewMaterialPageRoute(buildHome, settings)
+//	            return navigation.NewAnimatedPageRoute(buildHome, settings)
 //	        case "/details":
-//	            return navigation.NewMaterialPageRoute(buildDetails, settings)
+//	            return navigation.NewAnimatedPageRoute(buildDetails, settings)
 //	        }
 //	        return nil
 //	    },
@@ -262,13 +262,16 @@ type NavigatorState interface {
 }
 
 type navigatorState struct {
-	element            *core.StatefulElement
-	navigator          Navigator
-	routes             []Route
-	exitingRoute       Route        // route currently animating out
-	overlayState       OverlayState // stored when OnOverlayReady fires
-	isRefreshing       bool         // guard against re-entrant refresh
-	unsubscribeRefresh func()       // cleanup for RefreshListenable
+	element      *core.StatefulElement
+	navigator    Navigator
+	routes       []Route
+	overlayState OverlayState // stored when OnOverlayReady fires
+
+	exitingRoute       Route  // route currently animating out
+	exitingUnsubscribe func() // cleanup for exit animation status listener
+
+	isRefreshing       bool   // guard against re-entrant refresh
+	unsubscribeRefresh func() // cleanup for RefreshListenable
 }
 
 func (s *navigatorState) setElement(element *core.StatefulElement) {
@@ -311,7 +314,7 @@ func (s *navigatorState) InitState() {
 		}
 		if route != nil {
 			// Mark as initial route (no animation)
-			if mr, ok := route.(*MaterialPageRoute); ok {
+			if mr, ok := route.(*AnimatedPageRoute); ok {
 				mr.SetInitialRoute()
 			}
 			s.routes = []Route{route}
@@ -332,26 +335,71 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 		}
 	}
 
+	// Check if top route has an active foreground animation (push transition in progress).
+	// When animating, the route below must stay visible for the parallax effect.
+	topIsAnimating := false
+	var topForegroundController *animation.AnimationController
+	if len(s.routes) > 0 {
+		if ar, ok := s.routes[len(s.routes)-1].(AnimatedRoute); ok {
+			fc := ar.ForegroundController()
+			if fc != nil && fc.IsAnimating() {
+				topIsAnimating = true
+				topForegroundController = fc
+			}
+		}
+	}
+
+	// Check if the exiting route has a foreground controller (pop transition in progress).
+	var exitingForegroundController *animation.AnimationController
+	if s.exitingRoute != nil {
+		if ar, ok := s.exitingRoute.(AnimatedRoute); ok {
+			fc := ar.ForegroundController()
+			if fc != nil && fc.IsAnimating() {
+				exitingForegroundController = fc
+			}
+		}
+	}
+
 	// Build all routes in a Stack
 	children := make([]core.Widget, 0, len(s.routes)+1)
 	for i, route := range s.routes {
 		isTop := i == len(s.routes)-1
-		rb := routeBuilder{
-			route: route,
-			isTop: isTop,
-		}
+		isSecondFromTop := i == len(s.routes)-2
 
 		// Route is visible if:
 		// - It's the top route, OR
-		// - Top route is transparent and this is the route directly below it
-		isVisible := isTop || (topIsTransparent && i == len(s.routes)-2)
+		// - Top route is transparent and this is the route directly below it, OR
+		// - Top route is animating (push) and this is the route directly below it
+		isVisible := isTop || (topIsTransparent && isSecondFromTop) || (topIsAnimating && isSecondFromTop)
+
+		// Determine background animation controller for this route.
+		// During push: the route below the top slides left, driven by the top's controller.
+		// During pop: the new top slides back from left, driven by the exiting route's controller.
+		var bgAnimation *animation.AnimationController
+		if isSecondFromTop && topForegroundController != nil {
+			bgAnimation = topForegroundController
+		} else if isTop && exitingForegroundController != nil {
+			bgAnimation = exitingForegroundController
+		}
+
+		// Always wrap in BackgroundSlideTransition to keep the widget tree stable.
+		// Passing nil animation makes it a no-op passthrough (no offset).
+		// This avoids element reconciliation destroying the subtree when
+		// the wrapper is conditionally added/removed.
+		child := BackgroundSlideTransition{
+			Animation: bgAnimation,
+			Child: routeBuilder{
+				route: route,
+				isTop: isTop,
+			},
+		}
 
 		// Always wrap in ExcludeSemantics to maintain element tree identity.
 		// Non-top routes are excluded from accessibility (hidden behind the top route).
 		children = append(children, widgets.ExcludeSemantics{
 			Child: widgets.Offstage{
 				Offstage: !isVisible,
-				Child:    rb,
+				Child:    child,
 			},
 			Excluding: !isTop,
 		})
@@ -405,6 +453,14 @@ func (s *navigatorState) SetState(fn func()) {
 }
 
 func (s *navigatorState) Dispose() {
+	// Clean up any in-progress exit animation
+	s.clearExitingRoute()
+
+	// Dispose animation controllers for all remaining routes
+	for _, route := range s.routes {
+		disposeRouteController(route)
+	}
+
 	// Unsubscribe from RefreshListenable
 	if s.unsubscribeRefresh != nil {
 		s.unsubscribeRefresh()
@@ -415,6 +471,20 @@ func (s *navigatorState) Dispose() {
 	globalScope.ClearActiveIf(s)
 	if s.navigator.IsRoot {
 		globalScope.ClearRootIf(s)
+	}
+}
+
+// clearExitingRoute cleans up any in-progress exit animation: removes the
+// status listener, disposes the route's foreground controller, and nils out
+// the exiting route reference.
+func (s *navigatorState) clearExitingRoute() {
+	if s.exitingUnsubscribe != nil {
+		s.exitingUnsubscribe()
+		s.exitingUnsubscribe = nil
+	}
+	if s.exitingRoute != nil {
+		disposeRouteController(s.exitingRoute)
+		s.exitingRoute = nil
 	}
 }
 
@@ -571,14 +641,18 @@ func (s *navigatorState) Pop(result any) {
 		popped.DidPop(result)
 
 		// Set up callback to remove route when animation completes
-		if mr, ok := popped.(*MaterialPageRoute); ok && mr.controller != nil {
-			mr.controller.AddStatusListener(func(status animation.AnimationStatus) {
-				if status == animation.AnimationDismissed {
-					s.SetState(func() {
-						s.exitingRoute = nil
-					})
-				}
-			})
+		if ar, ok := popped.(AnimatedRoute); ok {
+			if fc := ar.ForegroundController(); fc != nil {
+				s.exitingUnsubscribe = fc.AddStatusListener(func(status animation.AnimationStatus) {
+					if status == animation.AnimationDismissed {
+						s.SetState(func() {
+							s.clearExitingRoute()
+						})
+					}
+				})
+			} else {
+				s.exitingRoute = nil
+			}
 		} else {
 			// No animation, remove immediately
 			s.exitingRoute = nil
@@ -631,9 +705,11 @@ func (s *navigatorState) PopUntil(predicate func(Route) bool) {
 	})
 }
 
-// removeRoute fires DidPop and observer callbacks for a removed route.
+// removeRoute fires DidPop and observer callbacks for a removed route,
+// and disposes its animation controller.
 func (s *navigatorState) removeRoute(route Route, previousRoute Route) {
 	route.DidPop(nil)
+	disposeRouteController(route)
 	for _, observer := range s.navigator.Observers {
 		observer.DidRemove(route, previousRoute)
 	}
@@ -689,6 +765,7 @@ func (s *navigatorState) doPushReplacement(route Route) {
 
 		s.routes[len(s.routes)-1] = route
 		oldRoute.DidPop(nil)
+		disposeRouteController(oldRoute)
 
 		// Notify new route of previous
 		route.DidChangePrevious(previousOfOld)
@@ -723,6 +800,16 @@ func (s *navigatorState) MaybePop(result any) bool {
 	}
 	s.Pop(result)
 	return true
+}
+
+// disposeRouteController disposes the foreground animation controller of a
+// route if it implements AnimatedRoute.
+func disposeRouteController(route Route) {
+	if ar, ok := route.(AnimatedRoute); ok {
+		if fc := ar.ForegroundController(); fc != nil {
+			fc.Dispose()
+		}
+	}
 }
 
 // routeBuilder wraps a route for building.

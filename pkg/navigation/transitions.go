@@ -38,6 +38,10 @@ func setParentOnChild(child, parent layout.RenderObject) {
 	}
 }
 
+// backgroundParallaxFactor controls how far the background page shifts left
+// during a foreground push/pop transition (fraction of page width).
+const backgroundParallaxFactor = 0.33
+
 // SlideDirection determines the direction of a slide transition.
 type SlideDirection int
 
@@ -81,18 +85,18 @@ func (s SlideTransition) CreateRenderObject(ctx core.BuildContext) layout.Render
 		direction: s.Direction,
 	}
 	slide.SetSelf(slide)
-	if s.Animation != nil {
-		s.Animation.AddListener(func() {
-			slide.MarkNeedsPaint()
-		})
-	}
+	slide.subscribeAnimation()
 	return slide
 }
 
 // UpdateRenderObject updates the RenderSlideTransition.
 func (s SlideTransition) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if slide, ok := renderObject.(*renderSlideTransition); ok {
-		slide.animation = s.Animation
+		if slide.animation != s.Animation {
+			slide.unsubscribeAnimation()
+			slide.animation = s.Animation
+			slide.subscribeAnimation()
+		}
 		slide.direction = s.Direction
 		slide.MarkNeedsPaint()
 	}
@@ -100,9 +104,25 @@ func (s SlideTransition) UpdateRenderObject(ctx core.BuildContext, renderObject 
 
 type renderSlideTransition struct {
 	layout.RenderBoxBase
-	child     layout.RenderBox
-	animation *animation.AnimationController
-	direction SlideDirection
+	child       layout.RenderBox
+	animation   *animation.AnimationController
+	direction   SlideDirection
+	unsubscribe func()
+}
+
+func (r *renderSlideTransition) subscribeAnimation() {
+	if r.animation != nil {
+		r.unsubscribe = r.animation.AddListener(func() {
+			r.MarkNeedsPaint()
+		})
+	}
+}
+
+func (r *renderSlideTransition) unsubscribeAnimation() {
+	if r.unsubscribe != nil {
+		r.unsubscribe()
+		r.unsubscribe = nil
+	}
 }
 
 func (r *renderSlideTransition) SetChild(child layout.RenderObject) {
@@ -183,6 +203,130 @@ func (r *renderSlideTransition) HitTest(position graphics.Offset, result *layout
 	return r.child.HitTest(position, result)
 }
 
+// BackgroundSlideTransition slides its child to the left as a foreground page
+// enters. At animation value 0 the child is at its normal position; at value 1
+// the child is shifted left by 33% of the width.
+type BackgroundSlideTransition struct {
+	Animation *animation.AnimationController
+	Child     core.Widget
+}
+
+// CreateElement returns a RenderObjectElement for this BackgroundSlideTransition.
+func (b BackgroundSlideTransition) CreateElement() core.Element {
+	return core.NewRenderObjectElement(b, nil)
+}
+
+// Key returns nil (no key).
+func (b BackgroundSlideTransition) Key() any {
+	return nil
+}
+
+// ChildWidget returns the child widget.
+func (b BackgroundSlideTransition) ChildWidget() core.Widget {
+	return b.Child
+}
+
+// CreateRenderObject creates the renderBackgroundSlideTransition.
+func (b BackgroundSlideTransition) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
+	r := &renderBackgroundSlideTransition{
+		animation: b.Animation,
+	}
+	r.SetSelf(r)
+	r.subscribeAnimation()
+	return r
+}
+
+// UpdateRenderObject updates the renderBackgroundSlideTransition.
+func (b BackgroundSlideTransition) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
+	if r, ok := renderObject.(*renderBackgroundSlideTransition); ok {
+		if r.animation != b.Animation {
+			r.unsubscribeAnimation()
+			r.animation = b.Animation
+			r.subscribeAnimation()
+		}
+		r.MarkNeedsPaint()
+	}
+}
+
+type renderBackgroundSlideTransition struct {
+	layout.RenderBoxBase
+	child       layout.RenderBox
+	animation   *animation.AnimationController
+	unsubscribe func()
+}
+
+func (r *renderBackgroundSlideTransition) subscribeAnimation() {
+	if r.animation != nil {
+		r.unsubscribe = r.animation.AddListener(func() {
+			r.MarkNeedsPaint()
+		})
+	}
+}
+
+func (r *renderBackgroundSlideTransition) unsubscribeAnimation() {
+	if r.unsubscribe != nil {
+		r.unsubscribe()
+		r.unsubscribe = nil
+	}
+}
+
+func (r *renderBackgroundSlideTransition) SetChild(child layout.RenderObject) {
+	setParentOnChild(r.child, nil)
+	if child == nil {
+		r.child = nil
+		return
+	}
+	if box, ok := child.(layout.RenderBox); ok {
+		r.child = box
+		setParentOnChild(r.child, r)
+	}
+}
+
+func (r *renderBackgroundSlideTransition) VisitChildren(visitor func(layout.RenderObject)) {
+	if r.child != nil {
+		visitor(r.child)
+	}
+}
+
+func (r *renderBackgroundSlideTransition) PerformLayout() {
+	constraints := r.Constraints()
+	if r.child != nil {
+		r.child.Layout(constraints, true)
+		r.SetSize(r.child.Size())
+		r.child.SetParentData(&layout.BoxParentData{})
+	} else {
+		r.SetSize(constraints.Constrain(graphics.Size{}))
+	}
+}
+
+func (r *renderBackgroundSlideTransition) slideOffset() graphics.Offset {
+	if r.animation == nil {
+		return graphics.Offset{}
+	}
+	return graphics.Offset{
+		X: -r.Size().Width * backgroundParallaxFactor * r.animation.Value,
+	}
+}
+
+func (r *renderBackgroundSlideTransition) ScrollOffset() graphics.Offset {
+	return r.slideOffset()
+}
+
+func (r *renderBackgroundSlideTransition) Paint(ctx *layout.PaintContext) {
+	if r.child == nil {
+		return
+	}
+	offset := r.slideOffset()
+	ctx.PaintChildWithLayer(r.child, offset)
+}
+
+func (r *renderBackgroundSlideTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
+	if r.child == nil {
+		return false
+	}
+	return r.child.HitTest(position, result)
+}
+
 // FadeTransition animates the opacity of its child.
 type FadeTransition struct {
 	Animation *animation.AnimationController
@@ -210,26 +354,42 @@ func (f FadeTransition) CreateRenderObject(ctx core.BuildContext) layout.RenderO
 		animation: f.Animation,
 	}
 	fade.SetSelf(fade)
-	if f.Animation != nil {
-		f.Animation.AddListener(func() {
-			fade.MarkNeedsPaint()
-		})
-	}
+	fade.subscribeAnimation()
 	return fade
 }
 
 // UpdateRenderObject updates the RenderFadeTransition.
 func (f FadeTransition) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if fade, ok := renderObject.(*renderFadeTransition); ok {
-		fade.animation = f.Animation
+		if fade.animation != f.Animation {
+			fade.unsubscribeAnimation()
+			fade.animation = f.Animation
+			fade.subscribeAnimation()
+		}
 		fade.MarkNeedsPaint()
 	}
 }
 
 type renderFadeTransition struct {
 	layout.RenderBoxBase
-	child     layout.RenderBox
-	animation *animation.AnimationController
+	child       layout.RenderBox
+	animation   *animation.AnimationController
+	unsubscribe func()
+}
+
+func (r *renderFadeTransition) subscribeAnimation() {
+	if r.animation != nil {
+		r.unsubscribe = r.animation.AddListener(func() {
+			r.MarkNeedsPaint()
+		})
+	}
+}
+
+func (r *renderFadeTransition) unsubscribeAnimation() {
+	if r.unsubscribe != nil {
+		r.unsubscribe()
+		r.unsubscribe = nil
+	}
 }
 
 func (r *renderFadeTransition) SetChild(child layout.RenderObject) {

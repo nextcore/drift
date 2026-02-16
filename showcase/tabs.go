@@ -59,11 +59,11 @@ func buildTabSpec(label string, icon *svg.Icon, color graphics.Color) navigation
 		OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
 			switch settings.Name {
 			case "/":
-				return navigation.NewMaterialPageRoute(func(ctx core.BuildContext) core.Widget {
+				return navigation.NewAnimatedPageRoute(func(ctx core.BuildContext) core.Widget {
 					return buildTabRootPage(ctx, label)
 				}, settings)
 			case "/detail":
-				return navigation.NewMaterialPageRoute(func(ctx core.BuildContext) core.Widget {
+				return navigation.NewAnimatedPageRoute(func(ctx core.BuildContext) core.Widget {
 					return buildTabDetailPage(ctx, label)
 				}, settings)
 			}

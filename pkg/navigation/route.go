@@ -13,9 +13,9 @@
 //	    OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
 //	        switch settings.Name {
 //	        case "/":
-//	            return navigation.NewMaterialPageRoute(buildHome, settings)
+//	            return navigation.NewAnimatedPageRoute(buildHome, settings)
 //	        case "/details":
-//	            return navigation.NewMaterialPageRoute(buildDetails, settings)
+//	            return navigation.NewAnimatedPageRoute(buildDetails, settings)
 //	        }
 //	        return nil
 //	    },
@@ -67,6 +67,7 @@
 package navigation
 
 import (
+	"github.com/go-drift/drift/pkg/animation"
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/overlay"
 )
@@ -152,6 +153,14 @@ type Route interface {
 	// SetOverlay is called by Navigator when OverlayState becomes available.
 	// Routes that use overlay entries store this reference.
 	SetOverlay(overlay OverlayState)
+}
+
+// AnimatedRoute is implemented by routes that have a foreground animation controller.
+// The navigator and other routes use this to query a route's animation state,
+// enabling coordinated transitions (e.g., background slide during push).
+type AnimatedRoute interface {
+	Route
+	ForegroundController() *animation.AnimationController
 }
 
 // TransparentRoute is implemented by routes that should keep previous routes visible.

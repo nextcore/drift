@@ -8,42 +8,49 @@ import (
 )
 
 // TransitionDuration is the default duration for page transitions.
-const TransitionDuration = 350 * time.Millisecond
+const TransitionDuration = 450 * time.Millisecond
 
-// MaterialPageRoute provides a route with Material Design page transitions.
-type MaterialPageRoute struct {
+// AnimatedPageRoute provides a route with animated page transitions.
+type AnimatedPageRoute struct {
 	BaseRoute
 
 	// Builder creates the page content.
 	Builder func(ctx core.BuildContext) core.Widget
 
-	// animation controller for this route's transition
-	controller *animation.AnimationController
+	// foregroundController drives this route's own slide-in/slide-out animation.
+	foregroundController *animation.AnimationController
 
 	// isInitialRoute tracks if this is the first route (no animation needed)
 	isInitialRoute bool
 }
 
-// NewMaterialPageRoute creates a MaterialPageRoute with the given builder and settings.
-func NewMaterialPageRoute(builder func(core.BuildContext) core.Widget, settings RouteSettings) *MaterialPageRoute {
-	return &MaterialPageRoute{
+// NewAnimatedPageRoute creates an AnimatedPageRoute with the given builder and settings.
+func NewAnimatedPageRoute(builder func(core.BuildContext) core.Widget, settings RouteSettings) *AnimatedPageRoute {
+	return &AnimatedPageRoute{
 		BaseRoute: NewBaseRoute(settings),
 		Builder:   builder,
 	}
 }
 
-// Build returns the page content wrapped in a transition.
-func (m *MaterialPageRoute) Build(ctx core.BuildContext) core.Widget {
+// ForegroundController returns this route's foreground animation controller.
+// Satisfies the AnimatedRoute interface.
+func (m *AnimatedPageRoute) ForegroundController() *animation.AnimationController {
+	return m.foregroundController
+}
+
+// Build returns the page content wrapped in a foreground slide transition.
+// Background slide animation is handled by the navigator.
+func (m *AnimatedPageRoute) Build(ctx core.BuildContext) core.Widget {
 	if m.Builder == nil {
 		return nil
 	}
 
 	content := m.Builder(ctx)
 
-	// Wrap in slide transition if we have an animation
-	if m.controller != nil {
-		return SlideTransition{
-			Animation: m.controller,
+	// Wrap in foreground slide transition if we have an animation
+	if m.foregroundController != nil {
+		content = SlideTransition{
+			Animation: m.foregroundController,
 			Direction: SlideFromRight,
 			Child:     content,
 		}
@@ -53,25 +60,24 @@ func (m *MaterialPageRoute) Build(ctx core.BuildContext) core.Widget {
 }
 
 // DidPush is called when the route is pushed.
-func (m *MaterialPageRoute) DidPush() {
+func (m *AnimatedPageRoute) DidPush() {
 	// Only animate if not the initial route
 	if !m.isInitialRoute {
-		m.controller = animation.NewAnimationController(TransitionDuration)
-		m.controller.Curve = animation.IOSNavigationCurve
-		m.controller.Forward()
+		m.foregroundController = animation.NewAnimationController(TransitionDuration)
+		m.foregroundController.Curve = animation.IOSNavigationCurve
+		m.foregroundController.Forward()
 	}
 }
 
 // SetInitialRoute marks this as the initial route (no animation).
-func (m *MaterialPageRoute) SetInitialRoute() {
+func (m *AnimatedPageRoute) SetInitialRoute() {
 	m.isInitialRoute = true
 }
 
 // DidPop is called when the route is popped.
-func (m *MaterialPageRoute) DidPop(result any) {
-	// Reverse the animation (in a full implementation, we'd wait for it to complete)
-	if m.controller != nil {
-		m.controller.Reverse()
+func (m *AnimatedPageRoute) DidPop(result any) {
+	if m.foregroundController != nil {
+		m.foregroundController.Reverse()
 	}
 }
 

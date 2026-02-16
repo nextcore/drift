@@ -286,7 +286,7 @@ func (s *routerState) generateRoute(settings RouteSettings) Route {
 		return child
 	}
 
-	return NewMaterialPageRoute(builder, matchedSettings)
+	return NewAnimatedPageRoute(builder, matchedSettings)
 }
 
 func (s *routerState) unknownRoute(settings RouteSettings) Route {
@@ -298,7 +298,7 @@ func (s *routerState) unknownRoute(settings RouteSettings) Route {
 		return s.router.ErrorBuilder(ctx, settings)
 	}
 
-	return NewMaterialPageRoute(builder, settings)
+	return NewAnimatedPageRoute(builder, settings)
 }
 
 func (s *routerState) applyRedirect(ctx RedirectContext) RedirectResult {

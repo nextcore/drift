@@ -83,9 +83,9 @@ func NewTab(item widgets.TabItem, builder func(ctx core.BuildContext) core.Widge
 //	    OnGenerateRoute: func(settings navigation.RouteSettings) navigation.Route {
 //	        switch settings.Name {
 //	        case "/products":
-//	            return navigation.NewMaterialPageRoute(buildProductList, settings)
+//	            return navigation.NewAnimatedPageRoute(buildProductList, settings)
 //	        case "/products/detail":
-//	            return navigation.NewMaterialPageRoute(buildProductDetail, settings)
+//	            return navigation.NewAnimatedPageRoute(buildProductDetail, settings)
 //	        }
 //	        return nil
 //	    },
@@ -205,7 +205,7 @@ func (s *tabScaffoldState) buildTabNavigator(tab Tab) Navigator {
 		initial := initialRoute
 		onGenerate = func(settings RouteSettings) Route {
 			if settings.Name == initial {
-				return NewMaterialPageRoute(builder, settings)
+				return NewAnimatedPageRoute(builder, settings)
 			}
 			return nil
 		}
