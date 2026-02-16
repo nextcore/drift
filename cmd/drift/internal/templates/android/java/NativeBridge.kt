@@ -234,4 +234,7 @@ object NativeBridge {
     /** Resets GL state tracking and releases all cached GPU resources.
      *  Call after sleep/wake or surface recreation to prevent stale textures. */
     external fun purgeResources()
+
+    /** Returns 1 if platform views should be pre-warmed at startup, 0 if disabled. */
+    external fun shouldWarmUpViews(): Int
 }

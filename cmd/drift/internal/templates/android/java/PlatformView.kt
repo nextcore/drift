@@ -6,10 +6,12 @@ package {{.PackageName}}
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.EditText
 import android.widget.FrameLayout
 
 /**
@@ -35,6 +37,33 @@ object PlatformViewHandler {
         this.hostView = hostView
         this.surfaceView = surfaceView
         this.overlayController = overlayController
+    }
+
+    /**
+     * Pre-warms expensive platform view classes by creating and immediately
+     * destroying throwaway instances. This forces the classloader to load
+     * heavy native dependencies (Chromium WebView, ExoPlayer) early so
+     * the cost is absorbed before the user navigates to pages using them.
+     *
+     * Must be called on the main thread.
+     */
+    fun warmUp(context: Context) {
+        try {
+            WebView(context).destroy()
+        } catch (e: Exception) {
+            Log.w("DriftWarmUp", "WebView warmup failed: ${e.message}")
+        }
+        try {
+            androidx.media3.exoplayer.ExoPlayer.Builder(context).build().release()
+        } catch (e: Exception) {
+            Log.w("DriftWarmUp", "ExoPlayer warmup failed: ${e.message}")
+        }
+        try {
+            EditText(context)
+        } catch (e: Exception) {
+            Log.w("DriftWarmUp", "EditText warmup failed: ${e.message}")
+        }
+        Log.i("DriftWarmUp", "Platform view warmup complete")
     }
 
     fun handle(method: String, args: Any?): Pair<Any?, Exception?> {

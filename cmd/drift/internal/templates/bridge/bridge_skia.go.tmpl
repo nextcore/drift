@@ -104,3 +104,14 @@ func DriftSkiaRenderMetalSync(width, height C.int, texture C.uintptr_t) C.int {
 func DriftSkiaPurgeResources() {
 	engine.PurgeSkiaGLResources()
 }
+
+// DriftShouldWarmUpViews returns 1 if the native embedder should pre-warm
+// platform views at startup, 0 if warmup has been disabled.
+//
+//export DriftShouldWarmUpViews
+func DriftShouldWarmUpViews() C.int {
+	if engine.ShouldWarmUpViews() {
+		return 1
+	}
+	return 0
+}

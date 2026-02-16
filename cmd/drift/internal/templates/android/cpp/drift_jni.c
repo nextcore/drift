@@ -173,6 +173,9 @@ static DriftStepAndSnapshotFn drift_step_and_snapshot = NULL;
 static DriftSkiaRenderFrameSyncFn drift_skia_render_frame_sync = NULL;
 static DriftSkiaPurgeResourcesFn drift_skia_purge_resources = NULL;
 
+typedef int (*DriftShouldWarmUpViewsFn)(void);
+static DriftShouldWarmUpViewsFn drift_should_warm_up_views = NULL;
+
 /* Handle to the loaded Go shared library. NULL until loaded. */
 static void *drift_handle = NULL;
 
@@ -1148,4 +1151,20 @@ Java_{{.JNIPackage}}_NativeBridge_purgeResources(JNIEnv *env, jclass clazz) {
     }
 
     drift_skia_purge_resources();
+}
+
+/**
+ * JNI: NativeBridge.shouldWarmUpViews()
+ * Returns 1 if the Go engine wants platform views to be pre-warmed at startup,
+ * 0 if warmup has been disabled via engine.DisableViewWarmup().
+ */
+JNIEXPORT jint JNICALL
+Java_{{.JNIPackage}}_NativeBridge_shouldWarmUpViews(JNIEnv *env, jclass clazz) {
+    (void)env; (void)clazz;
+
+    if (resolve_symbol("DriftShouldWarmUpViews", (void **)&drift_should_warm_up_views) != 0) {
+        return 1; /* Fail-safe: warm up if we can't check */
+    }
+
+    return (jint)drift_should_warm_up_views();
 }

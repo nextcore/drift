@@ -61,6 +61,11 @@ func DriftNeedsFrame() -> Int32
 @_silgen_name("DriftRequestFrame")
 func DriftRequestFrame()
 
+/// FFI declaration for checking if platform views should be pre-warmed.
+/// Returns 1 if warmup is enabled, 0 if disabled.
+@_silgen_name("DriftShouldWarmUpViews")
+func DriftShouldWarmUpViews() -> Int32
+
 /// FFI declaration for registering the schedule-frame callback with the Go engine.
 /// The Go engine calls this handler when it needs the platform to produce a frame.
 @_silgen_name("DriftSetScheduleFrameHandler")

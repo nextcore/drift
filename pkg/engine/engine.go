@@ -21,6 +21,33 @@ import (
 // backgroundColor uses atomic access to avoid deadlock when called from InitState/Build.
 var backgroundColor atomic.Uint32
 
+// viewWarmupDisabled controls whether the native embedder should pre-warm
+// expensive platform views (WebView, VideoPlayer, TextInput) at startup.
+// When false (default), the embedder creates and immediately destroys throwaway
+// instances so the underlying native frameworks are class-loaded before the user
+// navigates to a page that uses them, eliminating first-navigation stutter.
+var viewWarmupDisabled atomic.Bool
+
+// DisableViewWarmUp prevents the native embedder from pre-warming platform
+// views at startup. By default, the engine creates and immediately destroys
+// throwaway WebView, VideoPlayer, and TextInput instances during initialization
+// so that heavy native dependencies (Chromium, ExoPlayer/AVPlayer) are
+// class-loaded before the user navigates to pages that use them. Without this,
+// the first navigation to a platform view page can stutter for 100-500ms while
+// the framework loads.
+//
+// Call this before engine.Run() if your app does not use any platform views
+// and you want to skip the warmup cost (~300-500ms absorbed during startup).
+func DisableViewWarmUp() {
+	viewWarmupDisabled.Store(true)
+}
+
+// ShouldWarmUpViews returns true if the native embedder should pre-warm
+// platform views at startup. Used by the CGO bridge.
+func ShouldWarmUpViews() bool {
+	return !viewWarmupDisabled.Load()
+}
+
 // platformScheduleFrameVal holds the platform schedule-frame callback.
 // Stored as an atomic.Value for lock-free access from notifyPlatform().
 var platformScheduleFrameVal atomic.Value // stores func()

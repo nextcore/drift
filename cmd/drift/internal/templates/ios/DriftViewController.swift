@@ -92,6 +92,14 @@ final class DriftViewController: UIViewController {
         // Create the display link (starts paused) and request the first frame
         startDisplayLink()
         scheduleFrame()
+        // Pre-warm expensive platform views (WebView, VideoPlayer, TextInput)
+        // on the next main-thread tick so the cost is absorbed before the user
+        // navigates to pages that use them.
+        if DriftShouldWarmUpViews() != 0 {
+            DispatchQueue.main.async {
+                PlatformViewHandler.warmUp()
+            }
+        }
     }
 
     /// Tracks whether the initial safe area insets have been sent to the Go side.

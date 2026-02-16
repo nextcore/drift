@@ -1,6 +1,7 @@
 /// PlatformView.swift
 /// Provides platform view management for embedding native views in Drift UI.
 
+import AVFoundation
 import UIKit
 
 /// FFI declaration for DriftHitTestPlatformView.
@@ -289,6 +290,17 @@ enum PlatformViewHandler {
     /// Sets the host view where platform views will be added.
     static func setHostView(_ view: UIView) {
         hostView = view
+    }
+
+    /// Pre-warms expensive platform view classes by creating throwaway instances.
+    /// Forces WebKit process spawning and media framework class loading early
+    /// so the cost is absorbed before the user navigates to pages using them.
+    ///
+    /// Must be called on the main thread.
+    static func warmUp() {
+        _ = WKWebView(frame: .zero)
+        _ = AVPlayer()
+        _ = UITextField()
     }
 
     /// Applies platform view geometry from a frame snapshot synchronously.

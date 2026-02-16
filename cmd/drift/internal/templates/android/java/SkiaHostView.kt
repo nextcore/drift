@@ -82,6 +82,11 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
                 initThread = null
                 initHandler = null
                 onFrameNeeded?.invoke()
+                if (NativeBridge.shouldWarmUpViews() != 0) {
+                    Handler(android.os.Looper.getMainLooper()).post {
+                        PlatformViewHandler.warmUp(context)
+                    }
+                }
             }
         } else {
             // Resize: recreate HWB FBO at new size
