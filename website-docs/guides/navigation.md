@@ -415,6 +415,24 @@ func buildProductDetail(ctx core.BuildContext, settings navigation.RouteSettings
 }
 ```
 
+Routes that use path parameters or query strings need the full
+`func(core.BuildContext, navigation.RouteSettings) core.Widget` signature, as shown
+with `buildProductDetail` above.
+
+For routes that only need a `BuildContext`, use `navigation.SimpleBuilder` to avoid
+writing a wrapper closure:
+
+```go
+navigation.RouteConfig{
+    Path:    "/settings",
+    Builder: navigation.SimpleBuilder(buildSettings),
+}
+
+func buildSettings(ctx core.BuildContext) core.Widget {
+    return SettingsPage{}
+}
+```
+
 ### RouterState
 
 Access the router for path-based navigation:

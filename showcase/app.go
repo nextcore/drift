@@ -98,45 +98,45 @@ func (s *showcaseState) buildRoutes() []navigation.RouteConfigurer {
 		// Category hub pages
 		navigation.RouteConfig{
 			Path:    "/theming-hub",
-			Builder: wrapBuilder(buildThemingHubPage),
+			Builder: navigation.SimpleBuilder(buildThemingHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/layout-hub",
-			Builder: wrapBuilder(buildLayoutHubPage),
+			Builder: navigation.SimpleBuilder(buildLayoutHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/widgets-hub",
-			Builder: wrapBuilder(buildWidgetsHubPage),
+			Builder: navigation.SimpleBuilder(buildWidgetsHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/motion-hub",
-			Builder: wrapBuilder(buildMotionHubPage),
+			Builder: navigation.SimpleBuilder(buildMotionHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/media-hub",
-			Builder: wrapBuilder(buildMediaHubPage),
+			Builder: navigation.SimpleBuilder(buildMediaHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/system-hub",
-			Builder: wrapBuilder(buildSystemHubPage),
+			Builder: navigation.SimpleBuilder(buildSystemHubPage),
 		},
 
 		// Legacy routes (redirect to new hubs)
 		navigation.RouteConfig{
 			Path:    "/foundations",
-			Builder: wrapBuilder(buildLayoutHubPage),
+			Builder: navigation.SimpleBuilder(buildLayoutHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/components",
-			Builder: wrapBuilder(buildWidgetsHubPage),
+			Builder: navigation.SimpleBuilder(buildWidgetsHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/interactions",
-			Builder: wrapBuilder(buildMotionHubPage),
+			Builder: navigation.SimpleBuilder(buildMotionHubPage),
 		},
 		navigation.RouteConfig{
 			Path:    "/platform",
-			Builder: wrapBuilder(buildSystemHubPage),
+			Builder: navigation.SimpleBuilder(buildSystemHubPage),
 		},
 	}
 
@@ -145,22 +145,13 @@ func (s *showcaseState) buildRoutes() []navigation.RouteConfigurer {
 		if demo.Builder != nil {
 			builder := demo.Builder
 			routes = append(routes, navigation.RouteConfig{
-				Path: demo.Route,
-				Builder: func(ctx core.BuildContext, settings navigation.RouteSettings) core.Widget {
-					return builder(ctx)
-				},
+				Path:    demo.Route,
+				Builder: navigation.SimpleBuilder(builder),
 			})
 		}
 	}
 
 	return routes
-}
-
-// wrapBuilder adapts a simple builder to the Router's builder signature.
-func wrapBuilder(fn func(ctx core.BuildContext) core.Widget) func(core.BuildContext, navigation.RouteSettings) core.Widget {
-	return func(ctx core.BuildContext, settings navigation.RouteSettings) core.Widget {
-		return fn(ctx)
-	}
 }
 
 // buildNotFoundPage shows a 404 error page.

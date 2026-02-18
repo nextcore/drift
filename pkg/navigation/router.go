@@ -59,6 +59,35 @@ type RouteConfig struct {
 
 func (RouteConfig) routeConfig() {}
 
+// SimpleBuilder adapts a plain widget builder to the [RouteConfig.Builder]
+// signature. Use this for routes that don't need access to path parameters,
+// query strings, or navigation arguments from [RouteSettings].
+//
+// Without SimpleBuilder, routes that ignore settings require a boilerplate
+// closure:
+//
+//	navigation.RouteConfig{
+//	    Path: "/settings",
+//	    Builder: func(ctx core.BuildContext, _ navigation.RouteSettings) core.Widget {
+//	        return buildSettings(ctx)
+//	    },
+//	}
+//
+// With SimpleBuilder:
+//
+//	navigation.RouteConfig{
+//	    Path:    "/settings",
+//	    Builder: navigation.SimpleBuilder(buildSettings),
+//	}
+//
+// Routes that read path parameters or query values should use the full
+// [RouteConfig.Builder] signature directly.
+func SimpleBuilder(build func(core.BuildContext) core.Widget) func(core.BuildContext, RouteSettings) core.Widget {
+	return func(ctx core.BuildContext, _ RouteSettings) core.Widget {
+		return build(ctx)
+	}
+}
+
 // Router provides declarative route configuration with automatic path matching
 // and parameter extraction.
 //
