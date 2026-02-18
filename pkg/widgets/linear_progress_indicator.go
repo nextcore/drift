@@ -75,26 +75,21 @@ type linearProgressState struct {
 }
 
 func (s *linearProgressState) InitState() {
+	s.controller = core.UseController(s, func() *animation.AnimationController {
+		c := animation.NewAnimationController(1500 * time.Millisecond)
+		c.Curve = animation.LinearCurve
+		return c
+	})
+	core.UseListenable(s, s.controller)
+	s.controller.AddStatusListener(func(status animation.AnimationStatus) {
+		if status == animation.AnimationCompleted {
+			s.controller.Reset()
+			s.controller.Forward()
+		}
+	})
+
 	w := s.Element().Widget().(LinearProgressIndicator)
-
-	// Only create animation controller for indeterminate mode
 	if w.Value == nil {
-		s.controller = core.UseController(s, func() *animation.AnimationController {
-			c := animation.NewAnimationController(1500 * time.Millisecond)
-			c.Curve = animation.LinearCurve
-			return c
-		})
-		core.UseListenable(s, s.controller)
-
-		// Add status listener to repeat the animation
-		s.controller.AddStatusListener(func(status animation.AnimationStatus) {
-			if status == animation.AnimationCompleted {
-				s.controller.Reset()
-				s.controller.Forward()
-			}
-		})
-
-		// Start the animation
 		s.controller.Forward()
 	}
 }
@@ -103,31 +98,12 @@ func (s *linearProgressState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	old := oldWidget.(LinearProgressIndicator)
 	w := s.Element().Widget().(LinearProgressIndicator)
 
-	// Handle transition between determinate and indeterminate
 	wasIndeterminate := old.Value == nil
 	isIndeterminate := w.Value == nil
 
 	if wasIndeterminate && !isIndeterminate {
-		// Transitioning to determinate - stop animation
-		if s.controller != nil {
-			s.controller.Stop()
-		}
+		s.controller.Stop()
 	} else if !wasIndeterminate && isIndeterminate {
-		// Transitioning to indeterminate - start animation
-		if s.controller == nil {
-			s.controller = core.UseController(s, func() *animation.AnimationController {
-				c := animation.NewAnimationController(1500 * time.Millisecond)
-				c.Curve = animation.LinearCurve
-				return c
-			})
-			core.UseListenable(s, s.controller)
-			s.controller.AddStatusListener(func(status animation.AnimationStatus) {
-				if status == animation.AnimationCompleted {
-					s.controller.Reset()
-					s.controller.Forward()
-				}
-			})
-		}
 		s.controller.Reset()
 		s.controller.Forward()
 	}

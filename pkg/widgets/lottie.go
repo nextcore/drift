@@ -116,7 +116,17 @@ func (l Lottie) CreateState() core.State {
 
 type lottieState struct {
 	core.StateBase
-	ownController *animation.AnimationController
+	ownController   *animation.AnimationController
+	unsubListenable func()
+}
+
+func (s *lottieState) subscribeListenable(c *animation.AnimationController) {
+	if s.unsubListenable != nil {
+		s.unsubListenable()
+	}
+	s.unsubListenable = c.AddListener(func() {
+		s.SetState(nil)
+	})
 }
 
 func (s *lottieState) controller() *animation.AnimationController {
@@ -147,9 +157,16 @@ func (s *lottieState) InitState() {
 		}
 	}
 
+	// Clean up the active listener on disposal.
+	s.OnDispose(func() {
+		if s.unsubListenable != nil {
+			s.unsubListenable()
+		}
+	})
+
 	// Listen to whichever controller is active.
 	if c := s.controller(); c != nil {
-		core.UseListenable(s, c)
+		s.subscribeListenable(c)
 	}
 
 	// Auto-play when self-managed.
@@ -191,7 +208,7 @@ func (s *lottieState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	if old.Controller != w.Controller {
 		// Re-subscribe to the newly active controller.
 		if c := s.controller(); c != nil {
-			core.UseListenable(s, c)
+			s.subscribeListenable(c)
 		}
 
 		if old.Controller == nil && w.Controller != nil {
