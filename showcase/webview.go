@@ -14,12 +14,12 @@ func buildWebViewPage(ctx core.BuildContext) core.Widget {
 type webViewState struct {
 	core.StateBase
 	controller *platform.WebViewController
-	status     *core.ManagedState[string]
+	status     *core.Managed[string]
 }
 
 func (s *webViewState) InitState() {
-	s.status = core.NewManagedState(&s.StateBase, "Idle")
-	s.controller = core.UseController(&s.StateBase, platform.NewWebViewController)
+	s.status = core.NewManaged(s, "Idle")
+	s.controller = core.UseController(s, platform.NewWebViewController)
 
 	s.controller.OnPageStarted = func(url string) {
 		s.status.Set("Loading: " + url)
@@ -80,7 +80,7 @@ func (s *webViewState) Build(ctx core.BuildContext) core.Widget {
 			Height:     420,
 		},
 		widgets.VSpace(8),
-		statusCard(s.status.Get(), colors),
+		statusCard(s.status.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

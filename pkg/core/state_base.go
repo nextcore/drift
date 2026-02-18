@@ -2,6 +2,14 @@ package core
 
 import "sync"
 
+// stateBase is satisfied by any struct that embeds StateBase.
+// Hooks and NewManaged accept stateBase so callers can pass s directly.
+type stateBase interface {
+	state() *StateBase
+}
+
+func (s *StateBase) state() *StateBase { return s }
+
 // StateBase provides common functionality for stateful widget states.
 // Embed this struct in your state to eliminate boilerplate.
 //

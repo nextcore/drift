@@ -20,22 +20,22 @@ func buildLocationPage(ctx core.BuildContext) core.Widget {
 
 type locationState struct {
 	core.StateBase
-	statusText      *core.ManagedState[string]
-	location        *core.ManagedState[*platform.LocationUpdate]
-	isStreaming     *core.ManagedState[bool]
-	isEnabled       *core.ManagedState[bool]
-	whenInUseStatus *core.ManagedState[platform.PermissionStatus]
-	alwaysStatus    *core.ManagedState[platform.PermissionStatus]
+	statusText      *core.Managed[string]
+	location        *core.Managed[*platform.LocationUpdate]
+	isStreaming     *core.Managed[bool]
+	isEnabled       *core.Managed[bool]
+	whenInUseStatus *core.Managed[platform.PermissionStatus]
+	alwaysStatus    *core.Managed[platform.PermissionStatus]
 	unsubFuncs      []func()
 }
 
 func (s *locationState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Tap a button to get location.")
-	s.location = core.NewManagedState[*platform.LocationUpdate](&s.StateBase, nil)
-	s.isStreaming = core.NewManagedState(&s.StateBase, false)
-	s.isEnabled = core.NewManagedState(&s.StateBase, false)
-	s.whenInUseStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
-	s.alwaysStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+	s.statusText = core.NewManaged(s, "Tap a button to get location.")
+	s.location = core.NewManaged[*platform.LocationUpdate](s, nil)
+	s.isStreaming = core.NewManaged(s, false)
+	s.isEnabled = core.NewManaged(s, false)
+	s.whenInUseStatus = core.NewManaged(s, platform.PermissionNotDetermined)
+	s.alwaysStatus = core.NewManaged(s, platform.PermissionNotDetermined)
 
 	ctx := context.Background()
 
@@ -84,8 +84,8 @@ func (s *locationState) InitState() {
 
 func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 	colors := theme.ColorsOf(ctx)
-	isStreaming := s.isStreaming.Get()
-	isEnabled := s.isEnabled.Get()
+	isStreaming := s.isStreaming.Value()
+	isEnabled := s.isEnabled.Value()
 
 	toggleLabel := "Start Updates"
 	toggleColor := colors.Secondary
@@ -107,7 +107,7 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 			Children: []core.Widget{
 				widgets.Text{Content: "When In Use:", Style: labelStyle(colors)},
-				permissionBadge(s.whenInUseStatus.Get(), colors),
+				permissionBadge(s.whenInUseStatus.Value(), colors),
 			},
 		},
 		widgets.VSpace(8),
@@ -116,7 +116,7 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 			Children: []core.Widget{
 				widgets.Text{Content: "Always:", Style: labelStyle(colors)},
-				permissionBadge(s.alwaysStatus.Get(), colors),
+				permissionBadge(s.alwaysStatus.Value(), colors),
 			},
 		},
 		widgets.VSpace(12),
@@ -169,13 +169,13 @@ func (s *locationState) Build(ctx core.BuildContext) core.Widget {
 		s.locationCard(colors),
 		widgets.VSpace(16),
 
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }
 
 func (s *locationState) locationCard(colors theme.ColorScheme) core.Widget {
-	loc := s.location.Get()
+	loc := s.location.Value()
 
 	if loc == nil {
 		return widgets.Container{
@@ -256,7 +256,7 @@ func (s *locationState) getCurrentLocation() {
 func (s *locationState) toggleUpdates() {
 	ctx := context.Background()
 
-	if s.isStreaming.Get() {
+	if s.isStreaming.Value() {
 		err := platform.Location.StopUpdates(ctx)
 		if err != nil {
 			s.statusText.Set("Error stopping: " + err.Error())

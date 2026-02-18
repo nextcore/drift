@@ -76,73 +76,63 @@ func TestUseObservable_Cleanup(t *testing.T) {
 	obs.Set(999)
 }
 
-func TestManagedState_Get(t *testing.T) {
+func TestManaged_Value(t *testing.T) {
 	base := &StateBase{}
-	state := NewManagedState(base, 42)
+	state := NewManaged(base, 42)
 
-	if state.Get() != 42 {
-		t.Errorf("Expected 42, got %d", state.Get())
+	if state.Value() != 42 {
+		t.Errorf("Expected 42, got %d", state.Value())
 	}
 }
 
-func TestManagedState_Set(t *testing.T) {
+func TestManaged_Set(t *testing.T) {
 	base := &StateBase{}
-	state := NewManagedState(base, 0)
+	state := NewManaged(base, 0)
 
 	state.Set(100)
 
-	if state.Get() != 100 {
-		t.Errorf("Expected 100, got %d", state.Get())
+	if state.Value() != 100 {
+		t.Errorf("Expected 100, got %d", state.Value())
 	}
 }
 
-func TestManagedState_Update(t *testing.T) {
+func TestManaged_Update(t *testing.T) {
 	base := &StateBase{}
-	state := NewManagedState(base, 10)
+	state := NewManaged(base, 10)
 
 	state.Update(func(v int) int { return v * 2 })
 
-	if state.Get() != 20 {
-		t.Errorf("Expected 20, got %d", state.Get())
+	if state.Value() != 20 {
+		t.Errorf("Expected 20, got %d", state.Value())
 	}
 }
 
-func TestManagedState_Value(t *testing.T) {
+func TestManaged_StringType(t *testing.T) {
 	base := &StateBase{}
-	state := NewManagedState(base, 42)
+	state := NewManaged(base, "hello")
 
-	// Value() is an alias for Get()
-	if state.Value() != state.Get() {
-		t.Error("Value() should return the same as Get()")
-	}
-}
-
-func TestManagedState_StringType(t *testing.T) {
-	base := &StateBase{}
-	state := NewManagedState(base, "hello")
-
-	if state.Get() != "hello" {
-		t.Errorf("Expected 'hello', got '%s'", state.Get())
+	if state.Value() != "hello" {
+		t.Errorf("Expected 'hello', got '%s'", state.Value())
 	}
 
 	state.Set("world")
 
-	if state.Get() != "world" {
-		t.Errorf("Expected 'world', got '%s'", state.Get())
+	if state.Value() != "world" {
+		t.Errorf("Expected 'world', got '%s'", state.Value())
 	}
 }
 
-func TestManagedState_StructType(t *testing.T) {
+func TestManaged_StructType(t *testing.T) {
 	type Person struct {
 		Name string
 		Age  int
 	}
 
 	base := &StateBase{}
-	state := NewManagedState(base, Person{Name: "Alice", Age: 30})
+	state := NewManaged(base, Person{Name: "Alice", Age: 30})
 
-	if state.Get().Name != "Alice" || state.Get().Age != 30 {
-		t.Errorf("Unexpected struct value: %+v", state.Get())
+	if state.Value().Name != "Alice" || state.Value().Age != 30 {
+		t.Errorf("Unexpected struct value: %+v", state.Value())
 	}
 
 	state.Update(func(p Person) Person {
@@ -150,7 +140,7 @@ func TestManagedState_StructType(t *testing.T) {
 		return p
 	})
 
-	if state.Get().Age != 31 {
-		t.Errorf("Expected age 31, got %d", state.Get().Age)
+	if state.Value().Age != 31 {
+		t.Errorf("Expected age 31, got %d", state.Value().Age)
 	}
 }

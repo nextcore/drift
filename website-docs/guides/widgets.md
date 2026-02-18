@@ -195,7 +195,7 @@ two helpers plus a manual pattern, depending on complexity:
 ### Inline: `Stateful`
 
 Use `Stateful` for small, self-contained pieces of state where you don't need
-lifecycle hooks, `ManagedState`, or `UseController`:
+lifecycle hooks, `Managed`, or `UseController`:
 
 ```go
 core.Stateful(
@@ -216,7 +216,7 @@ a transform function to the state.
 
 When your widget struct would be empty (no configuration fields), use `NewStatefulWidget` to skip
 the boilerplate entirely. This gives you full access to `StateBase` features
-like `SetState`, `UseController`, `ManagedState`, and lifecycle methods:
+like `SetState`, `UseController`, `Managed`, and lifecycle methods:
 
 ```go
 func buildCounterPage(ctx core.BuildContext) core.Widget {

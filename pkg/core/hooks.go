@@ -6,11 +6,12 @@ package core
 // Example:
 //
 //	func (s *myState) InitState() {
-//	    s.animation = core.UseController(&s.StateBase, func() *animation.AnimationController {
+//	    s.animation = core.UseController(s, func() *animation.AnimationController {
 //	        return animation.NewAnimationController(300 * time.Millisecond)
 //	    })
 //	}
-func UseController[C Disposable](base *StateBase, create func() C) C {
+func UseController[C Disposable](s stateBase, create func() C) C {
+	base := s.state()
 	controller := create()
 	base.OnDispose(func() {
 		controller.Dispose()
@@ -24,12 +25,13 @@ func UseController[C Disposable](base *StateBase, create func() C) C {
 // Example:
 //
 //	func (s *myState) InitState() {
-//	    s.controller = core.UseController(&s.StateBase, func() *MyController {
+//	    s.controller = core.UseController(s, func() *MyController {
 //	        return NewMyController()
 //	    })
-//	    core.UseListenable(&s.StateBase, s.controller)
+//	    core.UseListenable(s, s.controller)
 //	}
-func UseListenable(base *StateBase, listenable Listenable) {
+func UseListenable(s stateBase, listenable Listenable) {
+	base := s.state()
 	unsub := listenable.AddListener(func() {
 		base.SetState(nil)
 	})
@@ -44,24 +46,25 @@ func UseListenable(base *StateBase, listenable Listenable) {
 //
 //	func (s *myState) InitState() {
 //	    s.counter = core.NewObservable(0)
-//	    core.UseObservable(&s.StateBase, s.counter)
+//	    core.UseObservable(s, s.counter)
 //	}
 //
 //	func (s *myState) Build(ctx core.BuildContext) core.Widget {
 //	    // Use .Value() in Build to read the current value
 //	    return widgets.Text{Content: fmt.Sprintf("Count: %d", s.counter.Value()), ...}
 //	}
-func UseObservable[T any](base *StateBase, obs *Observable[T]) {
+func UseObservable[T any](s stateBase, obs *Observable[T]) {
+	base := s.state()
 	unsub := obs.AddListener(func(T) {
 		base.SetState(nil)
 	})
 	base.OnDispose(unsub)
 }
 
-// ManagedState holds a value and triggers rebuilds when it changes.
+// Managed holds a value and triggers rebuilds when it changes.
 // Unlike Observable, it is tied to a specific StateBase.
 //
-// ManagedState is NOT thread-safe. It must only be accessed from the UI thread.
+// Managed is NOT thread-safe. It must only be accessed from the UI thread.
 // To update from a background goroutine, use drift.Dispatch:
 //
 //	go func() {
@@ -75,51 +78,46 @@ func UseObservable[T any](base *StateBase, obs *Observable[T]) {
 //
 //	type myState struct {
 //	    core.StateBase
-//	    count *core.ManagedState[int]
+//	    count *core.Managed[int]
 //	}
 //
 //	func (s *myState) InitState() {
-//	    s.count = core.NewManagedState(&s.StateBase, 0)
+//	    s.count = core.NewManaged(s, 0)
 //	}
 //
 //	func (s *myState) Build(ctx core.BuildContext) core.Widget {
 //	    return widgets.GestureDetector{
-//	        OnTap: func() { s.count.Set(s.count.Get() + 1) },
-//	        Child: widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Get()), ...},
+//	        OnTap: func() { s.count.Set(s.count.Value() + 1) },
+//	        Child: widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Value()), ...},
 //	    }
 //	}
-type ManagedState[T any] struct {
+type Managed[T any] struct {
 	base  *StateBase
 	value T
 }
 
-// NewManagedState creates a new managed state value.
+// NewManaged creates a new managed state value.
 // Changes to this value will automatically trigger a rebuild.
-func NewManagedState[T any](base *StateBase, initial T) *ManagedState[T] {
-	return &ManagedState[T]{
-		base:  base,
+func NewManaged[T any](s stateBase, initial T) *Managed[T] {
+	return &Managed[T]{
+		base:  s.state(),
 		value: initial,
 	}
 }
 
-// Get returns the current value.
-func (m *ManagedState[T]) Get() T {
+// Value returns the current value.
+func (m *Managed[T]) Value() T {
 	return m.value
 }
 
 // Set updates the value and triggers a rebuild.
-func (m *ManagedState[T]) Set(value T) {
+func (m *Managed[T]) Set(value T) {
 	m.value = value
 	m.base.SetState(nil)
 }
 
 // Update applies a transformation to the current value and triggers a rebuild.
-func (m *ManagedState[T]) Update(transform func(T) T) {
+func (m *Managed[T]) Update(transform func(T) T) {
 	m.value = transform(m.value)
 	m.base.SetState(nil)
-}
-
-// Value returns the current value. Alias for Get().
-func (m *ManagedState[T]) Value() T {
-	return m.value
 }

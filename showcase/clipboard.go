@@ -14,11 +14,11 @@ func buildClipboardPage(ctx core.BuildContext) core.Widget {
 
 type clipboardState struct {
 	core.StateBase
-	statusText *core.ManagedState[string]
+	statusText *core.Managed[string]
 }
 
 func (s *clipboardState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Tap a button to interact with the clipboard.")
+	s.statusText = core.NewManaged(s, "Tap a button to interact with the clipboard.")
 }
 
 func (s *clipboardState) Build(ctx core.BuildContext) core.Widget {
@@ -46,7 +46,7 @@ func (s *clipboardState) Build(ctx core.BuildContext) core.Widget {
 			},
 		},
 		widgets.VSpace(24),
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

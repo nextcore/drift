@@ -28,29 +28,29 @@ type formData struct {
 type formsState struct {
 	core.StateBase
 	data          formData
-	statusText    *core.ManagedState[string]
-	acceptTerms   *core.ManagedState[bool]
-	enableAlerts  *core.ManagedState[bool]
-	contactMethod *core.ManagedState[string]
-	planSelection *core.ManagedState[string]
+	statusText    *core.Managed[string]
+	acceptTerms   *core.Managed[bool]
+	enableAlerts  *core.Managed[bool]
+	contactMethod *core.Managed[string]
+	planSelection *core.Managed[string]
 
 	// Date & Time picker state
-	selectedDate *core.ManagedState[*time.Time]
-	selectedHour *core.ManagedState[int]
-	selectedMin  *core.ManagedState[int]
+	selectedDate *core.Managed[*time.Time]
+	selectedHour *core.Managed[int]
+	selectedMin  *core.Managed[int]
 }
 
 func (s *formsState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Fill in the form and submit")
-	s.acceptTerms = core.NewManagedState(&s.StateBase, false)
-	s.enableAlerts = core.NewManagedState(&s.StateBase, true)
-	s.contactMethod = core.NewManagedState(&s.StateBase, "email")
-	s.planSelection = core.NewManagedState(&s.StateBase, "")
+	s.statusText = core.NewManaged(s, "Fill in the form and submit")
+	s.acceptTerms = core.NewManaged(s, false)
+	s.enableAlerts = core.NewManaged(s, true)
+	s.contactMethod = core.NewManaged(s, "email")
+	s.planSelection = core.NewManaged(s, "")
 
 	// Initialize date/time state
-	s.selectedDate = core.NewManagedState[*time.Time](&s.StateBase, nil)
-	s.selectedHour = core.NewManagedState(&s.StateBase, 9)
-	s.selectedMin = core.NewManagedState(&s.StateBase, 0)
+	s.selectedDate = core.NewManaged[*time.Time](s, nil)
+	s.selectedHour = core.NewManaged(s, 9)
+	s.selectedMin = core.NewManaged(s, 0)
 }
 
 func (s *formsState) Build(ctx core.BuildContext) core.Widget {
@@ -77,7 +77,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			theme.CheckboxOf(ctx, s.acceptTerms.Get(), func(value bool) {
+			theme.CheckboxOf(ctx, s.acceptTerms.Value(), func(value bool) {
 				s.acceptTerms.Set(value)
 			}),
 			widgets.HSpace(10),
@@ -91,7 +91,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 
 			widgets.Switch{
 				OnTintColor: colors.Primary,
-				Value:       s.enableAlerts.Get(),
+				Value:       s.enableAlerts.Value(),
 				OnChanged: func(value bool) {
 					s.enableAlerts.Set(value)
 				},
@@ -105,7 +105,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			theme.ToggleOf(ctx, s.enableAlerts.Get(), func(value bool) {
+			theme.ToggleOf(ctx, s.enableAlerts.Value(), func(value bool) {
 				s.enableAlerts.Set(value)
 			}),
 			widgets.HSpace(10),
@@ -119,7 +119,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			theme.RadioOf(ctx, "email", s.contactMethod.Get(), func(value string) {
+			theme.RadioOf(ctx, "email", s.contactMethod.Value(), func(value string) {
 				s.contactMethod.Set(value)
 			}),
 			widgets.HSpace(10),
@@ -131,7 +131,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 			widgets.CrossAxisAlignmentCenter,
 			widgets.MainAxisSizeMin,
 
-			theme.RadioOf(ctx, "sms", s.contactMethod.Get(), func(value string) {
+			theme.RadioOf(ctx, "sms", s.contactMethod.Value(), func(value string) {
 				s.contactMethod.Set(value)
 			}),
 			widgets.HSpace(10),
@@ -140,7 +140,7 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(16),
 		widgets.Text{Content: "Plan", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		theme.DropdownOf(ctx, s.planSelection.Get(), []widgets.DropdownItem[string]{
+		theme.DropdownOf(ctx, s.planSelection.Value(), []widgets.DropdownItem[string]{
 			{Value: "starter", Label: "Starter"},
 			{Value: "pro", Label: "Pro"},
 			{Value: "enterprise", Label: "Enterprise"},
@@ -154,13 +154,13 @@ func (s *formsState) Build(ctx core.BuildContext) core.Widget {
 		widgets.VSpace(12),
 		widgets.Text{Content: "Select a date using the native picker", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		theme.DatePickerOf(ctx, s.selectedDate.Get(), func(date time.Time) {
+		theme.DatePickerOf(ctx, s.selectedDate.Value(), func(date time.Time) {
 			s.selectedDate.Set(&date)
 		}),
 		widgets.VSpace(16),
 		widgets.Text{Content: "Select a time using the native picker", Style: labelStyle(colors)},
 		widgets.VSpace(8),
-		theme.TimePickerOf(ctx, s.selectedHour.Get(), s.selectedMin.Get(), func(hour, minute int) {
+		theme.TimePickerOf(ctx, s.selectedHour.Value(), s.selectedMin.Value(), func(hour, minute int) {
 			s.selectedHour.Set(hour)
 			s.selectedMin.Set(minute)
 		}),
@@ -288,7 +288,7 @@ func (f formContent) Build(ctx core.BuildContext) core.Widget {
 			Color:   colors.SurfaceVariant,
 			Padding: layout.EdgeInsetsAll(12),
 			Child: widgets.Text{
-				Content: f.state.statusText.Get(),
+				Content: f.state.statusText.Value(),
 				Style: graphics.TextStyle{
 					Color:    colors.OnSurfaceVariant,
 					FontSize: 14,

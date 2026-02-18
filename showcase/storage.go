@@ -19,17 +19,17 @@ func buildStoragePage(ctx core.BuildContext) core.Widget {
 
 type storageState struct {
 	core.StateBase
-	statusText   *core.ManagedState[string]
-	selectedFile *core.ManagedState[*platform.PickedFile]
-	selectedPath *core.ManagedState[string]
-	appDirs      *core.ManagedState[map[string]string]
+	statusText   *core.Managed[string]
+	selectedFile *core.Managed[*platform.PickedFile]
+	selectedPath *core.Managed[string]
+	appDirs      *core.Managed[map[string]string]
 }
 
 func (s *storageState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Tap a button to pick files or directories.")
-	s.selectedFile = core.NewManagedState[*platform.PickedFile](&s.StateBase, nil)
-	s.selectedPath = core.NewManagedState(&s.StateBase, "")
-	s.appDirs = core.NewManagedState(&s.StateBase, make(map[string]string))
+	s.statusText = core.NewManaged(s, "Tap a button to pick files or directories.")
+	s.selectedFile = core.NewManaged[*platform.PickedFile](s, nil)
+	s.selectedPath = core.NewManaged(s, "")
+	s.appDirs = core.NewManaged(s, make(map[string]string))
 
 	// Get app directories
 	go func() {
@@ -80,7 +80,7 @@ func (s *storageState) Build(ctx core.BuildContext) core.Widget {
 		s.selectedItemCard(colors),
 		widgets.VSpace(16),
 
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(24),
 
 		sectionTitle("App Directories", colors),
@@ -91,8 +91,8 @@ func (s *storageState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *storageState) selectedItemCard(colors theme.ColorScheme) core.Widget {
-	file := s.selectedFile.Get()
-	path := s.selectedPath.Get()
+	file := s.selectedFile.Value()
+	path := s.selectedPath.Value()
 
 	if file == nil && path == "" {
 		return widgets.Container{
@@ -162,7 +162,7 @@ func (s *storageState) selectedItemCard(colors theme.ColorScheme) core.Widget {
 }
 
 func (s *storageState) appDirectoriesCard(colors theme.ColorScheme) core.Widget {
-	dirs := s.appDirs.Get()
+	dirs := s.appDirs.Value()
 	if len(dirs) == 0 {
 		return statusCard("Loading directories...", colors)
 	}

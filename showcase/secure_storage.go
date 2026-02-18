@@ -17,17 +17,17 @@ func buildSecureStoragePage(ctx core.BuildContext) core.Widget {
 
 type secureStorageState struct {
 	core.StateBase
-	statusText      *core.ManagedState[string]
-	biometricStatus *core.ManagedState[string]
-	storedValue     *core.ManagedState[string]
+	statusText      *core.Managed[string]
+	biometricStatus *core.Managed[string]
+	storedValue     *core.Managed[string]
 	keyController   *platform.TextEditingController
 	valueController *platform.TextEditingController
 }
 
 func (s *secureStorageState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Enter a key and value to store securely.")
-	s.biometricStatus = core.NewManagedState(&s.StateBase, "Checking biometric availability...")
-	s.storedValue = core.NewManagedState(&s.StateBase, "")
+	s.statusText = core.NewManaged(s, "Enter a key and value to store securely.")
+	s.biometricStatus = core.NewManaged(s, "Checking biometric availability...")
+	s.storedValue = core.NewManaged(s, "")
 	s.keyController = platform.NewTextEditingController("demo_key")
 	s.valueController = platform.NewTextEditingController("secret_value_123")
 
@@ -78,7 +78,7 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 	return demoPage(ctx, "Secure Storage",
 		sectionTitle("Key-Value Storage", colors),
 		widgets.VSpace(12),
-		widgets.Text{Content: s.biometricStatus.Get(), Style: labelStyle(colors)},
+		widgets.Text{Content: s.biometricStatus.Value(), Style: labelStyle(colors)},
 		widgets.VSpace(12),
 		theme.TextFieldOf(ctx, s.keyController).
 			WithLabel("Key").
@@ -105,9 +105,9 @@ func (s *secureStorageState) Build(ctx core.BuildContext) core.Widget {
 			},
 		},
 		widgets.VSpace(16),
-		retrievedValueCard(s.storedValue.Get(), colors),
+		retrievedValueCard(s.storedValue.Value(), colors),
 		widgets.VSpace(16),
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

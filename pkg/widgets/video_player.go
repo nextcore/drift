@@ -15,7 +15,7 @@ import (
 // Create a [platform.VideoPlayerController] with [core.UseController] and pass
 // it to this widget:
 //
-//	s.video = core.UseController(&s.StateBase, platform.NewVideoPlayerController)
+//	s.video = core.UseController(s, platform.NewVideoPlayerController)
 //	s.video.OnPlaybackStateChanged = func(state platform.PlaybackState) { ... }
 //	s.video.Load(url)
 //

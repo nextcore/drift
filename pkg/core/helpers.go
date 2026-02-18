@@ -62,7 +62,7 @@ type RenderObjectWidget interface {
 // lifecycle hooks or StateBase features.
 //
 // For complex widgets with many state fields, lifecycle methods,
-// ManagedState, or UseController, use NewStatefulWidget instead.
+// `Managed`, or UseController, use NewStatefulWidget instead.
 func Stateful[S any](
 	init func() S,
 	build func(state S, ctx BuildContext, setState func(func(S) S)) Widget,

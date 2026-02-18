@@ -12,7 +12,7 @@ import (
 // Create a [platform.WebViewController] with [core.UseController] and pass
 // it to this widget:
 //
-//	s.web = core.UseController(&s.StateBase, platform.NewWebViewController)
+//	s.web = core.UseController(s, platform.NewWebViewController)
 //	s.web.OnPageFinished = func(url string) { ... }
 //	s.web.Load("https://example.com")
 //

@@ -35,14 +35,14 @@ var otherPermissions = []permissionDemo{
 
 type permissionsState struct {
 	core.StateBase
-	statuses   *core.ManagedState[map[string]platform.PermissionResult]
-	statusText *core.ManagedState[string]
+	statuses   *core.Managed[map[string]platform.PermissionResult]
+	statusText *core.Managed[string]
 	unsubFuncs []func()
 }
 
 func (s *permissionsState) InitState() {
-	s.statuses = core.NewManagedState(&s.StateBase, make(map[string]platform.PermissionResult))
-	s.statusText = core.NewManagedState(&s.StateBase, "Tap 'Request' to request a permission.")
+	s.statuses = core.NewManaged(s, make(map[string]platform.PermissionResult))
+	s.statusText = core.NewManaged(s, "Tap 'Request' to request a permission.")
 
 	ctx := context.Background()
 
@@ -64,7 +64,7 @@ func (s *permissionsState) InitState() {
 		perm := p // capture for closure
 		unsub := perm.permission.Listen(func(result platform.PermissionResult) {
 			drift.Dispatch(func() {
-				statuses := s.statuses.Get()
+				statuses := s.statuses.Value()
 				newStatuses := make(map[string]platform.PermissionResult)
 				maps.Copy(newStatuses, statuses)
 				newStatuses[perm.name] = result
@@ -84,7 +84,7 @@ func (s *permissionsState) InitState() {
 
 func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 	colors := theme.ColorsOf(ctx)
-	statuses := s.statuses.Get()
+	statuses := s.statuses.Value()
 
 	// Build permission rows
 	var rows []core.Widget
@@ -106,7 +106,7 @@ func (s *permissionsState) Build(ctx core.BuildContext) core.Widget {
 		},
 		widgets.VSpace(12),
 
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(24),
 
 		sectionTitle("Settings", colors),
@@ -180,7 +180,7 @@ func (s *permissionsState) requestPermission(name string) {
 				return
 			}
 			// Update UI with the blocking result
-			statuses := s.statuses.Get()
+			statuses := s.statuses.Value()
 			newStatuses := make(map[string]platform.PermissionResult)
 			maps.Copy(newStatuses, statuses)
 			newStatuses[name] = result

@@ -15,7 +15,7 @@ func buildVideoPlayerPage(ctx core.BuildContext) core.Widget {
 
 type videoPlayerState struct {
 	core.StateBase
-	videoStatus         *core.ManagedState[string]
+	videoStatus         *core.Managed[string]
 	videoStateLabel     string
 	videoController     *platform.VideoPlayerController
 	videoLooping        bool
@@ -24,10 +24,10 @@ type videoPlayerState struct {
 }
 
 func (s *videoPlayerState) InitState() {
-	s.videoStatus = core.NewManagedState(&s.StateBase, "Idle")
+	s.videoStatus = core.NewManaged(s, "Idle")
 	s.videoStateLabel = "Idle"
 
-	s.videoController = core.UseController(&s.StateBase, platform.NewVideoPlayerController)
+	s.videoController = core.UseController(s, platform.NewVideoPlayerController)
 
 	s.videoController.OnPlaybackStateChanged = func(state platform.PlaybackState) {
 		s.videoStateLabel = state.String()
@@ -134,7 +134,7 @@ func (s *videoPlayerState) Build(ctx core.BuildContext) core.Widget {
 			},
 		},
 		widgets.VSpace(8),
-		statusCard(s.videoStatus.Get(), colors),
+		statusCard(s.videoStatus.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

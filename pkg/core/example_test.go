@@ -111,13 +111,13 @@ func ExampleStateBase() {
 	_ = state
 }
 
-// This example shows how to use ManagedState for automatic rebuilds.
-// ManagedState wraps a value and triggers rebuilds when it changes.
-func ExampleManagedState() {
+// This example shows how to use Managed for automatic rebuilds.
+// Managed wraps a value and triggers rebuilds when it changes.
+func ExampleManaged() {
 	// In a stateful widget's InitState:
 	//
 	// func (s *myState) InitState() {
-	//     s.count = core.NewManagedState(&s.StateBase, 0)
+	//     s.count = core.NewManaged(s, 0)
 	// }
 	//
 	// In Build:
@@ -126,20 +126,20 @@ func ExampleManagedState() {
 	//     return widgets.GestureDetector{
 	//         OnTap: func() {
 	//             // Set automatically triggers a rebuild
-	//             s.count.Set(s.count.Get() + 1)
+	//             s.count.Set(s.count.Value() + 1)
 	//         },
 	//         Child: widgets.Text{
-	//             Content: fmt.Sprintf("Count: %d", s.count.Get()),
+	//             Content: fmt.Sprintf("Count: %d", s.count.Value()),
 	//         },
 	//     }
 	// }
 
 	// Direct usage for demonstration:
 	base := &core.StateBase{}
-	count := core.NewManagedState(base, 0)
+	count := core.NewManaged(base, 0)
 
 	// Get the current value
-	fmt.Printf("Initial: %d\n", count.Get())
+	fmt.Printf("Initial: %d\n", count.Value())
 
 	// Update using transform function
 	count.Update(func(v int) int { return v + 10 })
@@ -252,7 +252,7 @@ func ExampleUseController() {
 	// Call it in InitState, not Build.
 	//
 	// func (s *myState) InitState() {
-	//     s.animation = core.UseController(&s.StateBase, func() *animation.AnimationController {
+	//     s.animation = core.UseController(s, func() *animation.AnimationController {
 	//         return animation.NewAnimationController(300 * time.Millisecond)
 	//     })
 	//     // No need to manually dispose - it's cleaned up automatically
@@ -265,10 +265,10 @@ func ExampleUseListenable() {
 	// The subscription is automatically cleaned up on dispose.
 	//
 	// func (s *myState) InitState() {
-	//     s.controller = core.UseController(&s.StateBase, func() *MyController {
+	//     s.controller = core.UseController(s, func() *MyController {
 	//         return NewMyController()
 	//     })
-	//     core.UseListenable(&s.StateBase, s.controller)
+	//     core.UseListenable(s, s.controller)
 	// }
 	//
 	// func (s *myState) Build(ctx core.BuildContext) core.Widget {
@@ -284,7 +284,7 @@ func ExampleUseObservable() {
 	//
 	// func (s *myState) InitState() {
 	//     s.counter = core.NewObservable(0)
-	//     core.UseObservable(&s.StateBase, s.counter)
+	//     core.UseObservable(s, s.counter)
 	// }
 	//
 	// func (s *myState) Build(ctx core.BuildContext) core.Widget {
@@ -319,8 +319,8 @@ func ExampleControllerBase() {
 	// }
 	//
 	// Usage in InitState:
-	//     s.scroll = core.UseController(&s.StateBase, NewScrollController)
-	//     core.UseListenable(&s.StateBase, s.scroll)
+	//     s.scroll = core.UseController(s, NewScrollController)
+	//     core.UseListenable(s, s.scroll)
 
 	controller := &core.ControllerBase{}
 	unsub := controller.AddListener(func() {

@@ -13,11 +13,11 @@ func buildProgressPage(ctx core.BuildContext) core.Widget {
 
 type progressState struct {
 	core.StateBase
-	progressValue *core.ManagedState[float64]
+	progressValue *core.Managed[float64]
 }
 
 func (s *progressState) InitState() {
-	s.progressValue = core.NewManagedState(&s.StateBase, 0.35)
+	s.progressValue = core.NewManaged(s, 0.35)
 }
 
 func (s *progressState) Build(ctx core.BuildContext) core.Widget {
@@ -99,7 +99,7 @@ func (s *progressState) Build(ctx core.BuildContext) core.Widget {
 				s.buildDeterminateCircular(ctx),
 				widgets.HSpace(16),
 				theme.ButtonOf(ctx, "-10%", func() {
-					v := s.progressValue.Get() - 0.1
+					v := s.progressValue.Value() - 0.1
 					if v < 0 {
 						v = 0
 					}
@@ -107,7 +107,7 @@ func (s *progressState) Build(ctx core.BuildContext) core.Widget {
 				}).WithColor(colors.SurfaceVariant, colors.OnSurfaceVariant),
 				widgets.HSpace(8),
 				theme.ButtonOf(ctx, "+10%", func() {
-					v := s.progressValue.Get() + 0.1
+					v := s.progressValue.Value() + 0.1
 					if v > 1 {
 						v = 1
 					}
@@ -123,12 +123,12 @@ func (s *progressState) Build(ctx core.BuildContext) core.Widget {
 
 // buildDeterminateCircular creates a determinate circular progress indicator.
 func (s *progressState) buildDeterminateCircular(ctx core.BuildContext) core.Widget {
-	progress := s.progressValue.Get()
+	progress := s.progressValue.Value()
 	return theme.CircularProgressIndicatorOf(ctx, &progress)
 }
 
 // buildDeterminateLinear creates a determinate linear progress indicator.
 func (s *progressState) buildDeterminateLinear(ctx core.BuildContext) core.Widget {
-	progress := s.progressValue.Get()
+	progress := s.progressValue.Value()
 	return theme.LinearProgressIndicatorOf(ctx, &progress)
 }

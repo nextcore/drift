@@ -136,7 +136,7 @@ func (s *lottieState) InitState() {
 	if w.Source != nil {
 		dur := w.Source.Duration()
 		if dur > 0 {
-			s.ownController = core.UseController(&s.StateBase, func() *animation.AnimationController {
+			s.ownController = core.UseController(s, func() *animation.AnimationController {
 				c := animation.NewAnimationController(dur)
 				c.Curve = animation.LinearCurve
 				return c
@@ -149,7 +149,7 @@ func (s *lottieState) InitState() {
 
 	// Listen to whichever controller is active.
 	if c := s.controller(); c != nil {
-		core.UseListenable(&s.StateBase, c)
+		core.UseListenable(s, c)
 	}
 
 	// Auto-play when self-managed.
@@ -191,7 +191,7 @@ func (s *lottieState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	if old.Controller != w.Controller {
 		// Re-subscribe to the newly active controller.
 		if c := s.controller(); c != nil {
-			core.UseListenable(&s.StateBase, c)
+			core.UseListenable(s, c)
 		}
 
 		if old.Controller == nil && w.Controller != nil {

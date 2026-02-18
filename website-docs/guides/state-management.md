@@ -51,7 +51,7 @@ core.Stateful(
 ```
 
 `Stateful` is closure-based: no struct types, no lifecycle methods. Reach for
-`NewStatefulWidget` when you need `ManagedState`, `UseController`, or `Dispose`.
+`NewStatefulWidget` when you need `Managed`, `UseController`, or `Dispose`.
 
 ## The SetState Pattern
 
@@ -151,35 +151,35 @@ func (s *dataState) Build(ctx core.BuildContext) core.Widget {
 }
 ```
 
-## ManagedState
+## Managed
 
-`ManagedState` holds a value and triggers rebuilds automatically when changed:
+`Managed` holds a value and triggers rebuilds automatically when changed:
 
 ```go
 type myState struct {
     core.StateBase
-    count *core.ManagedState[int]
-    name  *core.ManagedState[string]
+    count *core.Managed[int]
+    name  *core.Managed[string]
 }
 
 func (s *myState) InitState() {
-    s.count = core.NewManagedState(&s.StateBase, 0)
-    s.name = core.NewManagedState(&s.StateBase, "")
+    s.count = core.NewManaged(s, 0)
+    s.name = core.NewManaged(s, "")
 }
 
 func (s *myState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Column{
         Children: []core.Widget{
-            widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Get())},
+            widgets.Text{Content: fmt.Sprintf("Count: %d", s.count.Value())},
             theme.ButtonOf(ctx, "Increment", func() {
-                s.count.Set(s.count.Get() + 1) // Automatically triggers rebuild
+                s.count.Set(s.count.Value() + 1) // Automatically triggers rebuild
             }),
         },
     }
 }
 ```
 
-Like `SetState`, `ManagedState` is not thread-safe. Use `drift.Dispatch` for background updates.
+Like `SetState`, `Managed` is not thread-safe. Use `drift.Dispatch` for background updates.
 
 ## Observable
 
@@ -215,7 +215,7 @@ type myState struct {
 func (s *myState) InitState() {
     s.counter = core.NewObservable(0)
     // UseObservable subscribes and triggers rebuilds on change
-    core.UseObservable(&s.StateBase, s.counter)
+    core.UseObservable(s, s.counter)
 }
 
 func (s *myState) Build(ctx core.BuildContext) core.Widget {
@@ -234,7 +234,7 @@ Subscribe to an `Observable` and trigger rebuilds on change:
 ```go
 func (s *myState) InitState() {
     s.counter = core.NewObservable(0)
-    core.UseObservable(&s.StateBase, s.counter)
+    core.UseObservable(s, s.counter)
 }
 ```
 
@@ -245,7 +245,7 @@ Subscribe to any `Listenable` (animation controllers, custom notifiers):
 ```go
 func (s *myState) InitState() {
     s.animation = animation.NewAnimationController(300 * time.Millisecond)
-    core.UseListenable(&s.StateBase, s.animation)
+    core.UseListenable(s, s.animation)
 }
 ```
 
@@ -256,7 +256,7 @@ Create a controller with automatic disposal:
 ```go
 func (s *myState) InitState() {
     // Controller is automatically disposed when state is disposed
-    s.animation = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.animation = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(300 * time.Millisecond)
     })
 }
@@ -430,7 +430,7 @@ type parentState struct {
 
 ```go
 // Good - automatic cleanup
-s.controller = core.UseController(&s.StateBase, func() *Controller {
+s.controller = core.UseController(s, func() *Controller {
     return NewController()
 })
 

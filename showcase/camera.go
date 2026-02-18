@@ -23,16 +23,16 @@ func buildCameraPage(ctx core.BuildContext) core.Widget {
 
 type cameraState struct {
 	core.StateBase
-	status           *core.ManagedState[string]
-	image            *core.ManagedState[image.Image]
-	permissionStatus *core.ManagedState[platform.PermissionStatus]
+	status           *core.Managed[string]
+	image            *core.Managed[image.Image]
+	permissionStatus *core.Managed[platform.PermissionStatus]
 	unsubscribe      func()
 }
 
 func (s *cameraState) InitState() {
-	s.status = core.NewManagedState(&s.StateBase, "Tap a button to capture or select an image.")
-	s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
-	s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+	s.status = core.NewManaged(s, "Tap a button to capture or select an image.")
+	s.image = core.NewManaged[image.Image](s, nil)
+	s.permissionStatus = core.NewManaged(s, platform.PermissionNotDetermined)
 
 	ctx := context.Background()
 
@@ -112,7 +112,7 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 			Children: []core.Widget{
 				widgets.Text{Content: "Camera access:", Style: labelStyle(colors)},
-				permissionBadge(s.permissionStatus.Get(), colors),
+				permissionBadge(s.permissionStatus.Value(), colors),
 			},
 		},
 		widgets.VSpace(8),
@@ -155,13 +155,13 @@ func (s *cameraState) Build(ctx core.BuildContext) core.Widget {
 		s.imagePreview(colors),
 		widgets.VSpace(16),
 
-		statusCard(s.status.Get(), colors),
+		statusCard(s.status.Value(), colors),
 		widgets.VSpace(40),
 	)
 }
 
 func (s *cameraState) imagePreview(colors theme.ColorScheme) core.Widget {
-	img := s.image.Get()
+	img := s.image.Value()
 
 	if img == nil {
 		return widgets.Container{

@@ -32,15 +32,15 @@
 //
 // # State Management
 //
-// ManagedState provides automatic rebuild triggering:
+// Managed provides automatic rebuild triggering:
 //
-//	s.count = core.NewManagedState(&s.StateBase, 0)
-//	s.count.Set(s.count.Get() + 1) // Automatically triggers rebuild
+//	s.count = core.NewManaged(s, 0)
+//	s.count.Set(s.count.Value() + 1) // Automatically triggers rebuild
 //
 // Observable provides thread-safe reactive values:
 //
 //	counter := core.NewObservable(0)
-//	core.UseObservable(&s.StateBase, counter) // Subscribe to changes
+//	core.UseObservable(s, counter) // Subscribe to changes
 //
 // # Hooks
 //

@@ -79,12 +79,12 @@ func (s *linearProgressState) InitState() {
 
 	// Only create animation controller for indeterminate mode
 	if w.Value == nil {
-		s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+		s.controller = core.UseController(s, func() *animation.AnimationController {
 			c := animation.NewAnimationController(1500 * time.Millisecond)
 			c.Curve = animation.LinearCurve
 			return c
 		})
-		core.UseListenable(&s.StateBase, s.controller)
+		core.UseListenable(s, s.controller)
 
 		// Add status listener to repeat the animation
 		s.controller.AddStatusListener(func(status animation.AnimationStatus) {
@@ -115,12 +115,12 @@ func (s *linearProgressState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	} else if !wasIndeterminate && isIndeterminate {
 		// Transitioning to indeterminate - start animation
 		if s.controller == nil {
-			s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+			s.controller = core.UseController(s, func() *animation.AnimationController {
 				c := animation.NewAnimationController(1500 * time.Millisecond)
 				c.Curve = animation.LinearCurve
 				return c
 			})
-			core.UseListenable(&s.StateBase, s.controller)
+			core.UseListenable(s, s.controller)
 			s.controller.AddStatusListener(func(status animation.AnimationStatus) {
 				if status == animation.AnimationCompleted {
 					s.controller.Reset()

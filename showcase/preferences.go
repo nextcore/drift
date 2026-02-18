@@ -15,15 +15,15 @@ func buildPreferencesPage(ctx core.BuildContext) core.Widget {
 
 type preferencesState struct {
 	core.StateBase
-	statusText      *core.ManagedState[string]
-	storedValue     *core.ManagedState[string]
+	statusText      *core.Managed[string]
+	storedValue     *core.Managed[string]
 	keyController   *platform.TextEditingController
 	valueController *platform.TextEditingController
 }
 
 func (s *preferencesState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Enter a key and value to store.")
-	s.storedValue = core.NewManagedState(&s.StateBase, "")
+	s.statusText = core.NewManaged(s, "Enter a key and value to store.")
+	s.storedValue = core.NewManaged(s, "")
 	s.keyController = platform.NewTextEditingController("my_key")
 	s.valueController = platform.NewTextEditingController("my_value")
 }
@@ -61,9 +61,9 @@ func (s *preferencesState) Build(ctx core.BuildContext) core.Widget {
 			},
 		},
 		widgets.VSpace(16),
-		prefsValueCard(s.storedValue.Get(), colors),
+		prefsValueCard(s.storedValue.Value(), colors),
 		widgets.VSpace(16),
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

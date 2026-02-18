@@ -78,14 +78,14 @@ type animatedContainerState struct {
 
 func (s *animatedContainerState) InitState() {
 	w := s.Element().Widget().(AnimatedContainer)
-	s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+	s.controller = core.UseController(s, func() *animation.AnimationController {
 		c := animation.NewAnimationController(w.Duration)
 		if w.Curve != nil {
 			c.Curve = w.Curve
 		}
 		return c
 	})
-	core.UseListenable(&s.StateBase, s.controller)
+	core.UseListenable(s, s.controller)
 
 	// Listen for animation completion
 	s.controller.AddStatusListener(func(status animation.AnimationStatus) {
@@ -233,14 +233,14 @@ type animatedOpacityState struct {
 
 func (s *animatedOpacityState) InitState() {
 	w := s.Element().Widget().(AnimatedOpacity)
-	s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+	s.controller = core.UseController(s, func() *animation.AnimationController {
 		c := animation.NewAnimationController(w.Duration)
 		if w.Curve != nil {
 			c.Curve = w.Curve
 		}
 		return c
 	})
-	core.UseListenable(&s.StateBase, s.controller)
+	core.UseListenable(s, s.controller)
 
 	// Listen for animation completion
 	s.controller.AddStatusListener(func(status animation.AnimationStatus) {

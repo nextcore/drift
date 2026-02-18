@@ -19,18 +19,18 @@ func buildNotificationsPage(ctx core.BuildContext) core.Widget {
 
 type notificationsState struct {
 	core.StateBase
-	statusText       *core.ManagedState[string]
-	receivedText     *core.ManagedState[string]
-	openedText       *core.ManagedState[string]
-	permissionStatus *core.ManagedState[platform.PermissionStatus]
+	statusText       *core.Managed[string]
+	receivedText     *core.Managed[string]
+	openedText       *core.Managed[string]
+	permissionStatus *core.Managed[platform.PermissionStatus]
 	unsubFuncs       []func()
 }
 
 func (s *notificationsState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Request permission to enable notifications.")
-	s.receivedText = core.NewManagedState(&s.StateBase, "No notifications received yet.")
-	s.openedText = core.NewManagedState(&s.StateBase, "No notification opens yet.")
-	s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+	s.statusText = core.NewManaged(s, "Request permission to enable notifications.")
+	s.receivedText = core.NewManaged(s, "No notifications received yet.")
+	s.openedText = core.NewManaged(s, "No notification opens yet.")
+	s.permissionStatus = core.NewManaged(s, platform.PermissionNotDetermined)
 
 	ctx := context.Background()
 
@@ -86,7 +86,7 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 			CrossAxisAlignment: widgets.CrossAxisAlignmentCenter,
 			Children: []core.Widget{
 				widgets.Text{Content: "Notification access:", Style: labelStyle(colors)},
-				permissionBadge(s.permissionStatus.Get(), colors),
+				permissionBadge(s.permissionStatus.Value(), colors),
 			},
 		},
 		widgets.VSpace(12),
@@ -96,7 +96,7 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 			s.requestPermissions()
 		}),
 		widgets.VSpace(12),
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(24),
 
 		sectionTitle("Local Notifications", colors),
@@ -107,9 +107,9 @@ func (s *notificationsState) Build(ctx core.BuildContext) core.Widget {
 			s.scheduleLocal()
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(12),
-		statusCard(s.receivedText.Get(), colors),
+		statusCard(s.receivedText.Value(), colors),
 		widgets.VSpace(8),
-		statusCard(s.openedText.Get(), colors),
+		statusCard(s.openedText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }

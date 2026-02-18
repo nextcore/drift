@@ -14,12 +14,12 @@ func buildSharePage(ctx core.BuildContext) core.Widget {
 
 type shareState struct {
 	core.StateBase
-	statusText     *core.ManagedState[string]
+	statusText     *core.Managed[string]
 	textController *platform.TextEditingController
 }
 
 func (s *shareState) InitState() {
-	s.statusText = core.NewManagedState(&s.StateBase, "Tap a button to open the share sheet.")
+	s.statusText = core.NewManaged(s, "Tap a button to open the share sheet.")
 	s.textController = platform.NewTextEditingController("Check out this amazing app!")
 }
 
@@ -49,7 +49,7 @@ func (s *shareState) Build(ctx core.BuildContext) core.Widget {
 		}).WithColor(colors.Secondary, colors.OnSecondary),
 		widgets.VSpace(24),
 
-		statusCard(s.statusText.Get(), colors),
+		statusCard(s.statusText.Value(), colors),
 		widgets.VSpace(40),
 	)
 }
