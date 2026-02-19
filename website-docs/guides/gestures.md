@@ -257,11 +257,7 @@ func (s *swipeState) Build(ctx core.BuildContext) core.Widget {
         },
         Child: widgets.Stack{
             Children: []core.Widget{
-                widgets.Positioned{
-                    Left: widgets.Ptr(s.offset),
-                    Top:  widgets.Ptr(0),
-                    Child: card,
-                },
+                widgets.Positioned(card).Left(s.offset).Top(0),
             },
         },
     }
@@ -314,19 +310,15 @@ type draggableState struct {
 func (s *draggableState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Stack{
         Children: []core.Widget{
-            widgets.Positioned{
-                Left: &s.x,
-                Top:  &s.y,
-                Child: widgets.GestureDetector{
-                    OnPanUpdate: func(d widgets.DragUpdateDetails) {
-                        s.SetState(func() {
-                            s.x += d.Delta.X
-                            s.y += d.Delta.Y
-                        })
-                    },
-                    Child: draggableHandle,
+            widgets.Positioned(widgets.GestureDetector{
+                OnPanUpdate: func(d widgets.DragUpdateDetails) {
+                    s.SetState(func() {
+                        s.x += d.Delta.X
+                        s.y += d.Delta.Y
+                    })
                 },
-            },
+                Child: draggableHandle,
+            }).Left(s.x).Top(s.y),
         },
     }
 }

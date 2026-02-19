@@ -50,7 +50,7 @@ func (f StackFit) String() string {
 //	        // Background fills the stack
 //	        Container{Color: bgColor},
 //	        // Badge in top-right corner
-//	        Positioned{Top: Ptr(8), Right: Ptr(8), Child: badge},
+//	        Positioned(badge).Top(8).Right(8),
 //	    },
 //	}
 type Stack struct {
@@ -618,132 +618,158 @@ func (r *renderIndexedStack) HitTest(position graphics.Offset, result *layout.Hi
 	return true
 }
 
-// Positioned positions a child within a Stack using absolute or relative positioning.
+// positioned positions a child within a [Stack] using absolute or relative positioning.
 //
-// # Coordinate System
-//
-// The coordinate system has its origin at the top-left of the Stack:
-//   - Left/Right: Distance from the left/right edge of the Stack
-//   - Top/Bottom: Distance from the top/bottom edge of the Stack
-//
-// # Relative Positioning with Alignment
-//
-// When Alignment is set, the child is positioned relative to that point
-// within the Stack bounds. Left/Top/Right/Bottom become pixel offsets from
-// the alignment position:
-//
-//	// Center of stack
-//	Positioned{
-//	    Alignment: &graphics.AlignCenter,
-//	    Child: dialog,
-//	}
-//
-//	// Bottom-right corner, 16px inset
-//	Positioned{
-//	    Alignment: &graphics.AlignBottomRight,
-//	    Right: Ptr(16),
-//	    Bottom: Ptr(16),
-//	    Child: fab,
-//	}
-//
-// # Absolute Positioning
-//
-// Use pointer fields (nil = unset) to control positioning. The [Ptr] helper
-// creates float64 pointers conveniently:
+// Create with the [Positioned] constructor and configure with builder methods:
 //
 //	// Pin to top-left corner with 8pt margins
-//	Positioned{Left: Ptr(8), Top: Ptr(8), Child: icon}
+//	widgets.Positioned(icon).Left(8).Top(8)
 //
-//	// Pin to bottom-right corner
-//	Positioned{Right: Ptr(16), Bottom: Ptr(16), Child: fab}
-//
-//	// Stretch horizontally with fixed vertical position
-//	Positioned{Left: Ptr(0), Right: Ptr(0), Top: Ptr(100), Child: divider}
+//	// Stretch to fill with 20px inset on all edges
+//	widgets.Positioned(overlay).Fill(20)
 //
 //	// Fixed size at specific position
-//	Positioned{Left: Ptr(20), Top: Ptr(20), Width: Ptr(100), Height: Ptr(50), Child: box}
+//	widgets.Positioned(box).Left(20).Top(20).Width(100).Height(50)
 //
-//	// Position only vertically - horizontal uses Stack.Alignment
-//	Positioned{Top: Ptr(20), Child: header}
+//	// Relative positioning from bottom-right corner
+//	widgets.Positioned(fab).Align(graphics.AlignBottomRight).Right(16).Bottom(16)
 //
 // When both Left and Right are set (or Top and Bottom), the child stretches
 // to fill that dimension. Width/Height override the stretching behavior.
 //
-// For axes where no position is set (neither Left nor Right, or neither Top
-// nor Bottom), the child uses the Stack's Alignment for that axis.
-type Positioned struct {
-	// Child is the widget to position.
-	Child core.Widget
-
-	// Alignment positions the child relative to the Stack bounds using the
-	// graphics.Alignment coordinate system where (-1, -1) is top-left,
-	// (0, 0) is center, and (1, 1) is bottom-right.
-	//
-	// When set, Left/Top/Right/Bottom become offsets from this position
-	// rather than absolute pixel coordinates.
-	//
-	// If nil, Left/Top/Right/Bottom are absolute pixel coordinates from
-	// the Stack edges (traditional absolute positioning).
-	Alignment *graphics.Alignment
-
-	// Left is the distance from the left edge of the Stack (nil = unset).
-	// When Alignment is set, this is an offset from the alignment point.
-	Left *float64
-	// Top is the distance from the top edge of the Stack (nil = unset).
-	// When Alignment is set, this is an offset from the alignment point.
-	Top *float64
-	// Right is the distance from the right edge of the Stack (nil = unset).
-	// When Alignment is set, this is an offset from the alignment point.
-	Right *float64
-	// Bottom is the distance from the bottom edge of the Stack (nil = unset).
-	// When Alignment is set, this is an offset from the alignment point.
-	Bottom *float64
-	// Width overrides the child's width (nil = use child's intrinsic width).
-	Width *float64
-	// Height overrides the child's height (nil = use child's intrinsic height).
-	Height *float64
+// For axes where no position is set, the child uses the Stack's Alignment.
+type positioned struct {
+	child     core.Widget
+	alignment *graphics.Alignment
+	left      *float64
+	top       *float64
+	right     *float64
+	bottom    *float64
+	width     *float64
+	height    *float64
 }
 
-// CreateElement returns a RenderObjectElement for this Positioned.
-func (p Positioned) CreateElement() core.Element {
+// Positioned creates a positioned child for use within a [Stack].
+func Positioned(child core.Widget) positioned {
+	return positioned{child: child}
+}
+
+// Left sets the distance from the left edge of the Stack.
+// When Align is set, this is an offset from the alignment point.
+func (p positioned) Left(v float64) positioned {
+	p.left = &v
+	return p
+}
+
+// Top sets the distance from the top edge of the Stack.
+// When Align is set, this is an offset from the alignment point.
+func (p positioned) Top(v float64) positioned {
+	p.top = &v
+	return p
+}
+
+// Right sets the distance from the right edge of the Stack.
+// When Align is set, this is an offset from the alignment point.
+func (p positioned) Right(v float64) positioned {
+	p.right = &v
+	return p
+}
+
+// Bottom sets the distance from the bottom edge of the Stack.
+// When Align is set, this is an offset from the alignment point.
+func (p positioned) Bottom(v float64) positioned {
+	p.bottom = &v
+	return p
+}
+
+// Width overrides the child's width.
+func (p positioned) Width(v float64) positioned {
+	p.width = &v
+	return p
+}
+
+// Height overrides the child's height.
+func (p positioned) Height(v float64) positioned {
+	p.height = &v
+	return p
+}
+
+// Size sets both width and height.
+func (p positioned) Size(w, h float64) positioned {
+	p.width = &w
+	p.height = &h
+	return p
+}
+
+// Align positions the child relative to the Stack bounds using the
+// graphics.Alignment coordinate system where (-1, -1) is top-left,
+// (0, 0) is center, and (1, 1) is bottom-right.
+//
+// When set, Left/Top/Right/Bottom become offsets from this position
+// rather than absolute pixel coordinates.
+func (p positioned) Align(a graphics.Alignment) positioned {
+	p.alignment = &a
+	return p
+}
+
+// Fill sets all four edges to the given inset value, causing the child
+// to stretch to fill the Stack with uniform margins.
+func (p positioned) Fill(inset float64) positioned {
+	l, t, r, b := inset, inset, inset, inset
+	p.left = &l
+	p.top = &t
+	p.right = &r
+	p.bottom = &b
+	return p
+}
+
+// At sets both Left and Top, placing the child at a specific position.
+func (p positioned) At(left, top float64) positioned {
+	p.left = &left
+	p.top = &top
+	return p
+}
+
+// CreateElement returns a RenderObjectElement for this positioned.
+func (p positioned) CreateElement() core.Element {
 	return core.NewRenderObjectElement(p, nil)
 }
 
 // Key returns nil (no key).
-func (p Positioned) Key() any {
+func (p positioned) Key() any {
 	return nil
 }
 
 // ChildWidget returns the child widget.
-func (p Positioned) ChildWidget() core.Widget {
-	return p.Child
+func (p positioned) ChildWidget() core.Widget {
+	return p.child
 }
 
-// CreateRenderObject creates the RenderPositioned.
-func (p Positioned) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
+// CreateRenderObject creates the renderPositioned.
+func (p positioned) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	pos := &renderPositioned{
-		alignment: p.Alignment,
-		left:      p.Left,
-		top:       p.Top,
-		right:     p.Right,
-		bottom:    p.Bottom,
-		width:     p.Width,
-		height:    p.Height,
+		alignment: p.alignment,
+		left:      p.left,
+		top:       p.top,
+		right:     p.right,
+		bottom:    p.bottom,
+		width:     p.width,
+		height:    p.height,
 	}
 	pos.SetSelf(pos)
 	return pos
 }
 
-// UpdateRenderObject updates the RenderPositioned.
-func (p Positioned) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
+// UpdateRenderObject updates the renderPositioned.
+func (p positioned) UpdateRenderObject(ctx core.BuildContext, renderObject layout.RenderObject) {
 	if pos, ok := renderObject.(*renderPositioned); ok {
-		pos.alignment = p.Alignment
-		pos.left = p.Left
-		pos.top = p.Top
-		pos.right = p.Right
-		pos.bottom = p.Bottom
-		pos.width = p.Width
-		pos.height = p.Height
+		pos.alignment = p.alignment
+		pos.left = p.left
+		pos.top = p.top
+		pos.right = p.right
+		pos.bottom = p.bottom
+		pos.width = p.width
+		pos.height = p.height
 		pos.MarkNeedsLayout()
 	}
 }

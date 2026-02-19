@@ -352,15 +352,11 @@ func (s *tooltipState) showTooltip(ctx core.BuildContext, message string) {
     }
 
     s.entry = overlay.NewOverlayEntry(func(ctx core.BuildContext) core.Widget {
-        return widgets.Positioned{
-            Left: widgets.Ptr(100),
-            Top:  widgets.Ptr(200),
-            Child: widgets.Container{
-                Padding: layout.EdgeInsetsAll(8),
-                Color:   graphics.RGBA(50, 50, 50, 230),
-                Child:   widgets.Text{Content: message},
-            },
-        }
+        return widgets.Positioned(widgets.Container{
+            Padding: layout.EdgeInsetsAll(8),
+            Color:   graphics.RGBA(50, 50, 50, 230),
+            Child:   widgets.Text{Content: message},
+        }).At(100, 200)
     })
     overlayState.Insert(s.entry, nil, nil)
 }

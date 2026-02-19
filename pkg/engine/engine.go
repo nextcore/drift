@@ -853,10 +853,6 @@ func (e engineApp) Build(ctx core.BuildContext) core.Widget {
 	}
 }
 
-func ptrFloat64(v float64) *float64 {
-	return &v
-}
-
 // diagnosticsHUDPositioner reads safe area from context and positions the HUD accordingly.
 type diagnosticsHUDPositioner struct {
 	position DiagnosticsPosition
@@ -877,29 +873,13 @@ func (d diagnosticsHUDPositioner) Build(ctx core.BuildContext) core.Widget {
 
 	switch d.position {
 	case DiagnosticsTopRight:
-		return widgets.Positioned{
-			Right: ptrFloat64(insets.Right + padding),
-			Top:   ptrFloat64(insets.Top + padding),
-			Child: d.hud,
-		}
+		return widgets.Positioned(d.hud).Right(insets.Right + padding).Top(insets.Top + padding)
 	case DiagnosticsBottomLeft:
-		return widgets.Positioned{
-			Left:   ptrFloat64(insets.Left + padding),
-			Bottom: ptrFloat64(insets.Bottom + padding),
-			Child:  d.hud,
-		}
+		return widgets.Positioned(d.hud).Left(insets.Left + padding).Bottom(insets.Bottom + padding)
 	case DiagnosticsBottomRight:
-		return widgets.Positioned{
-			Right:  ptrFloat64(insets.Right + padding),
-			Bottom: ptrFloat64(insets.Bottom + padding),
-			Child:  d.hud,
-		}
+		return widgets.Positioned(d.hud).Right(insets.Right + padding).Bottom(insets.Bottom + padding)
 	default: // DiagnosticsTopLeft or invalid
-		return widgets.Positioned{
-			Left:  ptrFloat64(insets.Left + padding),
-			Top:   ptrFloat64(insets.Top + padding),
-			Child: d.hud,
-		}
+		return widgets.Positioned(d.hud).Left(insets.Left + padding).Top(insets.Top + padding)
 	}
 }
 

@@ -135,11 +135,3 @@ func PaddingOnly(left, top, right, bottom float64, child core.Widget) Padding {
 func Spacer() Expanded {
 	return Expanded{Child: SizedBox{}}
 }
-
-// Ptr returns a pointer to the given float64 value.
-// This is a convenience helper for Positioned widget fields:
-//
-//	Positioned{Left: widgets.Ptr(8), Top: widgets.Ptr(16), Child: child}
-func Ptr(v float64) *float64 {
-	return &v
-}

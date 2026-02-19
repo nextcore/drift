@@ -209,26 +209,17 @@ func ExampleStack_withPositioned() {
 				Height: 200,
 			},
 			// Badge in top-right corner
-			widgets.Positioned{
-				Top:   widgets.Ptr(8),
-				Right: widgets.Ptr(8),
-				Child: widgets.Container{
-					Color:   graphics.RGB(255, 0, 0),
-					Width:   20,
-					Height:  20,
-					Padding: layout.EdgeInsetsAll(4),
-				},
-			},
+			widgets.Positioned(widgets.Container{
+				Color:   graphics.RGB(255, 0, 0),
+				Width:   20,
+				Height:  20,
+				Padding: layout.EdgeInsetsAll(4),
+			}).Top(8).Right(8),
 			// Bottom toolbar stretching horizontally
-			widgets.Positioned{
-				Left:   widgets.Ptr(0),
-				Right:  widgets.Ptr(0),
-				Bottom: widgets.Ptr(0),
-				Child: widgets.Container{
-					Color:  graphics.RGB(33, 33, 33),
-					Height: 48,
-				},
-			},
+			widgets.Positioned(widgets.Container{
+				Color:  graphics.RGB(33, 33, 33),
+				Height: 48,
+			}).Left(0).Right(0).Bottom(0),
 		},
 	}
 	_ = stack
@@ -237,33 +228,19 @@ func ExampleStack_withPositioned() {
 // This example shows how to use Positioned for absolute positioning within a Stack.
 func ExamplePositioned() {
 	// Pin to top-left corner with margins
-	topLeft := widgets.Positioned{
-		Left: widgets.Ptr(8),
-		Top:  widgets.Ptr(8),
-		Child: widgets.Text{
-			Content: "Top Left",
-		},
-	}
+	topLeft := widgets.Positioned(widgets.Text{
+		Content: "Top Left",
+	}).Left(8).Top(8)
 
 	// Pin to bottom-right corner
-	bottomRight := widgets.Positioned{
-		Right:  widgets.Ptr(16),
-		Bottom: widgets.Ptr(16),
-		Child: widgets.Text{
-			Content: "Bottom Right",
-		},
-	}
+	bottomRight := widgets.Positioned(widgets.Text{
+		Content: "Bottom Right",
+	}).Right(16).Bottom(16)
 
 	// Fixed size at specific position
-	fixedBox := widgets.Positioned{
-		Left:   widgets.Ptr(50),
-		Top:    widgets.Ptr(50),
-		Width:  widgets.Ptr(100),
-		Height: widgets.Ptr(60),
-		Child: widgets.Container{
-			Color: graphics.RGB(100, 149, 237),
-		},
-	}
+	fixedBox := widgets.Positioned(widgets.Container{
+		Color: graphics.RGB(100, 149, 237),
+	}).At(50, 50).Size(100, 60)
 
 	_ = topLeft
 	_ = bottomRight
@@ -273,37 +250,21 @@ func ExamplePositioned() {
 // This example shows how Positioned can stretch children by setting opposite edges.
 func ExamplePositioned_stretch() {
 	// Stretch horizontally (left + right set, no width)
-	horizontalStretch := widgets.Positioned{
-		Left:  widgets.Ptr(16),
-		Right: widgets.Ptr(16),
-		Top:   widgets.Ptr(100),
-		Child: widgets.Container{
-			Color:  graphics.RGB(200, 200, 200),
-			Height: 2, // Divider line
-		},
-	}
+	horizontalStretch := widgets.Positioned(widgets.Container{
+		Color:  graphics.RGB(200, 200, 200),
+		Height: 2, // Divider line
+	}).Left(16).Right(16).Top(100)
 
 	// Stretch vertically (top + bottom set, no height)
-	verticalStretch := widgets.Positioned{
-		Top:    widgets.Ptr(50),
-		Bottom: widgets.Ptr(50),
-		Left:   widgets.Ptr(0),
-		Child: widgets.Container{
-			Color: graphics.RGB(100, 100, 100),
-			Width: 4, // Vertical bar
-		},
-	}
+	verticalStretch := widgets.Positioned(widgets.Container{
+		Color: graphics.RGB(100, 100, 100),
+		Width: 4, // Vertical bar
+	}).Top(50).Bottom(50).Left(0)
 
 	// Stretch both ways (all four edges set)
-	fillWithMargins := widgets.Positioned{
-		Left:   widgets.Ptr(20),
-		Top:    widgets.Ptr(20),
-		Right:  widgets.Ptr(20),
-		Bottom: widgets.Ptr(20),
-		Child: widgets.Container{
-			Color: graphics.RGBA(0, 0, 0, 0.5), // Semi-transparent overlay
-		},
-	}
+	fillWithMargins := widgets.Positioned(widgets.Container{
+		Color: graphics.RGBA(0, 0, 0, 0.5), // Semi-transparent overlay
+	}).Fill(20)
 
 	_ = horizontalStretch
 	_ = verticalStretch
@@ -312,26 +273,20 @@ func ExamplePositioned_stretch() {
 
 // This example shows partial positioning where unset axes use Stack.Alignment.
 func ExamplePositioned_partialAlignment() {
-	// Position only vertically at top - horizontal position uses Stack.Alignment.
+	// Position only vertically at top: horizontal position uses Stack.Alignment.
 	// With AlignmentCenter, this centers the header horizontally.
 	stack := widgets.Stack{
 		Alignment: layout.AlignmentCenter,
 		Children: []core.Widget{
 			widgets.Container{Width: 300, Height: 200},
 			// Only Top is set, so X position comes from Stack.Alignment (centered)
-			widgets.Positioned{
-				Top: widgets.Ptr(16),
-				Child: widgets.Text{
-					Content: "Centered Header",
-				},
-			},
+			widgets.Positioned(widgets.Text{
+				Content: "Centered Header",
+			}).Top(16),
 			// Only Left is set, so Y position comes from Stack.Alignment (centered)
-			widgets.Positioned{
-				Left: widgets.Ptr(8),
-				Child: widgets.Text{
-					Content: "Left Sidebar",
-				},
-			},
+			widgets.Positioned(widgets.Text{
+				Content: "Left Sidebar",
+			}).Left(8),
 		},
 	}
 	_ = stack

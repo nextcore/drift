@@ -54,8 +54,8 @@ func TestIndexedStack_ExpandPositionsActiveChild(t *testing.T) {
 
 	pos := &renderPositioned{
 		child: child,
-		left:  Ptr(8),
-		top:   Ptr(12),
+		left:  ptrF64(8),
+		top:   ptrF64(12),
 	}
 	pos.SetSelf(pos)
 
@@ -82,3 +82,5 @@ func TestIndexedStack_ExpandPositionsActiveChild(t *testing.T) {
 		t.Fatalf("expected positioned size 10x10 from child layout, got %.1fx%.1f", size.Width, size.Height)
 	}
 }
+
+func ptrF64(v float64) *float64 { return &v }

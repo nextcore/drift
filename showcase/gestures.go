@@ -99,29 +99,25 @@ func (s *gesturesDemoState) buildPanDemo(colors theme.ColorScheme) core.Widget {
 			Height: areaHeight,
 			Child: widgets.Stack{
 				Children: []core.Widget{
-					widgets.Positioned{
-						Left: widgets.Ptr(s.panX),
-						Top:  widgets.Ptr(s.panY),
-						Child: widgets.Drag(func(d widgets.DragUpdateDetails) {
-							s.SetState(func() {
-								s.panX = widgets.Clamp(s.panX+d.Delta.X, 0, areaWidth-boxSize)
-								s.panY = widgets.Clamp(s.panY+d.Delta.Y, 0, areaHeight-boxSize)
-							})
-						}, widgets.DecoratedBox{
-							Color:        colors.Primary,
-							BorderRadius: 8,
-							Child: widgets.SizedBox{
-								Width:  boxSize,
-								Height: boxSize,
-								Child: widgets.Center{
-									Child: widgets.Text{Content: "Drag me", Style: graphics.TextStyle{
-										Color:    colors.OnPrimary,
-										FontSize: 12,
-									}},
-								},
+					widgets.Positioned(widgets.Drag(func(d widgets.DragUpdateDetails) {
+						s.SetState(func() {
+							s.panX = widgets.Clamp(s.panX+d.Delta.X, 0, areaWidth-boxSize)
+							s.panY = widgets.Clamp(s.panY+d.Delta.Y, 0, areaHeight-boxSize)
+						})
+					}, widgets.DecoratedBox{
+						Color:        colors.Primary,
+						BorderRadius: 8,
+						Child: widgets.SizedBox{
+							Width:  boxSize,
+							Height: boxSize,
+							Child: widgets.Center{
+								Child: widgets.Text{Content: "Drag me", Style: graphics.TextStyle{
+									Color:    colors.OnPrimary,
+									FontSize: 12,
+								}},
 							},
-						}),
-					},
+						},
+					})).Left(s.panX).Top(s.panY),
 				},
 			},
 		},
@@ -154,21 +150,18 @@ func (s *gesturesDemoState) buildHorizontalSlider(colors theme.ColorScheme) core
 							},
 						},
 						// Thumb
-						widgets.Positioned{
-							Left: widgets.Ptr(s.sliderX - thumbSize/2),
-							Child: widgets.HorizontalDrag(func(d widgets.DragUpdateDetails) {
-								s.SetState(func() {
-									s.sliderX = widgets.Clamp(s.sliderX+d.PrimaryDelta, thumbSize/2, trackWidth-thumbSize/2)
-								})
-							}, widgets.DecoratedBox{
-								Color:        colors.Primary,
-								BorderRadius: thumbSize / 2,
-								Child: widgets.SizedBox{
-									Width:  thumbSize,
-									Height: thumbSize,
-								},
-							}),
-						},
+						widgets.Positioned(widgets.HorizontalDrag(func(d widgets.DragUpdateDetails) {
+							s.SetState(func() {
+								s.sliderX = widgets.Clamp(s.sliderX+d.PrimaryDelta, thumbSize/2, trackWidth-thumbSize/2)
+							})
+						}, widgets.DecoratedBox{
+							Color:        colors.Primary,
+							BorderRadius: thumbSize / 2,
+							Child: widgets.SizedBox{
+								Width:  thumbSize,
+								Height: thumbSize,
+							},
+						})).Left(s.sliderX - thumbSize/2),
 					},
 				},
 			},
@@ -193,28 +186,24 @@ func (s *gesturesDemoState) buildVerticalDemo(colors theme.ColorScheme) core.Wid
 			Height: areaHeight,
 			Child: widgets.Stack{
 				Children: []core.Widget{
-					widgets.Positioned{
-						Left: widgets.Ptr((areaWidth - boxWidth) / 2), // Center horizontally
-						Top:  widgets.Ptr(s.verticalY),
-						Child: widgets.VerticalDrag(func(d widgets.DragUpdateDetails) {
-							s.SetState(func() {
-								s.verticalY = widgets.Clamp(s.verticalY+d.PrimaryDelta, 0, areaHeight-boxHeight)
-							})
-						}, widgets.DecoratedBox{
-							Color:        colors.Secondary,
-							BorderRadius: 8,
-							Child: widgets.SizedBox{
-								Width:  boxWidth,
-								Height: boxHeight,
-								Child: widgets.Center{
-									Child: widgets.Text{Content: "Drag up/down", Style: graphics.TextStyle{
-										Color:    colors.OnSecondary,
-										FontSize: 12,
-									}},
-								},
+					widgets.Positioned(widgets.VerticalDrag(func(d widgets.DragUpdateDetails) {
+						s.SetState(func() {
+							s.verticalY = widgets.Clamp(s.verticalY+d.PrimaryDelta, 0, areaHeight-boxHeight)
+						})
+					}, widgets.DecoratedBox{
+						Color:        colors.Secondary,
+						BorderRadius: 8,
+						Child: widgets.SizedBox{
+							Width:  boxWidth,
+							Height: boxHeight,
+							Child: widgets.Center{
+								Child: widgets.Text{Content: "Drag up/down", Style: graphics.TextStyle{
+									Color:    colors.OnSecondary,
+									FontSize: 12,
+								}},
 							},
-						}),
-					},
+						},
+					})).Left((areaWidth - boxWidth) / 2).Top(s.verticalY),
 				},
 			},
 		},
@@ -255,41 +244,38 @@ func (s *gesturesDemoState) buildSwipeCard(colors theme.ColorScheme) core.Widget
 					},
 				},
 				// Foreground card
-				widgets.Positioned{
-					Left: widgets.Ptr(s.cardX),
-					Child: widgets.GestureDetector{
-						OnHorizontalDragUpdate: func(d widgets.DragUpdateDetails) {
-							s.SetState(func() {
-								s.cardX = widgets.Clamp(s.cardX+d.PrimaryDelta, -100, 0)
-							})
-						},
-						OnHorizontalDragEnd: func(d widgets.DragEndDetails) {
-							// Snap back or dismiss based on position
-							s.SetState(func() {
-								if s.cardX < -50 {
-									s.cardX = -100
-								} else {
-									s.cardX = 0
-								}
-							})
-						},
-						Child: widgets.DecoratedBox{
-							Color:        colors.SurfaceVariant,
-							BorderRadius: 8,
-							Child: widgets.SizedBox{
-								Width:  cardWidth,
-								Height: cardHeight,
-								Child: widgets.Padding{
-									Padding: layout.EdgeInsetsAll(16),
-									Child: widgets.Text{Content: "Swipe me left", Style: graphics.TextStyle{
-										Color:    colors.OnSurface,
-										FontSize: 14,
-									}},
-								},
+				widgets.Positioned(widgets.GestureDetector{
+					OnHorizontalDragUpdate: func(d widgets.DragUpdateDetails) {
+						s.SetState(func() {
+							s.cardX = widgets.Clamp(s.cardX+d.PrimaryDelta, -100, 0)
+						})
+					},
+					OnHorizontalDragEnd: func(d widgets.DragEndDetails) {
+						// Snap back or dismiss based on position
+						s.SetState(func() {
+							if s.cardX < -50 {
+								s.cardX = -100
+							} else {
+								s.cardX = 0
+							}
+						})
+					},
+					Child: widgets.DecoratedBox{
+						Color:        colors.SurfaceVariant,
+						BorderRadius: 8,
+						Child: widgets.SizedBox{
+							Width:  cardWidth,
+							Height: cardHeight,
+							Child: widgets.Padding{
+								Padding: layout.EdgeInsetsAll(16),
+								Child: widgets.Text{Content: "Swipe me left", Style: graphics.TextStyle{
+									Color:    colors.OnSurface,
+									FontSize: 14,
+								}},
 							},
 						},
 					},
-				},
+				}).Left(s.cardX),
 			},
 		},
 	}

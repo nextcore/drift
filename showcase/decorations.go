@@ -119,27 +119,21 @@ func buildDecorationsPage(ctx core.BuildContext) core.Widget {
 							Fit:    widgets.ImageFitCover,
 						},
 					},
-					widgets.Positioned{
-						Left:   widgets.Ptr(40),
-						Top:    widgets.Ptr(40),
-						Right:  widgets.Ptr(40),
-						Bottom: widgets.Ptr(40),
-						Child: widgets.ClipRRect{
-							Radius: 12,
-							Child: widgets.NewBackdropFilter(10,
-								widgets.DecoratedBox{
-									Color: graphics.RGBA(255, 255, 255, 0.3),
-									Child: widgets.Center{
-										Child: widgets.Text{Content: "Frosted Glass", Style: graphics.TextStyle{
-											Color:      graphics.RGBA(10, 10, 10, 0.4),
-											FontSize:   14,
-											FontWeight: graphics.FontWeightBold,
-										}},
-									},
+					widgets.Positioned(widgets.ClipRRect{
+						Radius: 12,
+						Child: widgets.NewBackdropFilter(10,
+							widgets.DecoratedBox{
+								Color: graphics.RGBA(255, 255, 255, 0.3),
+								Child: widgets.Center{
+									Child: widgets.Text{Content: "Frosted Glass", Style: graphics.TextStyle{
+										Color:      graphics.RGBA(10, 10, 10, 0.4),
+										FontSize:   14,
+										FontWeight: graphics.FontWeightBold,
+									}},
 								},
-							),
-						},
-					},
+							},
+						),
+					}).Fill(40),
 				},
 			},
 		},

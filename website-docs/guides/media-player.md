@@ -296,20 +296,16 @@ widgets.Stack{
             Height:       300,
             HideControls: true,
         },
-        widgets.Positioned{
-            Bottom: 8,
-            Left:   8,
-            Child: widgets.Row{
-                Children: []core.Widget{
-                    theme.ButtonOf(ctx, "Play", func() {
-                        s.controller.Play()
-                    }),
-                    theme.ButtonOf(ctx, "Pause", func() {
-                        s.controller.Pause()
-                    }),
-                },
+        widgets.Positioned(widgets.Row{
+            Children: []core.Widget{
+                theme.ButtonOf(ctx, "Play", func() {
+                    s.controller.Play()
+                }),
+                theme.ButtonOf(ctx, "Pause", func() {
+                    s.controller.Pause()
+                }),
             },
-        },
+        }).Bottom(8).Left(8),
     },
 }
 ```

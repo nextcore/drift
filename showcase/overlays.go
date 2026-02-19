@@ -221,27 +221,23 @@ func showToast(ctx core.BuildContext, message string) {
 		return widgets.Stack{
 			Fit: widgets.StackFitExpand,
 			Children: []core.Widget{
-				widgets.Positioned{
-					Alignment: &graphics.AlignBottomCenter,
-					Bottom:    widgets.Ptr(100),
-					Child: widgets.GestureDetector{
-						OnTap: func() {
-							entry.Remove()
-						},
-						Child: widgets.Container{
-							Color:        colors.InverseSurface,
-							BorderRadius: 8,
-							Padding:      layout.EdgeInsetsSymmetric(20, 12),
-							Child: widgets.Text{
-								Content: message + " (tap to dismiss)",
-								Style: graphics.TextStyle{
-									Color:    colors.OnInverseSurface,
-									FontSize: 14,
-								},
+				widgets.Positioned(widgets.GestureDetector{
+					OnTap: func() {
+						entry.Remove()
+					},
+					Child: widgets.Container{
+						Color:        colors.InverseSurface,
+						BorderRadius: 8,
+						Padding:      layout.EdgeInsetsSymmetric(20, 12),
+						Child: widgets.Text{
+							Content: message + " (tap to dismiss)",
+							Style: graphics.TextStyle{
+								Color:    colors.OnInverseSurface,
+								FontSize: 14,
 							},
 						},
 					},
-				},
+				}).Align(graphics.AlignBottomCenter).Bottom(100),
 			},
 		}
 	})
@@ -277,22 +273,18 @@ func showStackedOverlays(ctx core.BuildContext) {
 		return widgets.Stack{
 			Fit: widgets.StackFitExpand,
 			Children: []core.Widget{
-				widgets.Positioned{
-					Alignment: &graphics.AlignBottomCenter,
-					Bottom:    widgets.Ptr(100),
-					Child: widgets.Container{
-						Color:        colors.Tertiary,
-						BorderRadius: 8,
-						Padding:      layout.EdgeInsetsSymmetric(20, 12),
-						Child: widgets.Text{
-							Content: "Toast is below the dialog",
-							Style: graphics.TextStyle{
-								Color:    colors.OnTertiary,
-								FontSize: 14,
-							},
+				widgets.Positioned(widgets.Container{
+					Color:        colors.Tertiary,
+					BorderRadius: 8,
+					Padding:      layout.EdgeInsetsSymmetric(20, 12),
+					Child: widgets.Text{
+						Content: "Toast is below the dialog",
+						Style: graphics.TextStyle{
+							Color:    colors.OnTertiary,
+							FontSize: 14,
 						},
 					},
-				},
+				}).Align(graphics.AlignBottomCenter).Bottom(100),
 			},
 		}
 	})
