@@ -42,9 +42,6 @@ func ExampleDispatch() {
 		// Schedule UI update on the main thread
 		drift.Dispatch(func() {
 			// This code runs on the UI thread and can safely update state
-			// state.SetState(func() {
-			//     state.data = result
-			// })
 		})
 	}()
 }

@@ -77,6 +77,21 @@ type RenderObjectWidget interface {
 // Use this for quick, self-contained UI fragments that don't need
 // lifecycle hooks or StateBase features.
 //
+//	widget := core.Stateful(
+//	    func() int { return 0 },
+//	    func(count int, ctx core.BuildContext, setState func(func(int) int)) core.Widget {
+//	        return widgets.GestureDetector{
+//	            OnTap: func() {
+//	                setState(func(c int) int { return c + 1 })
+//	            },
+//	            Child: widgets.Text{Content: fmt.Sprintf("Count: %d", count)},
+//	        }
+//	    },
+//	)
+//
+// The generic parameter is the state type. setState takes a function that
+// transforms the current state to a new state.
+//
 // For complex widgets with many state fields, lifecycle methods,
 // Managed, or UseController, embed [StatefulBase] in a named struct instead.
 func Stateful[S any](

@@ -523,25 +523,6 @@ func ExampleGestureDetector_drag() {
 
 // This example shows image display with fit modes.
 func ExampleImage() {
-	// Image accepts a Go image.Image as its source.
-	// You would typically load images from files, assets, or network.
-	//
-	// var loadedImage image.Image // from image.Decode, etc.
-	//
-	// coverImage := widgets.Image{
-	//     Source: loadedImage,
-	//     Width:  200,
-	//     Height: 150,
-	//     Fit:    widgets.ImageFitCover,
-	// }
-	//
-	// containImage := widgets.Image{
-	//     Source: loadedImage,
-	//     Width:  100,
-	//     Height: 100,
-	//     Fit:    widgets.ImageFitContain,
-	// }
-
 	// Example with nil source (placeholder)
 	placeholder := widgets.Image{
 		Width:  200,
@@ -723,23 +704,6 @@ func ExampleFormField() {
 		},
 	}
 	_ = formField
-}
-
-// This example shows accessing FormState from a build context.
-func ExampleFormOf() {
-	// In a widget's Build method:
-	//
-	// func (w MyWidget) Build(ctx core.BuildContext) core.Widget {
-	//     formState := widgets.FormOf(ctx)
-	//     return widgets.Button{
-	//         Label: "Submit",
-	//         OnTap: func() {
-	//             if formState != nil && formState.Validate() {
-	//                 formState.Save()
-	//             }
-	//         },
-	//     }
-	// }
 }
 
 // This example shows tab-like switching with IndexedStack.
