@@ -296,7 +296,7 @@ type tabNavigatorScope struct {
 	child         core.Widget
 }
 
-func (t tabNavigatorScope) Key() any              { return t.tabIndex }
+func (t tabNavigatorScope) Key() any                 { return t.tabIndex }
 func (t tabNavigatorScope) ChildWidget() core.Widget { return t.child }
 
 func (t tabNavigatorScope) UpdateShouldNotify(oldWidget core.InheritedWidget) bool {

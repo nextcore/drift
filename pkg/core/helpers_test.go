@@ -122,8 +122,8 @@ func TestStatefulBase_DifferentOuterTypes(t *testing.T) {
 		StatefulBase
 	}
 
-	typeA := reflect.TypeOf(widgetA{})
-	typeB := reflect.TypeOf(widgetB{})
+	typeA := reflect.TypeFor[widgetA]()
+	typeB := reflect.TypeFor[widgetB]()
 
 	if typeA == typeB {
 		t.Error("different outer struct types should produce different reflect.TypeOf results")
@@ -174,8 +174,8 @@ type keyedInheritedBaseWidget struct {
 	child Widget
 }
 
-func (w keyedInheritedBaseWidget) Key() any              { return w.myKey }
-func (w keyedInheritedBaseWidget) ChildWidget() Widget   { return w.child }
+func (w keyedInheritedBaseWidget) Key() any                                { return w.myKey }
+func (w keyedInheritedBaseWidget) ChildWidget() Widget                     { return w.child }
 func (w keyedInheritedBaseWidget) UpdateShouldNotify(InheritedWidget) bool { return false }
 
 func TestInheritedBase_KeyOverride(t *testing.T) {

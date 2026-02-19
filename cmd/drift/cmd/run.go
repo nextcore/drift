@@ -117,7 +117,7 @@ func parseRunArgs(args []string) ([]string, runOptions) {
 // argument list. Returns the device identifier (empty when --device was given
 // without a value) and whether the flag was present at all.
 func parseDeviceFlag(args []string) (id string, present bool) {
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		if args[i] == "--device" {
 			present = true
 			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "--") {
