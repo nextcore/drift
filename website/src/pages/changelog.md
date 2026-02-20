@@ -9,7 +9,16 @@ All notable changes to Drift are documented here. Patch releases are grouped und
 
 ---
 
-## v0.20.0
+## v0.21.0
+
+- **Platform view occlusion**: Occlusion region support for native view clipping ([#30](https://github.com/go-drift/drift/pull/30))
+- **Navigation**: `TabScaffold` renamed to `TabNavigator`; `RouteConfig` and `ShellRoute` unified into `ScreenRoute`
+
+---
+
+## v0.20.x
+
+### v0.20.0
 
 The v0.20.0 release focuses on API and developer experience improvements, reducing boilerplate across the framework.
 
@@ -19,6 +28,11 @@ The v0.20.0 release focuses on API and developer experience improvements, reduci
 - **Simplified widget setup**: Progress indicators and Lottie animations use streamlined constructors
 - **Navigation**: Added `SimpleBuilder` helper for routes that ignore settings
 - **Theme accessors**: Granular theme accessors replace verbose lookups
+
+### v0.20.1
+
+- Optimized frame scheduling and Metal presentation sync
+- Fixed bare code fences in generated documentation
 
 ---
 
