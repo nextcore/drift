@@ -236,6 +236,7 @@ func (r *renderSvgImage) HitTest(position graphics.Offset, result *layout.HitTes
 //	    Size:   24,
 //	}
 type SvgIcon struct {
+	core.StatelessBase
 	// Source is the pre-loaded SVG icon to render.
 	Source *svg.Icon
 	// Size is the width and height for the icon.
@@ -251,7 +252,7 @@ type SvgIcon struct {
 	ExcludeFromSemantics bool
 }
 
-func (s SvgIcon) CreateElement() core.Element {
+func (s SvgIcon) Build(_ core.BuildContext) core.Widget {
 	return SvgImage{
 		Source:               s.Source,
 		Width:                s.Size,
@@ -259,9 +260,5 @@ func (s SvgIcon) CreateElement() core.Element {
 		TintColor:            s.TintColor,
 		SemanticLabel:        s.SemanticLabel,
 		ExcludeFromSemantics: s.ExcludeFromSemantics,
-	}.CreateElement()
-}
-
-func (s SvgIcon) Key() any {
-	return nil
+	}
 }
