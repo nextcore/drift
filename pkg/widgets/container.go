@@ -298,11 +298,13 @@ func (r *renderContainer) Paint(ctx *layout.PaintContext) {
 	}
 }
 
-// OcclusionPath returns a path representing the opaque area this container
-// paints, accounting for border radius. Returns nil if the container has no
-// opaque background. Called during Paint() to emit occlusion for platform views.
+// OcclusionPath returns a path representing the painted area this container
+// covers, accounting for border radius. Returns nil if the container has a
+// fully transparent background. Any non-transparent background emits occlusion
+// so that native platform views (which render in a separate OS layer) are
+// clipped beneath this widget.
 func (r *renderContainer) OcclusionPath() *graphics.Path {
-	if r.painter.color == graphics.ColorTransparent || r.painter.color.Alpha() < 1.0 {
+	if r.painter.color.Alpha() == 0 {
 		return nil
 	}
 	size := r.Size()

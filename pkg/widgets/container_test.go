@@ -612,6 +612,39 @@ func TestContainer_InnerShadow(t *testing.T) {
 	}
 }
 
+func TestContainer_OcclusionAlpha(t *testing.T) {
+	tests := []struct {
+		name    string
+		color   graphics.Color
+		occlude bool
+	}{
+		{"opaque", graphics.RGB(255, 0, 0), true},
+		{"semi-transparent", graphics.RGBA(255, 0, 0, 0.5), true},
+		{"nearly-transparent", graphics.RGBA(255, 0, 0, 0.01), true},
+		{"transparent", graphics.ColorTransparent, false},
+		{"zero-alpha-nonzero-rgb", graphics.RGBA(255, 0, 0, 0), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tester := drifttest.NewWidgetTesterWithT(t)
+			tester.SetSize(graphics.Size{Width: 100, Height: 50})
+			tester.PumpWidget(widgets.Container{
+				Width:  100,
+				Height: 50,
+				Color:  tt.color,
+			})
+			snap := tester.CaptureSnapshot()
+			ops := findOps(snap.DisplayOps, "occludePlatformViews")
+			if tt.occlude && len(ops) == 0 {
+				t.Errorf("expected occlusion for color %v", tt.color)
+			}
+			if !tt.occlude && len(ops) > 0 {
+				t.Errorf("expected no occlusion for color %v", tt.color)
+			}
+		})
+	}
+}
+
 func TestContainer_InnerShadow_RectWithClip(t *testing.T) {
 	tester := drifttest.NewWidgetTesterWithT(t)
 	tester.SetSize(graphics.Size{Width: 100, Height: 100})

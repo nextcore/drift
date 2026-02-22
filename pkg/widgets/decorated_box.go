@@ -171,9 +171,12 @@ func (r *renderDecoratedBox) Paint(ctx *layout.PaintContext) {
 	}
 }
 
-// OcclusionPath returns a path representing the opaque area this box paints.
+// OcclusionPath returns a path representing the painted area this box covers.
+// Returns nil only for fully transparent backgrounds. Any non-transparent
+// background emits occlusion so that native platform views (which render in a
+// separate OS layer) are clipped beneath this widget.
 func (r *renderDecoratedBox) OcclusionPath() *graphics.Path {
-	if r.painter.color == graphics.ColorTransparent || r.painter.color.Alpha() < 1.0 {
+	if r.painter.color.Alpha() == 0 {
 		return nil
 	}
 	size := r.Size()
