@@ -93,12 +93,20 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
 | Field | Description |
 |-------|-------------|
 | `TextField` | Base TextField for theme styling (use with `theme.TextFieldOf`) |
+| `Controller` | Text editing controller (if nil, an internal one is created) |
 | `InitialValue` | Starting value when no Controller is provided |
 | `Validator` | Returns error message or empty string if valid |
 | `OnSaved` | Called when the form is saved |
 | `OnChanged` | Called when the field value changes |
+| `OnSubmitted` | Called when the user submits |
+| `OnEditingComplete` | Called when editing is complete |
 | `Autovalidate` | Validate on every change |
+| `Label` | Label text shown above the field |
+| `Placeholder` | Placeholder text shown when empty |
+| `HelperText` | Helper text shown below the field (hidden when validation fails) |
 | `Obscure` | Hide text (for passwords) |
+| `Autocorrect` | Enable auto-correction |
+| `Disabled` | Reject input and skip validation when true |
 | `KeyboardType` | Keyboard type (`KeyboardTypeEmail`, `KeyboardTypeNumber`, etc.) |
 | `InputAction` | Action button (`TextInputActionNext`, `TextInputActionDone`, etc.) |
 | `LabelStyle` | Style for the label text above the field |

@@ -206,6 +206,36 @@ func (t TextFormField) WithDisabled(disabled bool) TextFormField {
 	return t
 }
 
+// WithKeyboardType sets the keyboard type.
+func (t TextFormField) WithKeyboardType(kt platform.KeyboardType) TextFormField {
+	t.KeyboardType = kt
+	return t
+}
+
+// WithInputAction sets the keyboard action button.
+func (t TextFormField) WithInputAction(action platform.TextInputAction) TextFormField {
+	t.InputAction = action
+	return t
+}
+
+// WithAutocorrect sets whether auto-correction is enabled.
+func (t TextFormField) WithAutocorrect(autocorrect bool) TextFormField {
+	t.Autocorrect = autocorrect
+	return t
+}
+
+// WithOnSubmitted sets the callback invoked when the user submits.
+func (t TextFormField) WithOnSubmitted(fn func(string)) TextFormField {
+	t.OnSubmitted = fn
+	return t
+}
+
+// WithOnEditingComplete sets the callback invoked when editing is complete.
+func (t TextFormField) WithOnEditingComplete(fn func()) TextFormField {
+	t.OnEditingComplete = fn
+	return t
+}
+
 // CreateState creates the state for this widget.
 func (t TextFormField) CreateState() core.State {
 	return &textFormFieldState{}
