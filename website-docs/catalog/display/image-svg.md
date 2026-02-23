@@ -94,5 +94,5 @@ func loadIcon(name string) *svg.Icon {
 
 ## Related
 
-- [Icon](/docs/catalog/display/icon) for built-in Material Design icons
+- [Icon](/docs/catalog/display/icon) for rendering text glyphs as icons
 - [Widget Architecture](/docs/guides/widgets) for how widgets work

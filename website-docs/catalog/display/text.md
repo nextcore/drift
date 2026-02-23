@@ -65,5 +65,5 @@ widgets.Column{
 
 ## Related
 
-- [Icon](/docs/catalog/display/icon) for material icons
+- [Icon](/docs/catalog/display/icon) for rendering text glyphs as icons
 - [Theming](/docs/guides/theming) for typography configuration
