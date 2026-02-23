@@ -179,6 +179,54 @@ func (t TextField) WithBorderWidth(width float64) TextField {
 	return t
 }
 
+// WithOnChanged returns a copy with the specified text-change callback.
+func (t TextField) WithOnChanged(fn func(string)) TextField {
+	t.OnChanged = fn
+	return t
+}
+
+// WithOnSubmitted returns a copy with the specified submit callback.
+func (t TextField) WithOnSubmitted(fn func(string)) TextField {
+	t.OnSubmitted = fn
+	return t
+}
+
+// WithOnEditingComplete returns a copy with the specified editing-complete callback.
+func (t TextField) WithOnEditingComplete(fn func()) TextField {
+	t.OnEditingComplete = fn
+	return t
+}
+
+// WithObscure returns a copy with the specified obscure setting.
+func (t TextField) WithObscure(obscure bool) TextField {
+	t.Obscure = obscure
+	return t
+}
+
+// WithKeyboardType returns a copy with the specified keyboard type.
+func (t TextField) WithKeyboardType(kt platform.KeyboardType) TextField {
+	t.KeyboardType = kt
+	return t
+}
+
+// WithInputAction returns a copy with the specified input action button.
+func (t TextField) WithInputAction(action platform.TextInputAction) TextField {
+	t.InputAction = action
+	return t
+}
+
+// WithAutocorrect returns a copy with the specified auto-correction setting.
+func (t TextField) WithAutocorrect(autocorrect bool) TextField {
+	t.Autocorrect = autocorrect
+	return t
+}
+
+// WithDisabled returns a copy with the specified disabled state.
+func (t TextField) WithDisabled(disabled bool) TextField {
+	t.Disabled = disabled
+	return t
+}
+
 func (t TextField) Build(ctx core.BuildContext) core.Widget {
 	// Fully explicit: zero means zero. Callers (or theme.TextFieldOf) must
 	// provide all visual properties.
