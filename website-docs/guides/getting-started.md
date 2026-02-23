@@ -80,6 +80,7 @@ package main
 import (
     "github.com/go-drift/drift/pkg/core"
     "github.com/go-drift/drift/pkg/drift"
+    "github.com/go-drift/drift/pkg/graphics"
     "github.com/go-drift/drift/pkg/widgets"
 )
 
@@ -88,9 +89,15 @@ func main() {
 }
 
 func App() core.Widget {
-    return widgets.Centered(
-        widgets.Text{Content: "Hello, Drift!"},
-    )
+    return widgets.Container{
+        Color: graphics.ColorWhite,
+        Child: widgets.Centered(
+            widgets.Text{
+                Content: "Hello, Drift!",
+                Style:   graphics.TextStyle{Color: graphics.ColorBlack, FontSize: 24},
+            },
+        ),
+    }
 }
 ```
 
@@ -155,9 +162,15 @@ After the initial build, Drift prints "Watching for changes..." and waits. Try c
 
 ```go
 func App() core.Widget {
-    return widgets.Centered(
-        widgets.Text{Content: "Hello, World!"},
-    )
+    return widgets.Container{
+        Color: graphics.ColorWhite,
+        Child: widgets.Centered(
+            widgets.Text{
+                Content: "Hello, World!",
+                Style:   graphics.TextStyle{Color: graphics.ColorBlack, FontSize: 24},
+            },
+        ),
+    }
 }
 ```
 
