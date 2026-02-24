@@ -285,25 +285,17 @@ func (s *formFieldStateBase) didChange(autovalidate bool, onChanged func(), vali
 }
 
 func (s *formFieldStateBase) validate(disabled bool, validator func() string) bool {
-	if disabled {
+	valid := true
+	if disabled || validator == nil {
 		s.errorText = ""
-		s.setState(func() {})
-		return true
-	}
-	if validator == nil {
+	} else if message := validator(); message != "" {
+		s.errorText = message
+		valid = false
+	} else {
 		s.errorText = ""
-		s.setState(func() {})
-		return true
 	}
-	message := validator()
-	if message == "" {
-		s.errorText = ""
-		s.setState(func() {})
-		return true
-	}
-	s.errorText = message
 	s.setState(func() {})
-	return false
+	return valid
 }
 
 func (s *formFieldStateBase) resetState() {
