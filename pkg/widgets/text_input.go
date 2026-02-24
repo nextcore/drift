@@ -569,6 +569,7 @@ func (s *textInputState) unfocus() {
 
 // textInputRender is a render widget for the text field chrome.
 type textInputRender struct {
+	core.RenderObjectBase
 	width        float64
 	height       float64
 	padding      layout.EdgeInsets
@@ -579,14 +580,6 @@ type textInputRender struct {
 	borderWidth  float64
 	state        *textInputState
 	config       TextInput
-}
-
-func (n textInputRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (n textInputRender) Key() any {
-	return nil
 }
 
 func (n textInputRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

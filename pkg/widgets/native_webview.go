@@ -22,6 +22,7 @@ import (
 // Width and Height set explicit dimensions. If Width is 0, the view expands
 // to fill available width.
 type NativeWebView struct {
+	core.RenderObjectBase
 	// Controller provides the native web view surface and navigation control.
 	Controller *platform.WebViewController
 
@@ -30,16 +31,6 @@ type NativeWebView struct {
 
 	// Height of the web view in logical pixels.
 	Height float64
-}
-
-// CreateElement creates the element for this render object widget.
-func (n NativeWebView) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns the widget key.
-func (n NativeWebView) Key() any {
-	return nil
 }
 
 // CreateRenderObject creates the render object for this widget.

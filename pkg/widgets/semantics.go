@@ -13,6 +13,7 @@ import (
 // Semantics is a widget that annotates the widget tree with semantics information
 // for accessibility services.
 type Semantics struct {
+	core.RenderObjectBase
 	// Child is the child widget to annotate.
 	Child core.Widget
 
@@ -89,14 +90,6 @@ type Semantics struct {
 
 	// CustomActionHandlers maps custom action IDs to handlers.
 	CustomActionHandlers map[int64]func()
-}
-
-func (s Semantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s Semantics) Key() any {
-	return nil
 }
 
 func (s Semantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
@@ -259,6 +252,7 @@ func (r *renderSemantics) DescribeSemanticsConfiguration(config *semantics.Seman
 // ExcludeSemantics is a widget that excludes its child from the semantics tree.
 // Use this to hide decorative elements from accessibility services.
 type ExcludeSemantics struct {
+	core.RenderObjectBase
 	// Child is the child widget to exclude.
 	Child core.Widget
 
@@ -271,14 +265,6 @@ type ExcludeSemantics struct {
 // NewExcludeSemantics creates an ExcludeSemantics widget that excludes the child from accessibility.
 func NewExcludeSemantics(child core.Widget) ExcludeSemantics {
 	return ExcludeSemantics{Excluding: true, Child: child}
-}
-
-func (e ExcludeSemantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (e ExcludeSemantics) Key() any {
-	return nil
 }
 
 func (e ExcludeSemantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
@@ -350,16 +336,9 @@ func (r *renderExcludeSemantics) DescribeSemanticsConfiguration(config *semantic
 
 // MergeSemantics is a widget that merges the semantics of its descendants.
 type MergeSemantics struct {
+	core.RenderObjectBase
 	// Child is the child widget whose semantics will be merged.
 	Child core.Widget
-}
-
-func (m MergeSemantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (m MergeSemantics) Key() any {
-	return nil
 }
 
 func (m MergeSemantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

@@ -28,17 +28,10 @@ import (
 //
 // For convenience, use [HSpace] and [VSpace] helper functions for spacers.
 type SizedBox struct {
+	core.RenderObjectBase
 	Width  float64
 	Height float64
 	Child  core.Widget
-}
-
-func (s SizedBox) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s SizedBox) Key() any {
-	return nil
 }
 
 func (s SizedBox) ChildWidget() core.Widget {

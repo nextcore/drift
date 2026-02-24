@@ -40,6 +40,7 @@ import (
 //
 //	theme.DividerOf(ctx)
 type Divider struct {
+	core.RenderObjectBase
 	// Height is the total vertical space the divider occupies.
 	Height float64
 	// Thickness is the thickness of the drawn line.
@@ -50,14 +51,6 @@ type Divider struct {
 	Indent float64
 	// EndIndent is the right inset from the trailing edge.
 	EndIndent float64
-}
-
-func (d Divider) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d Divider) Key() any {
-	return nil
 }
 
 func (d Divider) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
@@ -158,6 +151,7 @@ func (r *renderDivider) HitTest(position graphics.Offset, result *layout.HitTest
 //
 //	theme.VerticalDividerOf(ctx)
 type VerticalDivider struct {
+	core.RenderObjectBase
 	// Width is the total horizontal space the divider occupies.
 	Width float64
 	// Thickness is the thickness of the drawn line.
@@ -168,14 +162,6 @@ type VerticalDivider struct {
 	Indent float64
 	// EndIndent is the bottom inset.
 	EndIndent float64
-}
-
-func (d VerticalDivider) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d VerticalDivider) Key() any {
-	return nil
 }
 
 func (d VerticalDivider) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

@@ -12,20 +12,13 @@ import (
 
 // sheetDragRegion handles vertical drag gestures with conditional acceptance.
 type sheetDragRegion struct {
+	core.RenderObjectBase
 	Child       core.Widget
 	ShouldStart func(totalDelta float64) bool
 	OnStart     func(DragStartDetails)
 	OnUpdate    func(DragUpdateDetails)
 	OnEnd       func(DragEndDetails)
 	OnCancel    func()
-}
-
-func (s sheetDragRegion) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s sheetDragRegion) Key() any {
-	return nil
 }
 
 func (s sheetDragRegion) ChildWidget() core.Widget {

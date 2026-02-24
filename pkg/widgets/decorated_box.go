@@ -29,6 +29,7 @@ import (
 // which composes DecoratedBox internally. Use DecoratedBox directly when you need
 // decoration without any layout behavior.
 type DecoratedBox struct {
+	core.RenderObjectBase
 	Child core.Widget // Child widget to display inside the decoration
 
 	// Background
@@ -55,14 +56,6 @@ type DecoratedBox struct {
 	// beyond the widget; children will not be clipped.
 	// Shadows always overflow naturally. Solid background colors never overflow.
 	Overflow Overflow
-}
-
-func (d DecoratedBox) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d DecoratedBox) Key() any {
-	return nil
 }
 
 func (d DecoratedBox) ChildWidget() core.Widget {

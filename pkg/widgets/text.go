@@ -59,6 +59,7 @@ import (
 //	// Centered wrapping text
 //	Text{Content: longText, Align: graphics.TextAlignCenter}
 type Text struct {
+	core.RenderObjectBase
 	// Content is the text string to display.
 	Content string
 	// Style controls the font, size, color, and other text properties.
@@ -74,14 +75,6 @@ type Text struct {
 	// ([graphics.TextWrapWrap]) wraps text at the constraint width.
 	// Set to [graphics.TextWrapNoWrap] for single-line text.
 	Wrap graphics.TextWrap
-}
-
-func (t Text) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (t Text) Key() any {
-	return nil
 }
 
 // WithWrap returns a copy of the text with the specified wrap mode.

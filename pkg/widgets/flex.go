@@ -199,18 +199,11 @@ type FlexFitProvider interface {
 //
 // For vertical layout, use [Column].
 type Row struct {
+	core.RenderObjectBase
 	Children           []core.Widget
 	MainAxisAlignment  MainAxisAlignment
 	CrossAxisAlignment CrossAxisAlignment
 	MainAxisSize       MainAxisSize
-}
-
-func (r Row) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (r Row) Key() any {
-	return nil
 }
 
 func (r Row) ChildrenWidgets() []core.Widget {
@@ -269,18 +262,11 @@ func (r Row) UpdateRenderObject(ctx core.BuildContext, renderObject layout.Rende
 //
 // For horizontal layout, use [Row].
 type Column struct {
+	core.RenderObjectBase
 	Children           []core.Widget
 	MainAxisAlignment  MainAxisAlignment
 	CrossAxisAlignment CrossAxisAlignment
 	MainAxisSize       MainAxisSize
-}
-
-func (c Column) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (c Column) Key() any {
-	return nil
 }
 
 func (c Column) ChildrenWidgets() []core.Widget {

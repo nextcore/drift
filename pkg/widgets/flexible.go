@@ -47,6 +47,7 @@ import (
 //	    },
 //	}
 type Flexible struct {
+	core.RenderObjectBase
 	// Child is the widget to display within the flexible space.
 	Child core.Widget
 
@@ -61,16 +62,6 @@ type Flexible struct {
 	// The zero value is [FlexFitLoose], allowing the child to be smaller.
 	// Set to [FlexFitTight] for behavior equivalent to [Expanded].
 	Fit FlexFit
-}
-
-// CreateElement returns a RenderObjectElement for this Flexible.
-func (f Flexible) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns nil (no key).
-func (f Flexible) Key() any {
-	return nil
 }
 
 // ChildWidget returns the child widget.

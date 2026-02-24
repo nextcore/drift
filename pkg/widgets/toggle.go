@@ -138,6 +138,7 @@ func (s Toggle) Build(ctx core.BuildContext) core.Widget {
 }
 
 type toggleRender struct {
+	core.RenderObjectBase
 	value         bool
 	onChanged     func(bool)
 	enabled       bool
@@ -146,14 +147,6 @@ type toggleRender struct {
 	activeColor   graphics.Color
 	inactiveColor graphics.Color
 	thumbColor    graphics.Color
-}
-
-func (s toggleRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s toggleRender) Key() any {
-	return nil
 }
 
 func (s toggleRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

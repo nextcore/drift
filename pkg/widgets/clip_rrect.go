@@ -8,16 +8,9 @@ import (
 
 // ClipRRect clips its child using rounded corners.
 type ClipRRect struct {
+	core.RenderObjectBase
 	Child  core.Widget
 	Radius float64
-}
-
-func (c ClipRRect) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (c ClipRRect) Key() any {
-	return nil
 }
 
 func (c ClipRRect) ChildWidget() core.Widget {

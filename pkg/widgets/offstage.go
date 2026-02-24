@@ -11,18 +11,11 @@ import (
 // This keeps element/render object state alive without contributing to visual output.
 // Use this to keep routes or tabs alive while preventing offscreen paint cost.
 type Offstage struct {
+	core.RenderObjectBase
 	// Offstage controls whether the child is hidden.
 	Offstage bool
 	// Child is the widget to lay out and optionally hide.
 	Child core.Widget
-}
-
-func (o Offstage) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (o Offstage) Key() any {
-	return nil
 }
 
 func (o Offstage) ChildWidget() core.Widget {

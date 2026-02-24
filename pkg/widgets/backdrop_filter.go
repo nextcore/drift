@@ -10,6 +10,7 @@ import (
 // The blur is applied within the widget's bounds and affects any content
 // drawn before this widget in the compositing order.
 type BackdropFilter struct {
+	core.RenderObjectBase
 	Child  core.Widget
 	SigmaX float64
 	SigmaY float64
@@ -22,14 +23,6 @@ func NewBackdropFilter(sigma float64, child core.Widget) BackdropFilter {
 		SigmaX: sigma,
 		SigmaY: sigma,
 	}
-}
-
-func (b BackdropFilter) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (b BackdropFilter) Key() any {
-	return nil
 }
 
 func (b BackdropFilter) ChildWidget() core.Widget {

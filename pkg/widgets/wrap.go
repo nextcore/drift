@@ -188,6 +188,7 @@ func (a RunAlignment) String() string {
 // For non-wrapping horizontal layout, use [Row]. For non-wrapping vertical layout,
 // use [Column].
 type Wrap struct {
+	core.RenderObjectBase
 	Children           []core.Widget
 	Direction          WrapAxis           // WrapAxisHorizontal (zero value); set WrapAxisVertical for column-style wrapping
 	Alignment          WrapAlignment      // Main axis alignment within runs
@@ -206,14 +207,6 @@ func WrapOf(spacing, runSpacing float64, children ...core.Widget) Wrap {
 		Spacing:    spacing,
 		RunSpacing: runSpacing,
 	}
-}
-
-func (w Wrap) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (w Wrap) Key() any {
-	return nil
 }
 
 func (w Wrap) ChildrenWidgets() []core.Widget {

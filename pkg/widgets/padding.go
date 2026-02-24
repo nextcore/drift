@@ -19,16 +19,9 @@ import (
 //
 // For padding combined with background color, consider [Container] instead.
 type Padding struct {
+	core.RenderObjectBase
 	Padding layout.EdgeInsets
 	Child   core.Widget
-}
-
-func (p Padding) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (p Padding) Key() any {
-	return nil
 }
 
 func (p Padding) ChildWidget() core.Widget {

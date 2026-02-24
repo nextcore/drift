@@ -262,18 +262,11 @@ func (s *lottieState) Build(ctx core.BuildContext) core.Widget {
 
 // lottieRender is the inner RenderObjectWidget for the Lottie animation.
 type lottieRender struct {
+	core.RenderObjectBase
 	source *lottie.Animation
 	width  float64
 	height float64
 	t      float64
-}
-
-func (l lottieRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (l lottieRender) Key() any {
-	return nil
 }
 
 func (l lottieRender) Child() core.Widget {

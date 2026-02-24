@@ -59,20 +59,13 @@ func (d DiagnosticsHUD) Build(ctx core.BuildContext) core.Widget {
 }
 
 type diagnosticsHUDRender struct {
+	core.RenderObjectBase
 	dataSource     DiagnosticsHUDDataSource
 	targetTime     time.Duration
 	graphWidth     float64
 	graphHeight    float64
 	showFPS        bool
 	showFrameGraph bool
-}
-
-func (d diagnosticsHUDRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d diagnosticsHUDRender) Key() any {
-	return nil
 }
 
 func (d diagnosticsHUDRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

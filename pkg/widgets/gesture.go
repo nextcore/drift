@@ -34,6 +34,7 @@ import (
 // For simple tap handling on buttons, prefer [Button] which provides
 // visual feedback. GestureDetector is best for custom gestures.
 type GestureDetector struct {
+	core.RenderObjectBase
 	Child       core.Widget
 	OnTap       func()
 	OnPanStart  func(DragStartDetails)
@@ -50,14 +51,6 @@ type GestureDetector struct {
 	OnVerticalDragUpdate func(DragUpdateDetails)
 	OnVerticalDragEnd    func(DragEndDetails)
 	OnVerticalDragCancel func()
-}
-
-func (g GestureDetector) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (g GestureDetector) Key() any {
-	return nil
 }
 
 func (g GestureDetector) ChildWidget() core.Widget {

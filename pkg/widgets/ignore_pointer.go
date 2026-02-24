@@ -11,18 +11,11 @@ import (
 // or any of its descendants. This is useful for disabling interaction during
 // animations without affecting visual output.
 type IgnorePointer struct {
+	core.RenderObjectBase
 	// Ignoring controls whether pointer events are blocked.
 	Ignoring bool
 	// Child is the widget to render.
 	Child core.Widget
-}
-
-func (ip IgnorePointer) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (ip IgnorePointer) Key() any {
-	return nil
 }
 
 func (ip IgnorePointer) ChildWidget() core.Widget {

@@ -160,16 +160,9 @@ func (s *switchState) ensurePlatformView() {
 }
 
 type switchRender struct {
+	core.RenderObjectBase
 	state    *switchState
 	disabled bool
-}
-
-func (s switchRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s switchRender) Key() any {
-	return nil
 }
 
 func (s switchRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

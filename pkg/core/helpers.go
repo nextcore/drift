@@ -66,6 +66,28 @@ func (InheritedBase) CreateElement() Element { return NewInheritedElement() }
 // Key returns nil (no key).
 func (InheritedBase) Key() any { return nil }
 
+// RenderObjectBase provides default CreateElement and Key implementations for
+// render object widgets. Embed it in your widget struct to satisfy the Widget
+// interface without boilerplate:
+//
+//	type MyWidget struct {
+//	    core.RenderObjectBase
+//	    Child core.Widget
+//	}
+//
+//	func (w MyWidget) ChildWidget() core.Widget { return w.Child }
+//
+//	func (w MyWidget) CreateRenderObject(ctx core.BuildContext) layout.RenderObject { ... }
+//
+//	func (w MyWidget) UpdateRenderObject(ctx core.BuildContext, ro layout.RenderObject) { ... }
+type RenderObjectBase struct{}
+
+// CreateElement returns a new RenderObjectElement.
+func (RenderObjectBase) CreateElement() Element { return NewRenderObjectElement() }
+
+// Key returns nil (no key).
+func (RenderObjectBase) Key() any { return nil }
+
 // RenderObjectWidget creates a render object directly.
 type RenderObjectWidget interface {
 	Widget

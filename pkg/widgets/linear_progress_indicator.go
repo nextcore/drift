@@ -130,6 +130,7 @@ func (s *linearProgressState) Build(ctx core.BuildContext) core.Widget {
 }
 
 type linearProgressRender struct {
+	core.RenderObjectBase
 	value        *float64
 	color        graphics.Color
 	trackColor   graphics.Color
@@ -137,14 +138,6 @@ type linearProgressRender struct {
 	borderRadius float64
 	minWidth     float64
 	animValue    float64
-}
-
-func (l linearProgressRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (l linearProgressRender) Key() any {
-	return nil
 }
 
 func (l linearProgressRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

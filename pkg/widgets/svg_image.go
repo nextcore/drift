@@ -49,6 +49,7 @@ import (
 // references it. Do not call [svg.Icon.Destroy] while widgets may still
 // render the icon.
 type SvgImage struct {
+	core.RenderObjectBase
 	// Source is the pre-loaded SVG to render.
 	Source *svg.Icon
 
@@ -75,14 +76,6 @@ type SvgImage struct {
 
 	// ExcludeFromSemantics excludes from the semantics tree when true.
 	ExcludeFromSemantics bool
-}
-
-func (s SvgImage) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s SvgImage) Key() any {
-	return nil
 }
 
 func (s SvgImage) Child() core.Widget {

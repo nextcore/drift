@@ -54,6 +54,7 @@ func (f StackFit) String() string {
 //	    },
 //	}
 type Stack struct {
+	core.RenderObjectBase
 	// Children are the widgets to overlay. First child is at the bottom,
 	// last child is on top.
 	Children []core.Widget
@@ -69,16 +70,6 @@ type Stack struct {
 // Children are layered with the first child at the bottom and last child on top.
 func StackOf(children ...core.Widget) Stack {
 	return Stack{Children: children}
-}
-
-// CreateElement returns a RenderObjectElement for this Stack.
-func (s Stack) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns nil (no key).
-func (s Stack) Key() any {
-	return nil
 }
 
 // ChildrenWidgets returns the child widgets.
@@ -491,18 +482,11 @@ func hitTestChildrenReverse(children []layout.RenderBox, position graphics.Offse
 //
 // If Index is out of bounds, nothing is painted.
 type IndexedStack struct {
+	core.RenderObjectBase
 	Children  []core.Widget
 	Alignment layout.Alignment
 	Fit       StackFit
 	Index     int
-}
-
-func (s IndexedStack) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s IndexedStack) Key() any {
-	return nil
 }
 
 func (s IndexedStack) ChildrenWidgets() []core.Widget {
@@ -642,6 +626,7 @@ func (r *renderIndexedStack) HitTest(position graphics.Offset, result *layout.Hi
 //
 // For axes where no position is set, the child uses the Stack's Alignment.
 type positioned struct {
+	core.RenderObjectBase
 	child     core.Widget
 	alignment *graphics.Alignment
 	left      *float64
@@ -731,16 +716,6 @@ func (p positioned) At(left, top float64) positioned {
 	p.left = &left
 	p.top = &top
 	return p
-}
-
-// CreateElement returns a RenderObjectElement for this positioned.
-func (p positioned) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns nil (no key).
-func (p positioned) Key() any {
-	return nil
 }
 
 // ChildWidget returns the child widget.

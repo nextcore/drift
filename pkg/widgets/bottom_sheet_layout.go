@@ -19,20 +19,13 @@ type sheetMetrics struct {
 
 // bottomSheetPositioner positions the sheet at the bottom of the screen.
 type bottomSheetPositioner struct {
+	core.RenderObjectBase
 	Extent       float64
 	TopInset     float64
 	BottomInset  float64
 	ContentSized bool
 	Child        core.Widget
 	OnMetrics    func(sheetMetrics)
-}
-
-func (b bottomSheetPositioner) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (b bottomSheetPositioner) Key() any {
-	return nil
 }
 
 func (b bottomSheetPositioner) ChildWidget() core.Widget {
@@ -212,20 +205,13 @@ func (r *renderBottomSheetPositioner) HitTest(position graphics.Offset, result *
 
 // bottomSheetBody lays out the handle and content inside the sheet.
 type bottomSheetBody struct {
+	core.RenderObjectBase
 	Handle       core.Widget
 	Content      core.Widget
 	BottomInset  float64
 	Background   graphics.Color
 	BorderRadius float64
 	ContentSized bool
-}
-
-func (b bottomSheetBody) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (b bottomSheetBody) Key() any {
-	return nil
 }
 
 func (b bottomSheetBody) ChildrenWidgets() []core.Widget {

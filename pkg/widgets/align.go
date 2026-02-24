@@ -25,16 +25,9 @@ import (
 //   - [Center] for centering (equivalent to Align with AlignmentCenter)
 //   - [Container] for combined alignment, padding, and decoration
 type Align struct {
+	core.RenderObjectBase
 	Child     core.Widget
 	Alignment layout.Alignment
-}
-
-func (a Align) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (a Align) Key() any {
-	return nil
 }
 
 func (a Align) ChildWidget() core.Widget {

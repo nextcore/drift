@@ -76,18 +76,11 @@ func (s ScrollView) Build(ctx core.BuildContext) core.Widget {
 
 // scrollViewCore is the internal render object widget for ScrollView.
 type scrollViewCore struct {
+	core.RenderObjectBase
 	Child           core.Widget
 	ScrollDirection Axis
 	Controller      *ScrollController
 	Physics         ScrollPhysics
-}
-
-func (s scrollViewCore) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s scrollViewCore) Key() any {
-	return nil
 }
 
 func (s scrollViewCore) ChildWidget() core.Widget {
@@ -277,7 +270,6 @@ func (r *renderScrollView) HandlePointer(event gestures.PointerEvent) {
 		recognizer.HandleEvent(event)
 	}
 }
-
 
 func (r *renderScrollView) configureDrag() {
 	onStart := func(details gestures.DragStartDetails) {

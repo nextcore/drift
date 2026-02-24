@@ -44,6 +44,7 @@ import (
 //	    },
 //	}
 type Expanded struct {
+	core.RenderObjectBase
 	// Child is the widget to expand into the available space.
 	Child core.Widget
 
@@ -53,16 +54,6 @@ type Expanded struct {
 	// For example, in a Row with two Expanded children where one has Flex: 1
 	// and the other has Flex: 2, the remaining space is split 1:2.
 	Flex int
-}
-
-// CreateElement returns a RenderObjectElement for this Expanded.
-func (e Expanded) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns nil (no key).
-func (e Expanded) Key() any {
-	return nil
 }
 
 // ChildWidget returns the child widget.

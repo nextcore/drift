@@ -142,6 +142,7 @@ func (r Radio[T]) Build(ctx core.BuildContext) core.Widget {
 }
 
 type radioRender[T any] struct {
+	core.RenderObjectBase
 	selected        bool
 	value           T
 	onChanged       func(T)
@@ -150,14 +151,6 @@ type radioRender[T any] struct {
 	activeColor     graphics.Color
 	inactiveColor   graphics.Color
 	backgroundColor graphics.Color
-}
-
-func (r radioRender[T]) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (r radioRender[T]) Key() any {
-	return nil
 }
 
 func (r radioRender[T]) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

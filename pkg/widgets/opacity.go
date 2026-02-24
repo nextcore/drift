@@ -25,18 +25,11 @@ import (
 // Note: The layer bounds are based on this widget's size. Children that paint
 // outside their bounds (e.g., via transforms or overflow) may be clipped.
 type Opacity struct {
+	core.RenderObjectBase
 	// Opacity is the transparency value (0.0 to 1.0).
 	Opacity float64
 	// Child is the widget to which opacity is applied.
 	Child core.Widget
-}
-
-func (o Opacity) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (o Opacity) Key() any {
-	return nil
 }
 
 func (o Opacity) ChildWidget() core.Widget {

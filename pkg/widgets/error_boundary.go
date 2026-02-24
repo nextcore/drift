@@ -226,16 +226,9 @@ func ErrorBoundaryOf(ctx core.BuildContext) *errorBoundaryState {
 
 // errorBoundaryRenderWidget creates a render object that catches layout/paint/hittest panics.
 type errorBoundaryRenderWidget struct {
+	core.RenderObjectBase
 	state *errorBoundaryState
 	child core.Widget
-}
-
-func (e errorBoundaryRenderWidget) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (e errorBoundaryRenderWidget) Key() any {
-	return nil
 }
 
 func (e errorBoundaryRenderWidget) ChildWidget() core.Widget {

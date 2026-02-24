@@ -8,15 +8,8 @@ import (
 
 // View is the root widget that hosts the render tree.
 type View struct {
+	core.RenderObjectBase
 	Child core.Widget
-}
-
-func (v View) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (v View) Key() any {
-	return nil
 }
 
 // ChildWidget returns the single child for render object wiring.

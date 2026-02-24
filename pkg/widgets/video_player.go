@@ -25,6 +25,7 @@ import (
 // Width and Height set explicit dimensions. Use layout widgets such as [Expanded]
 // to fill available space.
 type VideoPlayer struct {
+	core.RenderObjectBase
 	// Controller provides the native video player surface and playback control.
 	Controller *platform.VideoPlayerController
 
@@ -38,16 +39,6 @@ type VideoPlayer struct {
 	// time display). Use this when building custom Drift widget controls on
 	// top of the video surface.
 	HideControls bool
-}
-
-// CreateElement creates the element for this render object widget.
-func (v VideoPlayer) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-// Key returns the widget key.
-func (v VideoPlayer) Key() any {
-	return nil
 }
 
 // CreateRenderObject creates the render object for this widget.

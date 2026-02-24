@@ -23,6 +23,7 @@ import (
 //	    ),
 //	}.WithStyle(graphics.SpanStyle{Color: colors.OnSurface, FontSize: 16})
 type RichText struct {
+	core.RenderObjectBase
 	// Content is the root span tree. Child spans inherit any style fields from
 	// their parent for fields left at their zero value.
 	Content graphics.TextSpan
@@ -59,14 +60,6 @@ func (r RichText) WithMaxLines(maxLines int) RichText {
 func (r RichText) WithAlign(align graphics.TextAlign) RichText {
 	r.Align = align
 	return r
-}
-
-func (r RichText) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (r RichText) Key() any {
-	return nil
 }
 
 func (r RichText) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

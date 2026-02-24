@@ -40,6 +40,7 @@ import (
 // For decorative images that don't convey information, set ExcludeFromSemantics
 // to true to hide them from screen readers.
 type Image struct {
+	core.RenderObjectBase
 	// Source is the image to render.
 	Source image.Image
 	// Width overrides the image width if non-zero.
@@ -109,14 +110,6 @@ func (i Image) WithSize(width, height float64) Image {
 func (i Image) WithAlignment(alignment layout.Alignment) Image {
 	i.Alignment = alignment
 	return i
-}
-
-func (i Image) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (i Image) Key() any {
-	return nil
 }
 
 func (i Image) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

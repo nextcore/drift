@@ -456,16 +456,9 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 }
 
 type dropdownScope struct {
+	core.RenderObjectBase
 	child core.Widget
 	owner dropdownCloser
-}
-
-func (d dropdownScope) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d dropdownScope) Key() any {
-	return nil
 }
 
 func (d dropdownScope) ChildWidget() core.Widget {
@@ -493,16 +486,9 @@ type renderDropdownScope struct {
 }
 
 type dropdownChevron struct {
+	core.RenderObjectBase
 	size  float64
 	color graphics.Color
-}
-
-func (d dropdownChevron) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (d dropdownChevron) Key() any {
-	return nil
 }
 
 func (d dropdownChevron) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

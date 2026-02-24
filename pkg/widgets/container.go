@@ -56,6 +56,7 @@ import (
 // Container supports all [DecoratedBox] features. For decoration without layout
 // behavior (no padding, sizing, or alignment), use DecoratedBox directly.
 type Container struct {
+	core.RenderObjectBase
 	Child     core.Widget
 	Padding   layout.EdgeInsets
 	Width     float64
@@ -133,14 +134,6 @@ func (c Container) WithBorder(color graphics.Color, width float64) Container {
 func (c Container) WithBorderGradient(gradient *graphics.Gradient) Container {
 	c.BorderGradient = gradient
 	return c
-}
-
-func (c Container) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (c Container) Key() any {
-	return nil
 }
 
 func (c Container) ChildWidget() core.Widget {

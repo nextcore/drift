@@ -144,6 +144,7 @@ func (s *circularProgressState) Build(ctx core.BuildContext) core.Widget {
 }
 
 type circularProgressRender struct {
+	core.RenderObjectBase
 	value       *float64
 	color       graphics.Color
 	trackColor  graphics.Color
@@ -151,14 +152,6 @@ type circularProgressRender struct {
 	size        float64
 	rotationRad float64
 	sweepRad    float64
-}
-
-func (c circularProgressRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (c circularProgressRender) Key() any {
-	return nil
 }
 
 func (c circularProgressRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

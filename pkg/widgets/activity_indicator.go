@@ -130,18 +130,11 @@ func (s *activityIndicatorState) ensurePlatformView() {
 }
 
 type activityIndicatorRender struct {
+	core.RenderObjectBase
 	state     *activityIndicatorState
 	animating bool
 	size      ActivityIndicatorSize
 	color     graphics.Color
-}
-
-func (a activityIndicatorRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (a activityIndicatorRender) Key() any {
-	return nil
 }
 
 func (a activityIndicatorRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

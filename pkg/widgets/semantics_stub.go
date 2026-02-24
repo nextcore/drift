@@ -12,6 +12,7 @@ import (
 // Semantics is a no-op widget on non-mobile platforms.
 // It just passes through to its child.
 type Semantics struct {
+	core.RenderObjectBase
 	Child                core.Widget
 	Label                string
 	Value                string
@@ -37,14 +38,6 @@ type Semantics struct {
 	OnDismiss            func()
 	CustomActions        []semantics.CustomSemanticsAction
 	CustomActionHandlers map[int64]func()
-}
-
-func (s Semantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (s Semantics) Key() any {
-	return nil
 }
 
 func (s Semantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
@@ -102,15 +95,8 @@ func (r *renderSemanticsStub) HitTest(position graphics.Offset, result *layout.H
 
 // MergeSemantics is a no-op widget on non-mobile platforms.
 type MergeSemantics struct {
+	core.RenderObjectBase
 	Child core.Widget
-}
-
-func (m MergeSemantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (m MergeSemantics) Key() any {
-	return nil
 }
 
 func (m MergeSemantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
@@ -168,6 +154,7 @@ func (r *renderMergeSemanticsStub) HitTest(position graphics.Offset, result *lay
 
 // ExcludeSemantics is a no-op on non-mobile platforms.
 type ExcludeSemantics struct {
+	core.RenderObjectBase
 	Child     core.Widget
 	Excluding bool
 }
@@ -175,14 +162,6 @@ type ExcludeSemantics struct {
 // NewExcludeSemantics creates an ExcludeSemantics widget (no-op on non-mobile platforms).
 func NewExcludeSemantics(child core.Widget) ExcludeSemantics {
 	return ExcludeSemantics{Excluding: true, Child: child}
-}
-
-func (e ExcludeSemantics) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (e ExcludeSemantics) Key() any {
-	return nil
 }
 
 func (e ExcludeSemantics) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {

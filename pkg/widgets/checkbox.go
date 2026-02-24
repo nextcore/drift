@@ -182,6 +182,7 @@ func (c Checkbox) Build(ctx core.BuildContext) core.Widget {
 }
 
 type checkboxRender struct {
+	core.RenderObjectBase
 	value           bool
 	onChanged       func(bool)
 	enabled         bool
@@ -191,14 +192,6 @@ type checkboxRender struct {
 	checkColor      graphics.Color
 	borderColor     graphics.Color
 	backgroundColor graphics.Color
-}
-
-func (c checkboxRender) CreateElement() core.Element {
-	return core.NewRenderObjectElement()
-}
-
-func (c checkboxRender) Key() any {
-	return nil
 }
 
 func (c checkboxRender) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
