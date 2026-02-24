@@ -152,7 +152,7 @@ func CheckboxOf(ctx core.BuildContext, value bool, onChanged func(bool)) widgets
 //	}, func(value string) {
 //	    s.SetState(func() { s.selectedPlan = value })
 //	})
-func DropdownOf[T any](ctx core.BuildContext, value T, items []widgets.DropdownItem[T], onChanged func(T)) widgets.Dropdown[T] {
+func DropdownOf[T comparable](ctx core.BuildContext, value T, items []widgets.DropdownItem[T], onChanged func(T)) widgets.Dropdown[T] {
 	th := ThemeOf(ctx).DropdownThemeOf()
 	return widgets.Dropdown[T]{
 		Value:               value,
@@ -290,7 +290,7 @@ func ToggleOf(ctx core.BuildContext, value bool, onChanged func(bool)) widgets.T
 //	theme.RadioOf(ctx, "email", selectedMethod, func(value string) {
 //	    s.SetState(func() { s.selectedMethod = value })
 //	})
-func RadioOf[T any](ctx core.BuildContext, value, groupValue T, onChanged func(T)) widgets.Radio[T] {
+func RadioOf[T comparable](ctx core.BuildContext, value, groupValue T, onChanged func(T)) widgets.Radio[T] {
 	th := ThemeOf(ctx).RadioThemeOf()
 	return widgets.Radio[T]{
 		Value:                 value,

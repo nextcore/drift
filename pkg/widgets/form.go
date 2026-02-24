@@ -366,7 +366,7 @@ var formScopeType = reflect.TypeFor[formScope]()
 //	        // Called when FormState.Save() is invoked
 //	    },
 //	}
-type FormField[T any] struct {
+type FormField[T comparable] struct {
 	core.StatefulBase
 
 	// InitialValue is the field's starting value.
@@ -400,7 +400,7 @@ func (f FormField[T]) CreateState() core.State {
 //   - Validate() bool: Runs the validator and returns true if valid.
 //   - Save(): Calls the OnSaved callback with the current value.
 //   - Reset(): Resets to InitialValue and clears errors.
-type FormFieldState[T any] struct {
+type FormFieldState[T comparable] struct {
 	formFieldStateBase
 	value           T
 	initializedOnce bool
@@ -451,7 +451,7 @@ func (s *FormFieldState[T]) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	if s.hasInteracted {
 		return
 	}
-	if !reflect.DeepEqual(oldField.InitialValue, newField.InitialValue) {
+	if oldField.InitialValue != newField.InitialValue {
 		s.value = newField.InitialValue
 		if newField.Autovalidate {
 			s.Validate()

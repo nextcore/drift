@@ -1,8 +1,6 @@
 package widgets
 
 import (
-	"reflect"
-
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/gestures"
 	"github.com/go-drift/drift/pkg/graphics"
@@ -62,7 +60,7 @@ import (
 //	        Text{Content: "Large"},
 //	    }},
 //	}}
-type Radio[T any] struct {
+type Radio[T comparable] struct {
 	core.StatelessBase
 
 	// Value is the value for this radio.
@@ -99,7 +97,7 @@ func (r Radio[T]) Build(ctx core.BuildContext) core.Widget {
 	size := r.Size
 
 	enabled := !r.Disabled && r.OnChanged != nil
-	selected := reflect.DeepEqual(r.Value, r.GroupValue)
+	selected := r.Value == r.GroupValue
 
 	// Apply disabled styling when not enabled (either Disabled=true or OnChanged=nil).
 	// This ensures widgets with nil handlers also appear disabled.

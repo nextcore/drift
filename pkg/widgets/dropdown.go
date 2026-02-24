@@ -3,7 +3,6 @@ package widgets
 import (
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 
 	"github.com/go-drift/drift/pkg/core"
@@ -13,7 +12,7 @@ import (
 )
 
 // DropdownItem represents a selectable value for a dropdown.
-type DropdownItem[T any] struct {
+type DropdownItem[T comparable] struct {
 	// Value is the item value.
 	Value T
 	// Label is the text shown for the item.
@@ -62,7 +61,7 @@ type DropdownItem[T any] struct {
 //
 // Each [DropdownItem] can have a custom Child instead of a text Label.
 // Items can be individually disabled by setting Disabled: true.
-type Dropdown[T any] struct {
+type Dropdown[T comparable] struct {
 	core.StatefulBase
 
 	// Value is the current selected value.
@@ -153,7 +152,7 @@ func (d Dropdown[T]) CreateState() core.State {
 	return &dropdownState[T]{}
 }
 
-type dropdownState[T any] struct {
+type dropdownState[T comparable] struct {
 	element  *core.StatefulElement
 	expanded bool
 }
@@ -274,7 +273,7 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 	selectedLabel := ""
 	var selectedChild core.Widget
 	for _, item := range w.Items {
-		if reflect.DeepEqual(item.Value, w.Value) {
+		if item.Value == w.Value {
 			selectedLabel = item.Label
 			selectedChild = item.Child
 			break
@@ -380,7 +379,7 @@ func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
 			itemChild = Text{Content: itemLabel, Style: textStyle}
 		}
 		itemBackground := graphics.ColorTransparent
-		isSelected := reflect.DeepEqual(item.Value, w.Value)
+		isSelected := item.Value == w.Value
 		if isSelected {
 			itemBackground = selectedItemColor
 		}
