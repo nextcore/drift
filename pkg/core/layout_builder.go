@@ -1,8 +1,6 @@
 package core
 
 import (
-	"reflect"
-
 	"github.com/go-drift/drift/pkg/layout"
 )
 
@@ -167,35 +165,6 @@ func (e *LayoutBuilderElement) VisitChildren(visitor func(Element) bool) {
 // RenderObject returns the render object owned by this element.
 func (e *LayoutBuilderElement) RenderObject() layout.RenderObject {
 	return e.renderObject
-}
-
-// FindAncestor walks up the element tree and returns the first ancestor
-// matching the predicate, or nil if none is found.
-func (e *LayoutBuilderElement) FindAncestor(predicate func(Element) bool) Element {
-	current := e.parent
-	for current != nil {
-		if predicate(current) {
-			return current
-		}
-		if base, ok := current.(interface{ parentElement() Element }); ok {
-			current = base.parentElement()
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-// DependOnInherited registers a dependency on the nearest ancestor
-// InheritedElement of the given type and returns its current value.
-func (e *LayoutBuilderElement) DependOnInherited(inheritedType reflect.Type, aspect any) any {
-	return dependOnInheritedImpl(e, inheritedType, aspect)
-}
-
-// DependOnInheritedWithAspects registers a dependency on the nearest ancestor
-// InheritedElement of the given type, filtered by the specified aspects.
-func (e *LayoutBuilderElement) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
-	return dependOnInheritedWithAspects(e, inheritedType, aspects...)
 }
 
 // renderObjectHost implementation: these methods allow descendant

@@ -52,6 +52,35 @@ func (e *elementBase) UpdateSlot(newSlot any) {
 	e.slot = newSlot
 }
 
+// FindAncestor walks up the element tree and returns the first ancestor
+// matching the predicate, or nil if none is found.
+func (e *elementBase) FindAncestor(predicate func(Element) bool) Element {
+	current := e.parent
+	for current != nil {
+		if predicate(current) {
+			return current
+		}
+		if base, ok := current.(interface{ parentElement() Element }); ok {
+			current = base.parentElement()
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
+// DependOnInherited registers a dependency on the nearest ancestor
+// InheritedElement of the given type and returns its current value.
+func (e *elementBase) DependOnInherited(inheritedType reflect.Type, aspect any) any {
+	return dependOnInheritedImpl(e.self, inheritedType, aspect)
+}
+
+// DependOnInheritedWithAspects registers a dependency on the nearest ancestor
+// InheritedElement of the given type, filtered by the specified aspects.
+func (e *elementBase) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
+	return dependOnInheritedWithAspects(e.self, inheritedType, aspects...)
+}
+
 // NeedsBuild reports whether this element is marked dirty and awaiting rebuild.
 func (e *elementBase) NeedsBuild() bool {
 	return e.dirty
@@ -240,29 +269,6 @@ func (e *StatelessElement) RenderObject() layout.RenderObject {
 	return nil
 }
 
-func (e *StatelessElement) FindAncestor(predicate func(Element) bool) Element {
-	current := e.parent
-	for current != nil {
-		if predicate(current) {
-			return current
-		}
-		if base, ok := current.(interface{ parentElement() Element }); ok {
-			current = base.parentElement()
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-func (e *StatelessElement) DependOnInherited(inheritedType reflect.Type, aspect any) any {
-	return dependOnInheritedImpl(e, inheritedType, aspect)
-}
-
-func (e *StatelessElement) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
-	return dependOnInheritedWithAspects(e, inheritedType, aspects...)
-}
-
 // StatefulElement hosts a StatefulWidget and its State.
 type StatefulElement struct {
 	elementBase
@@ -336,29 +342,6 @@ func (e *StatefulElement) RenderObject() layout.RenderObject {
 		return child.RenderObject()
 	}
 	return nil
-}
-
-func (e *StatefulElement) FindAncestor(predicate func(Element) bool) Element {
-	current := e.parent
-	for current != nil {
-		if predicate(current) {
-			return current
-		}
-		if base, ok := current.(interface{ parentElement() Element }); ok {
-			current = base.parentElement()
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-func (e *StatefulElement) DependOnInherited(inheritedType reflect.Type, aspect any) any {
-	return dependOnInheritedImpl(e, inheritedType, aspect)
-}
-
-func (e *StatefulElement) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
-	return dependOnInheritedWithAspects(e, inheritedType, aspects...)
 }
 
 // RenderObjectElement hosts a RenderObject and optional children.
@@ -450,29 +433,6 @@ func (e *RenderObjectElement) VisitChildren(visitor func(Element) bool) {
 			return
 		}
 	}
-}
-
-func (e *RenderObjectElement) FindAncestor(predicate func(Element) bool) Element {
-	current := e.parent
-	for current != nil {
-		if predicate(current) {
-			return current
-		}
-		if base, ok := current.(interface{ parentElement() Element }); ok {
-			current = base.parentElement()
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-func (e *RenderObjectElement) DependOnInherited(inheritedType reflect.Type, aspect any) any {
-	return dependOnInheritedImpl(e, inheritedType, aspect)
-}
-
-func (e *RenderObjectElement) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
-	return dependOnInheritedWithAspects(e, inheritedType, aspects...)
 }
 
 // RenderObject exposes the backing render object for the element.

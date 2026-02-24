@@ -139,29 +139,6 @@ func (e *InheritedElement) RenderObject() layout.RenderObject {
 	return nil
 }
 
-func (e *InheritedElement) FindAncestor(predicate func(Element) bool) Element {
-	current := e.parent
-	for current != nil {
-		if predicate(current) {
-			return current
-		}
-		if base, ok := current.(interface{ parentElement() Element }); ok {
-			current = base.parentElement()
-		} else {
-			break
-		}
-	}
-	return nil
-}
-
-func (e *InheritedElement) DependOnInherited(inheritedType reflect.Type, aspect any) any {
-	return dependOnInheritedImpl(e, inheritedType, aspect)
-}
-
-func (e *InheritedElement) DependOnInheritedWithAspects(inheritedType reflect.Type, aspects ...any) any {
-	return dependOnInheritedWithAspects(e, inheritedType, aspects...)
-}
-
 // AddDependent registers an element as depending on this inherited widget.
 // If aspect is non-nil, it's added to the dependent's aspect set for granular tracking.
 // If aspect is nil, a sentinel is added indicating the widget depends on all changes.
