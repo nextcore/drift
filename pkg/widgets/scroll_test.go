@@ -16,7 +16,7 @@ func TestScrollView_VerticalScrollRejectsHorizontal(t *testing.T) {
 	}
 	scroll.SetSelf(scroll)
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	if scroll.verticalDrag == nil {
 		t.Fatal("verticalDrag recognizer should be created for vertical scroll")
@@ -75,7 +75,7 @@ func TestScrollView_VerticalScrollAcceptsVertical(t *testing.T) {
 	scroll.SetSize(graphics.Size{Width: 400, Height: 600})
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
 	scroll.position.SetExtents(0, 1000) // Content is taller than viewport
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	// Track scroll updates
 	var scrolled bool
@@ -130,7 +130,7 @@ func TestScrollView_HorizontalScrollRejectsVertical(t *testing.T) {
 	}
 	scroll.SetSelf(scroll)
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	if scroll.horizontalDrag == nil {
 		t.Fatal("horizontalDrag recognizer should be created for horizontal scroll")
@@ -189,7 +189,7 @@ func TestScrollView_HorizontalScrollAcceptsHorizontal(t *testing.T) {
 	scroll.SetSize(graphics.Size{Width: 400, Height: 600})
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
 	scroll.position.SetExtents(0, 1000) // Content is wider than viewport
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	// Track scroll updates
 	var scrolled bool
@@ -243,7 +243,7 @@ func TestScrollView_DirectionChange(t *testing.T) {
 	}
 	scroll.SetSelf(scroll)
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	if scroll.verticalDrag == nil {
 		t.Error("Should have verticalDrag for AxisVertical")
@@ -254,7 +254,7 @@ func TestScrollView_DirectionChange(t *testing.T) {
 
 	// Change direction
 	scroll.direction = AxisHorizontal
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	if scroll.horizontalDrag == nil {
 		t.Error("Should have horizontalDrag after direction change")
@@ -273,7 +273,7 @@ func TestScrollView_PrimaryVelocityUsed(t *testing.T) {
 	scroll.SetSize(graphics.Size{Width: 400, Height: 600})
 	scroll.position = NewScrollPosition(nil, scroll.physics, func() {})
 	scroll.position.SetExtents(0, 1000)
-	scroll.configurePan()
+	scroll.configureDrag()
 
 	// The configureDrag should set up handlers that use PrimaryDelta and PrimaryVelocity
 	// This test verifies the recognizer is wired up correctly by checking the handler exists

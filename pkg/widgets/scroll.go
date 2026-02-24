@@ -113,7 +113,7 @@ func (s scrollViewCore) CreateRenderObject(ctx core.BuildContext) layout.RenderO
 		scroll.MarkNeedsPaint()
 		scroll.MarkNeedsSemanticsUpdate()
 	})
-	scroll.configurePan()
+	scroll.configureDrag()
 	return scroll
 }
 
@@ -122,7 +122,7 @@ func (s scrollViewCore) UpdateRenderObject(ctx core.BuildContext, renderObject l
 		scroll.direction = s.ScrollDirection
 		scroll.updateController(s.Controller)
 		scroll.updatePhysics(s.Physics)
-		scroll.configurePan()
+		scroll.configureDrag()
 		scroll.MarkNeedsLayout()
 		scroll.MarkNeedsPaint()
 	}
@@ -278,9 +278,6 @@ func (r *renderScrollView) HandlePointer(event gestures.PointerEvent) {
 	}
 }
 
-func (r *renderScrollView) configurePan() {
-	r.configureDrag()
-}
 
 func (r *renderScrollView) configureDrag() {
 	onStart := func(details gestures.DragStartDetails) {
