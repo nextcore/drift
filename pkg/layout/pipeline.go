@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"cmp"
 	"reflect"
 	"slices"
 )
@@ -280,19 +281,10 @@ func typeCountsForList(items []RenderObject, limit int) []TypeCount {
 	}
 
 	slices.SortFunc(result, func(a, b TypeCount) int {
-		if a.Count == b.Count {
-			if a.Type == b.Type {
-				return 0
-			}
-			if a.Type < b.Type {
-				return -1
-			}
-			return 1
+		if c := cmp.Compare(b.Count, a.Count); c != 0 { // descending by count
+			return c
 		}
-		if a.Count > b.Count {
-			return -1
-		}
-		return 1
+		return cmp.Compare(a.Type, b.Type) // ascending by type
 	})
 
 	if len(result) > limit {
