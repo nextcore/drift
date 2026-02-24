@@ -107,13 +107,13 @@ type renderStack struct {
 func (r *renderStack) SetChildren(children []layout.RenderObject) {
 	// Clear parent on old children
 	for _, child := range r.children {
-		setParentOnChild(child, nil)
+		layout.SetParentOnChild(child, nil)
 	}
 	r.children = make([]layout.RenderBox, 0, len(children))
 	for _, child := range children {
 		if box, ok := child.(layout.RenderBox); ok {
 			r.children = append(r.children, box)
-			setParentOnChild(box, r)
+			layout.SetParentOnChild(box, r)
 		}
 	}
 }
@@ -144,7 +144,7 @@ func (r *renderStack) Paint(ctx *layout.PaintContext) {
 
 // HitTest tests children in reverse order (topmost first).
 func (r *renderStack) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if hitTestChildrenReverse(r.children, position, result) {
@@ -524,13 +524,13 @@ type renderIndexedStack struct {
 func (r *renderIndexedStack) SetChildren(children []layout.RenderObject) {
 	// Clear parent on old children
 	for _, child := range r.children {
-		setParentOnChild(child, nil)
+		layout.SetParentOnChild(child, nil)
 	}
 	r.children = make([]layout.RenderBox, 0, len(children))
 	for _, child := range children {
 		if box, ok := child.(layout.RenderBox); ok {
 			r.children = append(r.children, box)
-			setParentOnChild(box, r)
+			layout.SetParentOnChild(box, r)
 		}
 	}
 }
@@ -589,7 +589,7 @@ func (r *renderIndexedStack) activeChild() layout.RenderBox {
 }
 
 func (r *renderIndexedStack) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	child := r.activeChild()
@@ -765,14 +765,14 @@ type renderPositioned struct {
 }
 
 func (r *renderPositioned) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	if child == nil {
 		r.child = nil
 		return
 	}
 	if box, ok := child.(layout.RenderBox); ok {
 		r.child = box
-		setParentOnChild(r.child, r)
+		layout.SetParentOnChild(r.child, r)
 	}
 }
 

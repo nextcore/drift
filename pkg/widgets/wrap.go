@@ -260,13 +260,13 @@ type renderWrap struct {
 
 func (r *renderWrap) SetChildren(children []layout.RenderObject) {
 	for _, child := range r.children {
-		setParentOnChild(child, nil)
+		layout.SetParentOnChild(child, nil)
 	}
 	r.children = r.children[:0]
 	for _, child := range children {
 		if box, ok := child.(layout.RenderBox); ok {
 			r.children = append(r.children, box)
-			setParentOnChild(box, r)
+			layout.SetParentOnChild(box, r)
 		}
 	}
 }
@@ -503,7 +503,7 @@ func (r *renderWrap) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderWrap) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	for i := len(r.children) - 1; i >= 0; i-- {

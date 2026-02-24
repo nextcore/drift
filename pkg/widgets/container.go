@@ -203,9 +203,9 @@ type renderContainer struct {
 }
 
 func (r *renderContainer) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderContainer) VisitChildren(visitor func(layout.RenderObject)) {
@@ -308,7 +308,7 @@ func (r *renderContainer) OcclusionPath() *graphics.Path {
 }
 
 func (r *renderContainer) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	offset := getChildOffset(r.child)

@@ -190,9 +190,9 @@ func (r *renderSemantics) update(s Semantics) {
 }
 
 func (r *renderSemantics) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderSemantics) VisitChildren(visitor func(layout.RenderObject)) {
@@ -292,9 +292,9 @@ type renderExcludeSemantics struct {
 }
 
 func (r *renderExcludeSemantics) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderExcludeSemantics) VisitChildren(visitor func(layout.RenderObject)) {
@@ -364,9 +364,9 @@ type renderMergeSemantics struct {
 }
 
 func (r *renderMergeSemantics) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderMergeSemantics) VisitChildren(visitor func(layout.RenderObject)) {

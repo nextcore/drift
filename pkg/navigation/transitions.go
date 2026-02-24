@@ -8,36 +8,6 @@ import (
 	"github.com/go-drift/drift/pkg/semantics"
 )
 
-// setParentOnChild sets the parent reference on a child render object.
-func setParentOnChild(child, parent layout.RenderObject) {
-	if child == nil {
-		return
-	}
-	getter, _ := child.(interface{ Parent() layout.RenderObject })
-	setter, ok := child.(interface{ SetParent(layout.RenderObject) })
-	if !ok {
-		return
-	}
-	currentParent := layout.RenderObject(nil)
-	if getter != nil {
-		currentParent = getter.Parent()
-	}
-	if currentParent == parent {
-		return
-	}
-	setter.SetParent(parent)
-	if currentParent != nil {
-		if marker, ok := currentParent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-	if parent != nil {
-		if marker, ok := parent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-}
-
 // backgroundParallaxFactor controls how far the background page shifts left
 // during a foreground push/pop transition (fraction of page width).
 const backgroundParallaxFactor = 0.33
@@ -72,8 +42,8 @@ func (s SlideTransition) ChildWidget() core.Widget {
 // CreateRenderObject creates the RenderSlideTransition.
 func (s SlideTransition) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	slide := &renderSlideTransition{
-		animation: s.Animation,
-		direction: s.Direction,
+		transitionRenderBase: transitionRenderBase{animation: s.Animation},
+		direction:            s.Direction,
 	}
 	slide.SetSelf(slide)
 	slide.subscribeAnimation()
@@ -93,15 +63,15 @@ func (s SlideTransition) UpdateRenderObject(ctx core.BuildContext, renderObject 
 	}
 }
 
-type renderSlideTransition struct {
+// transitionRenderBase provides shared functionality for all transition render types.
+type transitionRenderBase struct {
 	layout.RenderBoxBase
 	child       layout.RenderBox
 	animation   *animation.AnimationController
-	direction   SlideDirection
 	unsubscribe func()
 }
 
-func (r *renderSlideTransition) subscribeAnimation() {
+func (r *transitionRenderBase) subscribeAnimation() {
 	if r.animation != nil {
 		r.unsubscribe = r.animation.AddListener(func() {
 			r.MarkNeedsPaint()
@@ -109,39 +79,39 @@ func (r *renderSlideTransition) subscribeAnimation() {
 	}
 }
 
-func (r *renderSlideTransition) unsubscribeAnimation() {
+func (r *transitionRenderBase) unsubscribeAnimation() {
 	if r.unsubscribe != nil {
 		r.unsubscribe()
 		r.unsubscribe = nil
 	}
 }
 
-func (r *renderSlideTransition) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+func (r *transitionRenderBase) SetChild(child layout.RenderObject) {
+	layout.SetParentOnChild(r.child, nil)
 	if child == nil {
 		r.child = nil
 		return
 	}
 	if box, ok := child.(layout.RenderBox); ok {
 		r.child = box
-		setParentOnChild(r.child, r)
+		layout.SetParentOnChild(r.child, r.Self())
 	}
 }
 
-func (r *renderSlideTransition) VisitChildren(visitor func(layout.RenderObject)) {
+func (r *transitionRenderBase) VisitChildren(visitor func(layout.RenderObject)) {
 	if r.child != nil {
 		visitor(r.child)
 	}
 }
 
-// DescribeSemanticsConfiguration makes the slide transition act as a semantic container.
+// DescribeSemanticsConfiguration makes the transition act as a semantic container.
 // This ensures all page content is grouped under one node for accessibility navigation.
-func (r *renderSlideTransition) DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool {
+func (r *transitionRenderBase) DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool {
 	config.IsSemanticBoundary = true
 	return true
 }
 
-func (r *renderSlideTransition) PerformLayout() {
+func (r *transitionRenderBase) PerformLayout() {
 	constraints := r.Constraints()
 	if r.child != nil {
 		r.child.Layout(constraints, true) // true: we read child.Size()
@@ -150,6 +120,23 @@ func (r *renderSlideTransition) PerformLayout() {
 	} else {
 		r.SetSize(constraints.Constrain(graphics.Size{}))
 	}
+}
+
+func (r *transitionRenderBase) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
+	if r.child == nil {
+		return false
+	}
+	return r.child.HitTest(position, result)
+}
+
+func (r *transitionRenderBase) Dispose() {
+	r.unsubscribeAnimation()
+	r.RenderBoxBase.Dispose()
+}
+
+type renderSlideTransition struct {
+	transitionRenderBase
+	direction SlideDirection
 }
 
 func (r *renderSlideTransition) slideOffset() graphics.Offset {
@@ -187,18 +174,6 @@ func (r *renderSlideTransition) Paint(ctx *layout.PaintContext) {
 	ctx.PaintChildWithLayer(r.child, offset)
 }
 
-func (r *renderSlideTransition) Dispose() {
-	r.unsubscribeAnimation()
-	r.RenderBoxBase.Dispose()
-}
-
-func (r *renderSlideTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child == nil {
-		return false
-	}
-	return r.child.HitTest(position, result)
-}
-
 // BackgroundSlideTransition slides its child to the left as a foreground page
 // enters. At animation value 0 the child is at its normal position; at value 1
 // the child is shifted left by 33% of the width.
@@ -216,7 +191,7 @@ func (b BackgroundSlideTransition) ChildWidget() core.Widget {
 // CreateRenderObject creates the renderBackgroundSlideTransition.
 func (b BackgroundSlideTransition) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	r := &renderBackgroundSlideTransition{
-		animation: b.Animation,
+		transitionRenderBase: transitionRenderBase{animation: b.Animation},
 	}
 	r.SetSelf(r)
 	r.subscribeAnimation()
@@ -236,54 +211,7 @@ func (b BackgroundSlideTransition) UpdateRenderObject(ctx core.BuildContext, ren
 }
 
 type renderBackgroundSlideTransition struct {
-	layout.RenderBoxBase
-	child       layout.RenderBox
-	animation   *animation.AnimationController
-	unsubscribe func()
-}
-
-func (r *renderBackgroundSlideTransition) subscribeAnimation() {
-	if r.animation != nil {
-		r.unsubscribe = r.animation.AddListener(func() {
-			r.MarkNeedsPaint()
-		})
-	}
-}
-
-func (r *renderBackgroundSlideTransition) unsubscribeAnimation() {
-	if r.unsubscribe != nil {
-		r.unsubscribe()
-		r.unsubscribe = nil
-	}
-}
-
-func (r *renderBackgroundSlideTransition) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	if child == nil {
-		r.child = nil
-		return
-	}
-	if box, ok := child.(layout.RenderBox); ok {
-		r.child = box
-		setParentOnChild(r.child, r)
-	}
-}
-
-func (r *renderBackgroundSlideTransition) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderBackgroundSlideTransition) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true)
-		r.SetSize(r.child.Size())
-		r.child.SetParentData(&layout.BoxParentData{})
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
+	transitionRenderBase
 }
 
 func (r *renderBackgroundSlideTransition) slideOffset() graphics.Offset {
@@ -307,18 +235,6 @@ func (r *renderBackgroundSlideTransition) Paint(ctx *layout.PaintContext) {
 	ctx.PaintChildWithLayer(r.child, offset)
 }
 
-func (r *renderBackgroundSlideTransition) Dispose() {
-	r.unsubscribeAnimation()
-	r.RenderBoxBase.Dispose()
-}
-
-func (r *renderBackgroundSlideTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child == nil {
-		return false
-	}
-	return r.child.HitTest(position, result)
-}
-
 // FadeTransition animates the opacity of its child.
 type FadeTransition struct {
 	core.RenderObjectBase
@@ -334,7 +250,7 @@ func (f FadeTransition) ChildWidget() core.Widget {
 // CreateRenderObject creates the RenderFadeTransition.
 func (f FadeTransition) CreateRenderObject(ctx core.BuildContext) layout.RenderObject {
 	fade := &renderFadeTransition{
-		animation: f.Animation,
+		transitionRenderBase: transitionRenderBase{animation: f.Animation},
 	}
 	fade.SetSelf(fade)
 	fade.subscribeAnimation()
@@ -354,61 +270,7 @@ func (f FadeTransition) UpdateRenderObject(ctx core.BuildContext, renderObject l
 }
 
 type renderFadeTransition struct {
-	layout.RenderBoxBase
-	child       layout.RenderBox
-	animation   *animation.AnimationController
-	unsubscribe func()
-}
-
-func (r *renderFadeTransition) subscribeAnimation() {
-	if r.animation != nil {
-		r.unsubscribe = r.animation.AddListener(func() {
-			r.MarkNeedsPaint()
-		})
-	}
-}
-
-func (r *renderFadeTransition) unsubscribeAnimation() {
-	if r.unsubscribe != nil {
-		r.unsubscribe()
-		r.unsubscribe = nil
-	}
-}
-
-func (r *renderFadeTransition) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	if child == nil {
-		r.child = nil
-		return
-	}
-	if box, ok := child.(layout.RenderBox); ok {
-		r.child = box
-		setParentOnChild(r.child, r)
-	}
-}
-
-func (r *renderFadeTransition) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-// DescribeSemanticsConfiguration makes the fade transition act as a semantic container.
-// This ensures all page content is grouped under one node for accessibility navigation.
-func (r *renderFadeTransition) DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool {
-	config.IsSemanticBoundary = true
-	return true
-}
-
-func (r *renderFadeTransition) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true) // true: we read child.Size()
-		r.SetSize(r.child.Size())
-		r.child.SetParentData(&layout.BoxParentData{})
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
+	transitionRenderBase
 }
 
 func (r *renderFadeTransition) Paint(ctx *layout.PaintContext) {
@@ -431,16 +293,4 @@ func (r *renderFadeTransition) Paint(ctx *layout.PaintContext) {
 	ctx.Canvas.SaveLayerAlpha(bounds, opacity)
 	ctx.PaintChildWithLayer(r.child, graphics.Offset{})
 	ctx.Canvas.Restore()
-}
-
-func (r *renderFadeTransition) Dispose() {
-	r.unsubscribeAnimation()
-	r.RenderBoxBase.Dispose()
-}
-
-func (r *renderFadeTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child == nil {
-		return false
-	}
-	return r.child.HitTest(position, result)
 }

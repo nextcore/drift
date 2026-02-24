@@ -60,10 +60,10 @@ type renderOverlay struct {
 func (r *renderOverlay) SetChildren(children []layout.RenderObject) {
 	// Clear parent on old children
 	if r.child != nil {
-		setParentOnChild(r.child, nil)
+		layout.SetParentOnChild(r.child, nil)
 	}
 	for _, entry := range r.entries {
-		setParentOnChild(entry, nil)
+		layout.SetParentOnChild(entry, nil)
 	}
 
 	r.child = nil
@@ -77,7 +77,7 @@ func (r *renderOverlay) SetChildren(children []layout.RenderObject) {
 	if r.hasChild {
 		if box, ok := children[0].(layout.RenderBox); ok {
 			r.child = box
-			setParentOnChild(r.child, r)
+			layout.SetParentOnChild(r.child, r)
 		}
 		startIdx = 1
 	}
@@ -86,7 +86,7 @@ func (r *renderOverlay) SetChildren(children []layout.RenderObject) {
 	for i := startIdx; i < len(children); i++ {
 		if box, ok := children[i].(layout.RenderBox); ok {
 			r.entries = append(r.entries, box)
-			setParentOnChild(box, r)
+			layout.SetParentOnChild(box, r)
 		}
 	}
 }
@@ -174,7 +174,7 @@ func (r *renderOverlay) Paint(ctx *layout.PaintContext) {
 // When any entry is marked Opaque, hits don't pass through to the child
 // (page content), but other overlay entries can still receive hits.
 func (r *renderOverlay) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 
@@ -216,37 +216,4 @@ func getChildOffset(child layout.RenderBox) graphics.Offset {
 	return graphics.Offset{}
 }
 
-// withinBounds checks if a position is within the given size.
-func withinBounds(position graphics.Offset, size graphics.Size) bool {
-	return position.X >= 0 && position.Y >= 0 && position.X <= size.Width && position.Y <= size.Height
-}
 
-// setParentOnChild sets the parent reference on a child render object.
-func setParentOnChild(child, parent layout.RenderObject) {
-	if child == nil {
-		return
-	}
-	getter, _ := child.(interface{ Parent() layout.RenderObject })
-	setter, ok := child.(interface{ SetParent(layout.RenderObject) })
-	if !ok {
-		return
-	}
-	currentParent := layout.RenderObject(nil)
-	if getter != nil {
-		currentParent = getter.Parent()
-	}
-	if currentParent == parent {
-		return
-	}
-	setter.SetParent(parent)
-	if currentParent != nil {
-		if marker, ok := currentParent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-	if parent != nil {
-		if marker, ok := parent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-}

@@ -197,7 +197,7 @@ func (r *renderActivityIndicator) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderActivityIndicator) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)

@@ -59,9 +59,9 @@ type renderSemanticsStub struct {
 }
 
 func (r *renderSemanticsStub) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {
@@ -118,9 +118,9 @@ type renderMergeSemanticsStub struct {
 }
 
 func (r *renderMergeSemanticsStub) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderMergeSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {
@@ -183,9 +183,9 @@ type renderExcludeSemanticsStub struct {
 }
 
 func (r *renderExcludeSemanticsStub) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	r.child = child
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderExcludeSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {

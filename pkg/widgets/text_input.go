@@ -703,7 +703,7 @@ func (r *renderTextInput) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderTextInput) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)

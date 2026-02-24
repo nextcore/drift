@@ -99,14 +99,14 @@ type renderFlexChild struct {
 
 // SetChild sets the child render object.
 func (r *renderFlexChild) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	if child == nil {
 		r.child = nil
 		return
 	}
 	if box, ok := child.(layout.RenderBox); ok {
 		r.child = box
-		setParentOnChild(r.child, r)
+		layout.SetParentOnChild(r.child, r)
 	}
 }
 
@@ -156,7 +156,7 @@ func (r *renderFlexChild) Paint(ctx *layout.PaintContext) {
 
 // HitTest tests if the position hits this widget.
 func (r *renderFlexChild) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil {

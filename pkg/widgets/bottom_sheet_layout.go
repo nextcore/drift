@@ -73,9 +73,9 @@ type renderBottomSheetPositioner struct {
 }
 
 func (r *renderBottomSheetPositioner) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderBottomSheetPositioner) VisitChildren(visitor func(layout.RenderObject)) {
@@ -263,20 +263,20 @@ type renderBottomSheetBody struct {
 }
 
 func (r *renderBottomSheetBody) SetChildren(children []layout.RenderObject) {
-	setParentOnChild(r.handle, nil)
-	setParentOnChild(r.content, nil)
+	layout.SetParentOnChild(r.handle, nil)
+	layout.SetParentOnChild(r.content, nil)
 	r.handle = nil
 	r.content = nil
 	if len(children) > 0 {
 		if box, ok := children[0].(layout.RenderBox); ok {
 			r.handle = box
-			setParentOnChild(r.handle, r)
+			layout.SetParentOnChild(r.handle, r)
 		}
 	}
 	if len(children) > 1 {
 		if box, ok := children[1].(layout.RenderBox); ok {
 			r.content = box
-			setParentOnChild(r.content, r)
+			layout.SetParentOnChild(r.content, r)
 		}
 	}
 }
@@ -394,7 +394,7 @@ func (r *renderBottomSheetBody) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderBottomSheetBody) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.handle != nil {

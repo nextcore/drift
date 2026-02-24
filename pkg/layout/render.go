@@ -230,6 +230,11 @@ func (r *RenderBoxBase) SetSelf(self RenderObject) {
 	r.needsSemanticsUpdate = true // New render objects always need initial semantics
 }
 
+// Self returns the concrete render object registered via SetSelf.
+func (r *RenderBoxBase) Self() RenderObject {
+	return r.self
+}
+
 // Parent returns the parent render object.
 func (r *RenderBoxBase) Parent() RenderObject {
 	return r.parent
@@ -503,4 +508,43 @@ func (r *RenderBoxBase) MarkNeedsSemanticsUpdate() {
 // Override this method in render objects that provide semantic information.
 func (r *RenderBoxBase) DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool {
 	return false
+}
+
+// SetParentOnChild sets the parent reference on a child render object.
+// It marks both the old and new parent as needing layout when the parent changes.
+func SetParentOnChild(child, parent RenderObject) {
+	if child == nil {
+		return
+	}
+	getter, _ := child.(interface{ Parent() RenderObject })
+	setter, ok := child.(interface{ SetParent(RenderObject) })
+	if !ok {
+		return
+	}
+	currentParent := RenderObject(nil)
+	if getter != nil {
+		currentParent = getter.Parent()
+	}
+	if currentParent == parent {
+		return
+	}
+	setter.SetParent(parent)
+	if currentParent != nil {
+		currentParent.MarkNeedsLayout()
+	}
+	if parent != nil {
+		parent.MarkNeedsLayout()
+	}
+}
+
+// AsRenderBox converts a RenderObject to a RenderBox.
+// Returns nil if the child is nil or not a RenderBox.
+func AsRenderBox(child RenderObject) RenderBox {
+	box, _ := child.(RenderBox)
+	return box
+}
+
+// WithinBounds checks if a position is within the given size.
+func WithinBounds(position graphics.Offset, size graphics.Size) bool {
+	return position.X >= 0 && position.Y >= 0 && position.X <= size.Width && position.Y <= size.Height
 }

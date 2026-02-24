@@ -63,9 +63,9 @@ func (r *renderOpacity) IsRepaintBoundary() bool {
 }
 
 func (r *renderOpacity) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderOpacity) VisitChildren(visitor func(layout.RenderObject)) {
@@ -106,7 +106,7 @@ func (r *renderOpacity) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderOpacity) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	// Don't respond to hit tests when fully transparent

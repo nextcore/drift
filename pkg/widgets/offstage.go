@@ -50,9 +50,9 @@ type renderOffstage struct {
 }
 
 func (r *renderOffstage) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 	// Clear cached size/constraints when the child changes.
 	r.lastChildSize = graphics.Size{}
 	r.lastChildConstraints = layout.Constraints{}
@@ -90,7 +90,7 @@ func (r *renderOffstage) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderOffstage) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child == nil || r.offstage || !withinBounds(position, r.Size()) {
+	if r.child == nil || r.offstage || !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	offset := getChildOffset(r.child)

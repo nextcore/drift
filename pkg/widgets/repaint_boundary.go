@@ -40,9 +40,9 @@ func (r *renderRepaintBoundary) IsRepaintBoundary() bool {
 }
 
 func (r *renderRepaintBoundary) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderRepaintBoundary) VisitChildren(visitor func(layout.RenderObject)) {
@@ -68,7 +68,7 @@ func (r *renderRepaintBoundary) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderRepaintBoundary) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil {

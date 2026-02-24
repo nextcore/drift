@@ -536,7 +536,7 @@ func (r *renderDropdownChevron) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderDropdownChevron) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)
@@ -544,9 +544,9 @@ func (r *renderDropdownChevron) HitTest(position graphics.Offset, result *layout
 }
 
 func (r *renderDropdownScope) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderDropdownScope) VisitChildren(visitor func(layout.RenderObject)) {
@@ -573,7 +573,7 @@ func (r *renderDropdownScope) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderDropdownScope) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil {

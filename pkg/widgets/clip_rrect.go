@@ -38,9 +38,9 @@ type renderClipRRect struct {
 }
 
 func (r *renderClipRRect) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderClipRRect) VisitChildren(visitor func(layout.RenderObject)) {
@@ -87,7 +87,7 @@ func (r *renderClipRRect) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderClipRRect) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil && r.child.HitTest(position, result) {

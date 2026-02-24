@@ -108,7 +108,7 @@ func (r *renderNativeWebView) PlatformViewID() int64 {
 }
 
 func (r *renderNativeWebView) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)

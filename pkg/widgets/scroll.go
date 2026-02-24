@@ -138,14 +138,14 @@ func (r *renderScrollView) IsRepaintBoundary() bool {
 }
 
 func (r *renderScrollView) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
+	layout.SetParentOnChild(r.child, nil)
 	if child == nil {
 		r.child = nil
 		return
 	}
 	if box, ok := child.(layout.RenderBox); ok {
 		r.child = box
-		setParentOnChild(r.child, r)
+		layout.SetParentOnChild(r.child, r)
 	}
 }
 

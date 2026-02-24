@@ -113,9 +113,9 @@ type renderDecoratedBox struct {
 }
 
 func (r *renderDecoratedBox) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderDecoratedBox) VisitChildren(visitor func(layout.RenderObject)) {
@@ -180,7 +180,7 @@ func (r *renderDecoratedBox) OcclusionPath() *graphics.Path {
 }
 
 func (r *renderDecoratedBox) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil && r.child.HitTest(position, result) {

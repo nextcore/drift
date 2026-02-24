@@ -39,9 +39,9 @@ func (r *renderView) IsRepaintBoundary() bool {
 }
 
 func (r *renderView) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderView) VisitChildren(visitor func(layout.RenderObject)) {

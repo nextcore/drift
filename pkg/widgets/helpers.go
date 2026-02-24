@@ -17,48 +17,6 @@ func getChildOffset(child layout.RenderBox) graphics.Offset {
 	return graphics.Offset{}
 }
 
-// withinBounds checks if a position is within the given size.
-func withinBounds(position graphics.Offset, size graphics.Size) bool {
-	return position.X >= 0 && position.Y >= 0 && position.X <= size.Width && position.Y <= size.Height
-}
-
-// setChildFromRenderObject converts a RenderObject to a RenderBox.
-// Returns nil if the child is nil or not a RenderBox.
-func setChildFromRenderObject(child layout.RenderObject) layout.RenderBox {
-	box, _ := child.(layout.RenderBox)
-	return box
-}
-
-// setParentOnChild sets the parent reference on a child render object.
-func setParentOnChild(child, parent layout.RenderObject) {
-	if child == nil {
-		return
-	}
-	getter, _ := child.(interface{ Parent() layout.RenderObject })
-	setter, ok := child.(interface{ SetParent(layout.RenderObject) })
-	if !ok {
-		return
-	}
-	currentParent := layout.RenderObject(nil)
-	if getter != nil {
-		currentParent = getter.Parent()
-	}
-	if currentParent == parent {
-		return
-	}
-	setter.SetParent(parent)
-	if currentParent != nil {
-		if marker, ok := currentParent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-	if parent != nil {
-		if marker, ok := parent.(interface{ MarkNeedsLayout() }); ok {
-			marker.MarkNeedsLayout()
-		}
-	}
-}
-
 // Root creates a top-level view widget with the given child.
 func Root(child core.Widget) View {
 	return View{Child: child}

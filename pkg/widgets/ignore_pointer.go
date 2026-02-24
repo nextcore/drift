@@ -41,9 +41,9 @@ type renderIgnorePointer struct {
 }
 
 func (r *renderIgnorePointer) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderIgnorePointer) VisitChildren(visitor func(layout.RenderObject)) {
@@ -69,7 +69,7 @@ func (r *renderIgnorePointer) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderIgnorePointer) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child == nil || r.ignoring || !withinBounds(position, r.Size()) {
+	if r.child == nil || r.ignoring || !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	offset := getChildOffset(r.child)

@@ -69,9 +69,9 @@ type renderLayoutBuilder struct {
 }
 
 func (r *renderLayoutBuilder) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 	if r.child != nil {
 		r.child.SetParentData(&layout.BoxParentData{})
 	}
@@ -110,6 +110,6 @@ func (r *renderLayoutBuilder) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderLayoutBuilder) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	return withinBounds(position, r.Size()) &&
+	return layout.WithinBounds(position, r.Size()) &&
 		r.child != nil && r.child.HitTest(position, result)
 }

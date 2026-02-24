@@ -59,9 +59,9 @@ func (r *renderBackdropFilter) IsRepaintBoundary() bool {
 }
 
 func (r *renderBackdropFilter) SetChild(child layout.RenderObject) {
-	setParentOnChild(r.child, nil)
-	r.child = setChildFromRenderObject(child)
-	setParentOnChild(r.child, r)
+	layout.SetParentOnChild(r.child, nil)
+	r.child = layout.AsRenderBox(child)
+	layout.SetParentOnChild(r.child, r)
 }
 
 func (r *renderBackdropFilter) VisitChildren(visitor func(layout.RenderObject)) {
@@ -106,7 +106,7 @@ func (r *renderBackdropFilter) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderBackdropFilter) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil && r.child.HitTest(position, result) {

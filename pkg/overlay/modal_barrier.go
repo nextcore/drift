@@ -118,7 +118,7 @@ func (r *renderBarrier) Paint(ctx *layout.PaintContext) {
 
 // HitTest always returns true to absorb all hits.
 func (r *renderBarrier) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)

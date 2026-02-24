@@ -221,7 +221,7 @@ func (r *renderText) Paint(ctx *layout.PaintContext) {
 }
 
 func (r *renderText) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if !withinBounds(position, r.Size()) {
+	if !layout.WithinBounds(position, r.Size()) {
 		return false
 	}
 	result.Add(r)
