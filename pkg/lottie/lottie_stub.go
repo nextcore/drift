@@ -34,17 +34,11 @@ func LoadFile(path string) (*Animation, error) {
 
 // Duration returns the total duration of the animation.
 func (a *Animation) Duration() time.Duration {
-	if a == nil {
-		return 0
-	}
 	return 0
 }
 
 // Size returns the intrinsic size of the animation.
 func (a *Animation) Size() graphics.Size {
-	if a == nil {
-		return graphics.Size{}
-	}
 	return graphics.Size{}
 }
 
