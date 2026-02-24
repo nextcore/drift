@@ -10,6 +10,7 @@ import (
 // BuildOwner tracks dirty elements that need rebuilding.
 type BuildOwner struct {
 	dirty    []Element
+	dirtySet map[Element]bool
 	pipeline *layout.PipelineOwner
 	mu       sync.Mutex
 
@@ -37,9 +38,13 @@ func (b *BuildOwner) ScheduleBuild(element Element) {
 	added := func() bool {
 		b.mu.Lock()
 		defer b.mu.Unlock()
-		if slices.Contains(b.dirty, element) {
+		if b.dirtySet[element] {
 			return false
 		}
+		if b.dirtySet == nil {
+			b.dirtySet = make(map[Element]bool)
+		}
+		b.dirtySet[element] = true
 		b.dirty = append(b.dirty, element)
 		return true
 	}()
@@ -75,6 +80,7 @@ func (b *BuildOwner) FlushBuild() {
 
 		dirty := b.dirty
 		b.dirty = nil
+		clear(b.dirtySet)
 		b.mu.Unlock()
 
 		for _, element := range dirty {
