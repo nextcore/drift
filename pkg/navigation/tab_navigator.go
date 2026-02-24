@@ -237,6 +237,12 @@ func (s *tabNavigatorState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 		for i := 0; i < len(newNavigators) && i < len(s.navigators); i++ {
 			newNavigators[i] = s.navigators[i]
 		}
+		// Clear scope references for dropped navigators
+		for i := len(newNavigators); i < len(s.navigators); i++ {
+			if s.navigators[i] != nil {
+				globalScope.ClearActiveIf(s.navigators[i])
+			}
+		}
 		s.navigators = newNavigators
 	}
 

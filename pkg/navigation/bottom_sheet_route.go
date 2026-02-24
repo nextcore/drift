@@ -233,8 +233,15 @@ func (r *BottomSheetRoute) DidPop(result any) {
 	r.poppedFromNav = true
 
 	// Trigger exit animation via controller
-	// The animation will call onAnimationComplete when done
+	// The animation will call onAnimationComplete when done.
+	// Clean up the progress listener now rather than relying on
+	// onAnimationComplete, which may not fire if the sheet widget
+	// is destroyed mid-animation.
 	if r.controller != nil {
+		if r.progressRemove != nil {
+			r.progressRemove()
+			r.progressRemove = nil
+		}
 		r.controller.Close(result)
 		return
 	}

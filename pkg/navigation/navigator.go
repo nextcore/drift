@@ -383,7 +383,6 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 			Animation: bgAnimation,
 			Child: routeBuilder{
 				route: route,
-				isTop: isTop,
 			},
 		}
 
@@ -418,7 +417,6 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 						Animation: nil, // no background parallax for exiting route
 						Child: routeBuilder{
 							route: s.exitingRoute,
-							isTop: false, // No longer visually on top
 						},
 					},
 				},
@@ -442,6 +440,9 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 			// Notify existing routes that overlay is ready
 			for _, route := range s.routes {
 				route.SetOverlay(overlayState)
+			}
+			if s.exitingRoute != nil {
+				s.exitingRoute.SetOverlay(overlayState)
 			}
 			// Rebuild navigator to update routes that switched rendering mode
 			// (ModalRoute switches from direct to overlay rendering)
@@ -852,7 +853,6 @@ func disposeRouteController(route Route) {
 type routeBuilder struct {
 	core.StatelessBase
 	route Route
-	isTop bool
 }
 
 func (r routeBuilder) Key() any {
