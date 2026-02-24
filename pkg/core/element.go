@@ -577,6 +577,23 @@ func (e *RenderObjectElement) rebuildChildrenRenderList() {
 	}
 }
 
+// slotEqual compares two slot values without reflect.DeepEqual.
+// Slots are either nil or IndexedSlot, both of which are directly comparable.
+func slotEqual(a, b any) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	sa, aOK := a.(IndexedSlot)
+	sb, bOK := b.(IndexedSlot)
+	if aOK && bOK {
+		return sa == sb
+	}
+	return a == b
+}
+
 func updateChild(existing Element, widget Widget, parent Element, owner *BuildOwner, slot any) Element {
 	if widget == nil {
 		if existing != nil {
@@ -585,8 +602,7 @@ func updateChild(existing Element, widget Widget, parent Element, owner *BuildOw
 		return nil
 	}
 	if existing != nil && canUpdateWidget(existing.Widget(), widget) {
-		// Update slot if changed (use DeepEqual to safely compare any types)
-		if !reflect.DeepEqual(existing.Slot(), slot) {
+		if !slotEqual(existing.Slot(), slot) {
 			existing.UpdateSlot(slot)
 		}
 		existing.Update(widget)
