@@ -53,7 +53,7 @@ object NativeBridge {
         // Ensure the shared C++ runtime is loaded before native libraries.
         System.loadLibrary("c++_shared")
 
-        // Load the Go engine library first (contains DriftSkiaInitGL, DriftPointerEvent, etc.)
+        // Load the Go engine library first (contains DriftSkiaInitVulkan, DriftPointerEvent, etc.)
         System.loadLibrary("drift")
 
         // Load the JNI bridge library second (contains Java_com_drift_embedder_* functions)
@@ -71,13 +71,13 @@ object NativeBridge {
     external fun appInit(): Int
 
     /**
-     * Initializes the Skia GL backend using the current OpenGL context.
+     * Initializes the Skia Vulkan backend using the previously created Vulkan handles.
      *
-     * Call this once after EGL context creation (e.g., during SkiaHostView init).
+     * Call this once after Vulkan initialization (e.g., during SkiaHostView init).
      *
      * @return 0 on success, non-zero on failure.
      */
-    external fun initSkiaGL(): Int
+    external fun initSkiaVulkan(): Int
 
     /**
      * Sends a pointer/touch event to the Go engine.
@@ -199,39 +199,27 @@ object NativeBridge {
      */
     external fun hitTestPlatformView(viewID: Long, x: Double, y: Double): Int
 
-    // ─── Unified Frame Orchestrator (HardwareBuffer + HWUI path) ───
+    // ─── Unified Frame Orchestrator (Vulkan + HardwareBuffer + HWUI path) ───
 
-    /** Initializes EGL display, context, and 1x1 pbuffer surface. */
-    external fun initEGL(): Int
+    /** Initializes Vulkan instance, physical device, logical device, and graphics queue. */
+    external fun initVulkan(): Int
 
-    /** Allocates a HardwareBuffer-backed FBO at the given size. */
-    external fun createHwbFBO(width: Int, height: Int): Int
+    /** Allocates a HardwareBuffer and imports it as a VkImage at the given size. */
+    external fun createHwbResources(width: Int, height: Int): Int
 
-    /** Destroys the HardwareBuffer FBO and releases all resources. */
-    external fun destroyHwbFBO()
+    /** Destroys the Vulkan image, memory, and releases the AHardwareBuffer. */
+    external fun destroyHwbResources()
 
-    /** Binds the HardwareBuffer FBO for rendering. */
-    external fun bindHwbFBO()
-
-    /** Unbinds the HardwareBuffer FBO. */
-    external fun unbindHwbFBO()
-
-    /** Makes the EGL context current on the calling thread. */
-    external fun makeCurrent()
-
-    /** Releases the EGL context from the calling thread. */
-    external fun releaseContext()
-
-    /** Returns the current HardwareBuffer as a Java HardwareBuffer object. */
-    external fun getHardwareBuffer(): android.hardware.HardwareBuffer?
+    /** Returns the HardwareBuffer for the given slot index (0 or 1). */
+    external fun getHardwareBuffer(index: Int): android.hardware.HardwareBuffer?
 
     /** Runs the engine pipeline and returns geometry snapshot as JSON bytes. */
     external fun stepAndSnapshot(width: Int, height: Int): ByteArray?
 
-    /** Renders into the currently bound FBO using the split pipeline. */
+    /** Renders into the next double-buffer slot. Returns the slot index (0 or 1), or -1 on error. */
     external fun renderFrameSync(width: Int, height: Int): Int
 
-    /** Resets GL state tracking and releases all cached GPU resources.
+    /** Releases all cached GPU resources.
      *  Call after sleep/wake or surface recreation to prevent stale textures. */
     external fun purgeResources()
 

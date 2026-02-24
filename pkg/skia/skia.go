@@ -17,9 +17,9 @@ package skia
 #cgo CXXFLAGS: -I${SRCDIR}
 
 // Android: link libdrift_skia.a (bridge + Skia combined)
-#cgo android,arm64 LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/arm64 -ldrift_skia -lc++_shared -lGLESv2 -lEGL -landroid -llog -lm
-#cgo android,arm LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/arm -ldrift_skia -lc++_shared -lGLESv2 -lEGL -landroid -llog -lm
-#cgo android,amd64 LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/amd64 -ldrift_skia -lc++_shared -lGLESv2 -lEGL -landroid -llog -lm
+#cgo android,arm64 LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/arm64 -ldrift_skia -lc++_shared -lvulkan -landroid -llog -lm
+#cgo android,arm LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/arm -ldrift_skia -lc++_shared -lvulkan -landroid -llog -lm
+#cgo android,amd64 LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/android/amd64 -ldrift_skia -lc++_shared -lvulkan -landroid -llog -lm
 
 // iOS device (GOOS=ios)
 #cgo ios,arm64 LDFLAGS: -L${SRCDIR}/../../third_party/drift_skia/ios/arm64 -ldrift_skia -lc++ -framework Metal -framework CoreGraphics -framework Foundation -framework UIKit
@@ -83,20 +83,27 @@ type ParagraphLineMetrics struct {
 	Heights  []float64
 }
 
-// NewGLContext creates a Skia GPU context using the current OpenGL context.
-func NewGLContext() (*Context, error) {
-	ctx := C.drift_skia_context_create_gl()
-	if ctx == nil {
-		return nil, errors.New("skia: failed to create GL context")
-	}
-	return &Context{ptr: ctx}, nil
-}
-
 // NewMetalContext creates a Skia GPU context using the provided Metal device/queue.
 func NewMetalContext(device, queue unsafe.Pointer) (*Context, error) {
 	ctx := C.drift_skia_context_create_metal(device, queue)
 	if ctx == nil {
 		return nil, errors.New("skia: failed to create Metal context")
+	}
+	return &Context{ptr: ctx}, nil
+}
+
+// NewVulkanContext creates a Skia GPU context using the provided Vulkan handles.
+func NewVulkanContext(instance, physDevice, device, queue uintptr, queueFamilyIndex uint32, getInstanceProcAddr uintptr) (*Context, error) {
+	ctx := C.drift_skia_context_create_vulkan(
+		C.uintptr_t(instance),
+		C.uintptr_t(physDevice),
+		C.uintptr_t(device),
+		C.uintptr_t(queue),
+		C.uint32_t(queueFamilyIndex),
+		C.uintptr_t(getInstanceProcAddr),
+	)
+	if ctx == nil {
+		return nil, errors.New("skia: failed to create Vulkan context")
 	}
 	return &Context{ptr: ctx}, nil
 }
@@ -123,50 +130,13 @@ func (c *Context) FlushAndSubmit(syncCPU bool) {
 	C.drift_skia_context_flush_and_submit(c.ptr, sync)
 }
 
-// GLGetFramebufferBinding returns the currently bound GL framebuffer.
-// Returns 0 on non-GL backends.
-func GLGetFramebufferBinding() int {
-	return int(C.drift_skia_gl_get_framebuffer_binding())
-}
-
-// GLBindFramebuffer binds the specified GL framebuffer.
-// No-op on non-GL backends.
-func GLBindFramebuffer(fbo int) {
-	C.drift_skia_gl_bind_framebuffer(C.int(fbo))
-}
-
-// PurgeGpuResources resets GL state tracking and releases all cached GPU
-// resources (glyph atlases, texture caches, etc.). Call this after events
+// PurgeGpuResources releases all cached GPU resources (glyph atlases, texture caches, etc.). Call this after events
 // that may invalidate GPU memory, such as sleep/wake or surface recreation.
 func (c *Context) PurgeGpuResources() {
 	if c == nil || c.ptr == nil {
 		return
 	}
 	C.drift_skia_context_purge_resources(c.ptr)
-}
-
-// MakeGLSurface creates a Skia surface targeting the current GL framebuffer.
-func (c *Context) MakeGLSurface(width, height int) (*Surface, error) {
-	if c == nil || c.ptr == nil {
-		return nil, errors.New("skia: nil context")
-	}
-	surface := C.drift_skia_surface_create_gl(c.ptr, C.int(width), C.int(height))
-	if surface == nil {
-		return nil, errors.New("skia: failed to create GL surface")
-	}
-	return &Surface{ptr: surface, ctx: c}, nil
-}
-
-// MakeOffscreenSurfaceGL creates a GPU-backed offscreen surface for GL.
-func (c *Context) MakeOffscreenSurfaceGL(width, height int) (*Surface, error) {
-	if c == nil || c.ptr == nil {
-		return nil, errors.New("skia: nil context")
-	}
-	surface := C.drift_skia_surface_create_offscreen_gl(c.ptr, C.int(width), C.int(height))
-	if surface == nil {
-		return nil, errors.New("skia: failed to create offscreen GL surface")
-	}
-	return &Surface{ptr: surface, ctx: c}, nil
 }
 
 // MakeOffscreenSurfaceMetal creates a GPU-backed offscreen surface for Metal.
@@ -177,6 +147,30 @@ func (c *Context) MakeOffscreenSurfaceMetal(width, height int) (*Surface, error)
 	surface := C.drift_skia_surface_create_offscreen_metal(c.ptr, C.int(width), C.int(height))
 	if surface == nil {
 		return nil, errors.New("skia: failed to create offscreen Metal surface")
+	}
+	return &Surface{ptr: surface, ctx: c}, nil
+}
+
+// MakeVulkanSurface creates a Skia surface wrapping the provided VkImage.
+func (c *Context) MakeVulkanSurface(width, height int, vkImage uintptr, vkFormat uint32) (*Surface, error) {
+	if c == nil || c.ptr == nil {
+		return nil, errors.New("skia: nil context")
+	}
+	surface := C.drift_skia_surface_create_vulkan(c.ptr, C.int(width), C.int(height), C.uintptr_t(vkImage), C.uint32_t(vkFormat))
+	if surface == nil {
+		return nil, errors.New("skia: failed to create Vulkan surface")
+	}
+	return &Surface{ptr: surface, ctx: c}, nil
+}
+
+// MakeOffscreenSurfaceVulkan creates a GPU-backed offscreen surface for Vulkan.
+func (c *Context) MakeOffscreenSurfaceVulkan(width, height int) (*Surface, error) {
+	if c == nil || c.ptr == nil {
+		return nil, errors.New("skia: nil context")
+	}
+	surface := C.drift_skia_surface_create_offscreen_vulkan(c.ptr, C.int(width), C.int(height))
+	if surface == nil {
+		return nil, errors.New("skia: failed to create offscreen Vulkan surface")
 	}
 	return &Surface{ptr: surface, ctx: c}, nil
 }

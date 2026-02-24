@@ -39,10 +39,9 @@
 
 #include <android/hardware_buffer.h>
 #include <android/hardware_buffer_jni.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES2/gl2ext.h>
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_android.h>
+#include "drift_vulkan_extensions.h"
 
 /**
  * Function pointer type for DriftPointerEvent.
@@ -96,26 +95,15 @@ typedef int (*DriftPlatformIsStreamActiveFn)(const char *channel);
 typedef void (*DriftPlatformSetNativeHandlerFn)(void *handler);
 
 /**
- * Native method handler signature that Go expects.
- */
-typedef int (*DriftNativeMethodHandler)(
-    const char *channel,
-    const char *method,
-    const void *argsData,
-    int argsLen,
-    void **resultData,
-    int *resultLen,
-    char **errorMsg
-);
-
-/**
- * Function pointer type for DriftSkiaInitGL.
+ * Function pointer type for DriftSkiaInitVulkan.
  * Matches the signature exported by Go:
- *   func DriftSkiaInitGL() C.int
- *
- * @return 0 on success, non-zero on failure
+ *   func DriftSkiaInitVulkan(...) C.int
  */
-typedef int (*DriftSkiaInitFn)(void);
+typedef int (*DriftSkiaInitVulkanFn)(
+    uintptr_t instance, uintptr_t phys_device, uintptr_t device,
+    uintptr_t queue, uint32_t queue_family_index,
+    uintptr_t get_instance_proc_addr
+);
 
 typedef int (*DriftAppInitFn)(void);
 
@@ -152,7 +140,7 @@ typedef int (*DriftHitTestPlatformViewFn)(int64_t viewID, double x, double y);
 static DriftPointerFn drift_pointer_event = NULL;
 static DriftSetScaleFn drift_set_scale = NULL;
 static DriftAppInitFn drift_app_init = NULL;
-static DriftSkiaInitFn drift_skia_init = NULL;
+static DriftSkiaInitVulkanFn drift_skia_init_vulkan = NULL;
 static DriftPlatformHandleEventFn drift_platform_event = NULL;
 static DriftPlatformHandleEventErrorFn drift_platform_event_error = NULL;
 static DriftPlatformHandleEventDoneFn drift_platform_event_done = NULL;
@@ -166,11 +154,11 @@ static DriftSetScheduleFrameHandlerFn drift_set_schedule_frame_handler = NULL;
 
 /* Function pointer types for unified orchestrator */
 typedef int (*DriftStepAndSnapshotFn)(int width, int height, char **outData, int *outLen);
-typedef int (*DriftSkiaRenderFrameSyncFn)(int width, int height);
+typedef int (*DriftSkiaRenderVulkanSyncFn)(int width, int height, uintptr_t vk_image, uint32_t vk_format);
 typedef void (*DriftSkiaPurgeResourcesFn)(void);
 
 static DriftStepAndSnapshotFn drift_step_and_snapshot = NULL;
-static DriftSkiaRenderFrameSyncFn drift_skia_render_frame_sync = NULL;
+static DriftSkiaRenderVulkanSyncFn drift_skia_render_vulkan_sync = NULL;
 static DriftSkiaPurgeResourcesFn drift_skia_purge_resources = NULL;
 
 typedef int (*DriftShouldWarmUpViewsFn)(void);
@@ -207,27 +195,44 @@ static int resolve_symbol(const char *name, void **out) {
     return *out ? 0 : 1;
 }
 
-/* ─── EGL state ─── */
-static EGLDisplay g_egl_display = EGL_NO_DISPLAY;
-static EGLContext g_egl_context = EGL_NO_CONTEXT;
-static EGLSurface g_egl_surface = EGL_NO_SURFACE; /* 1x1 pbuffer */
+/* ─── Vulkan state ─── */
+static VkInstance g_vk_instance = VK_NULL_HANDLE;
+static VkPhysicalDevice g_vk_phys_device = VK_NULL_HANDLE;
+static VkDevice g_vk_device = VK_NULL_HANDLE;
+static VkQueue g_vk_queue = VK_NULL_HANDLE;
+static uint32_t g_vk_queue_family_index = 0;
+static PFN_vkGetInstanceProcAddr g_vk_get_instance_proc_addr = NULL;
+static PFN_vkGetDeviceProcAddr g_vk_get_device_proc_addr = NULL;
 
-/* ─── HardwareBuffer FBO state ─── */
-static AHardwareBuffer *g_hwb = NULL;
-static EGLImageKHR g_egl_image = EGL_NO_IMAGE_KHR;
-static GLuint g_hwb_texture = 0;
-static GLuint g_hwb_fbo = 0;
-static GLuint g_hwb_stencil_rb = 0;
-static int g_hwb_width = 0;
-static int g_hwb_height = 0;
+/* ─── Double-buffered HardwareBuffer Vulkan state ─── */
+#define HWB_COUNT 2
 
-/* ─── EGL extension function pointers ─── */
-static PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR_fn = NULL;
-static PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR_fn = NULL;
-static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES_fn = NULL;
+typedef struct {
+    AHardwareBuffer *hwb;
+    VkImage          image;
+    VkDeviceMemory   memory;
+    VkFence          fence;
+    int              fence_submitted;  /* whether fence is pending */
+} HwbSlot;
 
-typedef EGLClientBuffer (EGLAPIENTRYP PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)(const AHardwareBuffer *buffer);
-static PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID_fn = NULL;
+static HwbSlot g_hwb_slots[HWB_COUNT];
+static int     g_hwb_current = 0;       /* index of slot to render into next */
+static VkFormat g_vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+
+/* Cached Vulkan function pointers (resolved once in initVulkan) */
+static PFN_vkWaitForFences      g_vk_wait_for_fences = NULL;
+static PFN_vkResetFences        g_vk_reset_fences = NULL;
+static PFN_vkQueueSubmit        g_vk_queue_submit = NULL;
+static PFN_vkDeviceWaitIdle     g_vk_device_wait_idle = NULL;
+static PFN_vkCreateImage        g_vk_create_image = NULL;
+static PFN_vkDestroyImage       g_vk_destroy_image = NULL;
+static PFN_vkAllocateMemory     g_vk_allocate_memory = NULL;
+static PFN_vkFreeMemory         g_vk_free_memory = NULL;
+static PFN_vkBindImageMemory    g_vk_bind_image_memory = NULL;
+static PFN_vkCreateFence        g_vk_create_fence = NULL;
+static PFN_vkDestroyFence       g_vk_destroy_fence = NULL;
+static PFN_vkGetPhysicalDeviceMemoryProperties g_vk_get_phys_dev_mem_props = NULL;
+static PFN_vkGetAndroidHardwareBufferPropertiesANDROID g_vk_get_ahb_props = NULL;
 
 /* Global JVM reference for callbacks from Go to Kotlin */
 static JavaVM *g_jvm = NULL;
@@ -444,24 +449,36 @@ Java_{{.JNIPackage}}_NativeBridge_appInit(
 }
 
 /**
- * JNI implementation for NativeBridge.initSkiaGL().
+ * JNI implementation for NativeBridge.initSkiaVulkan().
  *
- * Initializes the Skia GL context using the current GL context.
+ * Initializes the Skia Vulkan context using the previously created Vulkan handles.
  */
 JNIEXPORT jint JNICALL
-Java_{{.JNIPackage}}_NativeBridge_initSkiaGL(
+Java_{{.JNIPackage}}_NativeBridge_initSkiaVulkan(
     JNIEnv *env,
     jclass clazz
 ) {
     (void)env;
     (void)clazz;
 
-    if (resolve_symbol("DriftSkiaInitGL", (void **)&drift_skia_init) != 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Failed to resolve DriftSkiaInitGL");
+    if (!g_vk_instance || !g_vk_device) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Vulkan not initialized");
         return 1;
     }
 
-    return (jint)drift_skia_init();
+    if (resolve_symbol("DriftSkiaInitVulkan", (void **)&drift_skia_init_vulkan) != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Failed to resolve DriftSkiaInitVulkan");
+        return 1;
+    }
+
+    return (jint)drift_skia_init_vulkan(
+        (uintptr_t)g_vk_instance,
+        (uintptr_t)g_vk_phys_device,
+        (uintptr_t)g_vk_device,
+        (uintptr_t)g_vk_queue,
+        g_vk_queue_family_index,
+        (uintptr_t)g_vk_get_instance_proc_addr
+    );
 }
 
 /**
@@ -490,6 +507,8 @@ Java_{{.JNIPackage}}_NativeBridge_pointerEvent(
     jdouble x,
     jdouble y
 ) {
+    (void)env; (void)clazz;
+
     /* Ensure the Go pointer function is available */
     if (resolve_symbol("DriftPointerEvent", (void **)&drift_pointer_event) != 0) {
         __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Failed to resolve DriftPointerEvent");
@@ -516,6 +535,8 @@ Java_{{.JNIPackage}}_NativeBridge_setDeviceScale(
     jclass clazz,
     jdouble scale
 ) {
+    (void)env; (void)clazz;
+
     /* Ensure the Go scale function is available */
     if (resolve_symbol("DriftSetDeviceScale", (void **)&drift_set_scale) != 0) {
         __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Failed to resolve DriftSetDeviceScale");
@@ -816,12 +837,7 @@ Java_{{.JNIPackage}}_NativeBridge_platformInit(
 
     /* Register the schedule-frame handler with Go for on-demand rendering */
     if (g_native_schedule_frame) {
-        if (!drift_set_schedule_frame_handler && drift_handle) {
-            drift_set_schedule_frame_handler = (DriftSetScheduleFrameHandlerFn)dlsym(
-                drift_handle, "DriftSetScheduleFrameHandler"
-            );
-        }
-        if (drift_set_schedule_frame_handler) {
+        if (resolve_symbol("DriftSetScheduleFrameHandler", (void **)&drift_set_schedule_frame_handler) == 0) {
             drift_set_schedule_frame_handler(schedule_frame_handler);
             __android_log_print(ANDROID_LOG_INFO, "DriftJNI", "Schedule-frame handler registered");
         }
@@ -832,113 +848,158 @@ Java_{{.JNIPackage}}_NativeBridge_platformInit(
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * Unified Frame Orchestrator: EGL, HardwareBuffer, new JNI
+ * Unified Frame Orchestrator: Vulkan, HardwareBuffer, new JNI
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Cleans up EGL context and display. Call on init failure to avoid leaking
- * resources allocated before the error.
- */
-static void cleanup_egl(void) {
-    if (g_egl_context != EGL_NO_CONTEXT) {
-        eglDestroyContext(g_egl_display, g_egl_context);
-        g_egl_context = EGL_NO_CONTEXT;
-    }
-    if (g_egl_display != EGL_NO_DISPLAY) {
-        eglTerminate(g_egl_display);
-        g_egl_display = EGL_NO_DISPLAY;
-    }
-}
-
-static void resolve_egl_extensions(void) {
-    if (!eglCreateImageKHR_fn) {
-        eglCreateImageKHR_fn = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
-    }
-    if (!eglDestroyImageKHR_fn) {
-        eglDestroyImageKHR_fn = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
-    }
-    if (!glEGLImageTargetTexture2DOES_fn) {
-        glEGLImageTargetTexture2DOES_fn = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
-    }
-    if (!eglGetNativeClientBufferANDROID_fn) {
-        eglGetNativeClientBufferANDROID_fn = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress("eglGetNativeClientBufferANDROID");
-    }
-}
-
-/**
- * JNI: NativeBridge.initEGL()
- * Creates an EGL display, context, and 1x1 pbuffer surface.
+ * JNI: NativeBridge.initVulkan()
+ * Creates a Vulkan instance, picks a physical device, and creates a logical
+ * device with a graphics queue. Enables the
+ * VK_ANDROID_external_memory_android_hardware_buffer extension for AHB import.
  */
 JNIEXPORT jint JNICALL
-Java_{{.JNIPackage}}_NativeBridge_initEGL(JNIEnv *env, jclass clazz) {
+Java_{{.JNIPackage}}_NativeBridge_initVulkan(JNIEnv *env, jclass clazz) {
     (void)env; (void)clazz;
 
-    g_egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (g_egl_display == EGL_NO_DISPLAY) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglGetDisplay failed");
+    g_vk_get_instance_proc_addr = (PFN_vkGetInstanceProcAddr)dlsym(RTLD_DEFAULT, "vkGetInstanceProcAddr");
+    if (!g_vk_get_instance_proc_addr) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkGetInstanceProcAddr not found");
         return -1;
     }
 
-    EGLint major, minor;
-    if (!eglInitialize(g_egl_display, &major, &minor)) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglInitialize failed");
-        return -1;
-    }
-
-    /* Choose config with GLES3 + RGBA8 */
-    EGLint configAttribs[] = {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
-        EGL_RED_SIZE, 8,
-        EGL_GREEN_SIZE, 8,
-        EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-        EGL_STENCIL_SIZE, 8,
-        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-        EGL_NONE
+    /* Create Vulkan instance */
+    VkApplicationInfo appInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "Drift",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "Drift",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_1,
     };
-    EGLConfig config;
-    EGLint numConfigs;
-    if (!eglChooseConfig(g_egl_display, configAttribs, &config, 1, &numConfigs) || numConfigs == 0) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglChooseConfig failed");
+
+    VkInstanceCreateInfo instanceCI = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pApplicationInfo = &appInfo,
+        .enabledExtensionCount = DRIFT_VK_INSTANCE_EXTENSION_COUNT,
+        .ppEnabledExtensionNames = DRIFT_VK_INSTANCE_EXTENSIONS,
+    };
+
+    PFN_vkCreateInstance vkCreateInstanceFn =
+        (PFN_vkCreateInstance)g_vk_get_instance_proc_addr(VK_NULL_HANDLE, "vkCreateInstance");
+    if (!vkCreateInstanceFn) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkCreateInstance not found");
         return -1;
     }
 
-    /* Create GLES3 context */
-    EGLint ctxAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
-    g_egl_context = eglCreateContext(g_egl_display, config, EGL_NO_CONTEXT, ctxAttribs);
-    if (g_egl_context == EGL_NO_CONTEXT) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglCreateContext failed");
-        cleanup_egl();
+    VkResult res = vkCreateInstanceFn(&instanceCI, NULL, &g_vk_instance);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkCreateInstance failed: %d", res);
         return -1;
     }
 
-    /* Create 1x1 pbuffer (context needs a surface to be current) */
-    EGLint pbufAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
-    g_egl_surface = eglCreatePbufferSurface(g_egl_display, config, pbufAttribs);
-    if (g_egl_surface == EGL_NO_SURFACE) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglCreatePbufferSurface failed");
-        cleanup_egl();
+    /* Enumerate physical devices and pick the first one */
+    PFN_vkEnumeratePhysicalDevices vkEnumPhys =
+        (PFN_vkEnumeratePhysicalDevices)g_vk_get_instance_proc_addr(g_vk_instance, "vkEnumeratePhysicalDevices");
+    uint32_t physCount = 0;
+    vkEnumPhys(g_vk_instance, &physCount, NULL);
+    if (physCount == 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "No Vulkan physical devices");
         return -1;
     }
 
-    resolve_egl_extensions();
+    VkPhysicalDevice *physDevices = (VkPhysicalDevice *)malloc(sizeof(VkPhysicalDevice) * physCount);
+    vkEnumPhys(g_vk_instance, &physCount, physDevices);
+    g_vk_phys_device = physDevices[0];
+    free(physDevices);
 
-    __android_log_print(ANDROID_LOG_INFO, "DriftJNI", "EGL initialized: %d.%d", major, minor);
+    /* Find a graphics queue family */
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetQueueFamilyProps =
+        (PFN_vkGetPhysicalDeviceQueueFamilyProperties)g_vk_get_instance_proc_addr(
+            g_vk_instance, "vkGetPhysicalDeviceQueueFamilyProperties");
+    uint32_t queueFamilyCount = 0;
+    vkGetQueueFamilyProps(g_vk_phys_device, &queueFamilyCount, NULL);
+
+    VkQueueFamilyProperties *queueFamilies =
+        (VkQueueFamilyProperties *)malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
+    vkGetQueueFamilyProps(g_vk_phys_device, &queueFamilyCount, queueFamilies);
+
+    g_vk_queue_family_index = UINT32_MAX;
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            g_vk_queue_family_index = i;
+            break;
+        }
+    }
+    free(queueFamilies);
+
+    if (g_vk_queue_family_index == UINT32_MAX) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "No graphics queue family found");
+        return -1;
+    }
+
+    /* Create logical device with required extensions */
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo queueCI = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = g_vk_queue_family_index,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+
+    VkDeviceCreateInfo deviceCI = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &queueCI,
+        .enabledExtensionCount = DRIFT_VK_DEVICE_EXTENSION_COUNT,
+        .ppEnabledExtensionNames = DRIFT_VK_DEVICE_EXTENSIONS,
+    };
+
+    PFN_vkCreateDevice vkCreateDeviceFn =
+        (PFN_vkCreateDevice)g_vk_get_instance_proc_addr(g_vk_instance, "vkCreateDevice");
+    res = vkCreateDeviceFn(g_vk_phys_device, &deviceCI, NULL, &g_vk_device);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkCreateDevice failed: %d", res);
+        return -1;
+    }
+
+    /* Resolve vkGetDeviceProcAddr for device-level function lookups */
+    g_vk_get_device_proc_addr = (PFN_vkGetDeviceProcAddr)g_vk_get_instance_proc_addr(g_vk_instance, "vkGetDeviceProcAddr");
+    if (!g_vk_get_device_proc_addr) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkGetDeviceProcAddr not found");
+        return -1;
+    }
+
+    PFN_vkGetDeviceQueue vkGetDeviceQueueFn =
+        (PFN_vkGetDeviceQueue)g_vk_get_device_proc_addr(g_vk_device, "vkGetDeviceQueue");
+    vkGetDeviceQueueFn(g_vk_device, g_vk_queue_family_index, 0, &g_vk_queue);
+
+    /* Cache device-level Vulkan function pointers for per-frame and resource operations */
+    g_vk_wait_for_fences = (PFN_vkWaitForFences)g_vk_get_device_proc_addr(g_vk_device, "vkWaitForFences");
+    g_vk_reset_fences = (PFN_vkResetFences)g_vk_get_device_proc_addr(g_vk_device, "vkResetFences");
+    g_vk_queue_submit = (PFN_vkQueueSubmit)g_vk_get_device_proc_addr(g_vk_device, "vkQueueSubmit");
+    g_vk_device_wait_idle = (PFN_vkDeviceWaitIdle)g_vk_get_device_proc_addr(g_vk_device, "vkDeviceWaitIdle");
+    g_vk_create_image = (PFN_vkCreateImage)g_vk_get_device_proc_addr(g_vk_device, "vkCreateImage");
+    g_vk_destroy_image = (PFN_vkDestroyImage)g_vk_get_device_proc_addr(g_vk_device, "vkDestroyImage");
+    g_vk_allocate_memory = (PFN_vkAllocateMemory)g_vk_get_device_proc_addr(g_vk_device, "vkAllocateMemory");
+    g_vk_free_memory = (PFN_vkFreeMemory)g_vk_get_device_proc_addr(g_vk_device, "vkFreeMemory");
+    g_vk_bind_image_memory = (PFN_vkBindImageMemory)g_vk_get_device_proc_addr(g_vk_device, "vkBindImageMemory");
+    g_vk_create_fence = (PFN_vkCreateFence)g_vk_get_device_proc_addr(g_vk_device, "vkCreateFence");
+    g_vk_destroy_fence = (PFN_vkDestroyFence)g_vk_get_device_proc_addr(g_vk_device, "vkDestroyFence");
+    /* Instance-level: physical device queries are resolved via instance proc addr */
+    g_vk_get_phys_dev_mem_props = (PFN_vkGetPhysicalDeviceMemoryProperties)g_vk_get_instance_proc_addr(g_vk_instance, "vkGetPhysicalDeviceMemoryProperties");
+    g_vk_get_ahb_props = (PFN_vkGetAndroidHardwareBufferPropertiesANDROID)g_vk_get_device_proc_addr(g_vk_device, "vkGetAndroidHardwareBufferPropertiesANDROID");
+
+    __android_log_print(ANDROID_LOG_INFO, "DriftJNI", "Vulkan initialized: queue family %u", g_vk_queue_family_index);
     return 0;
 }
 
 /**
- * JNI: NativeBridge.createHwbFBO(width, height)
- * Allocates AHardwareBuffer, creates EGLImage, GL texture, stencil RB, FBO.
+ * Helper: allocate a single HWB slot (AHardwareBuffer + VkImage + VkDeviceMemory + VkFence).
+ * Returns 0 on success, -1 on failure. On failure the slot is left zeroed.
  */
-JNIEXPORT jint JNICALL
-Java_{{.JNIPackage}}_NativeBridge_createHwbFBO(JNIEnv *env, jclass clazz, jint width, jint height) {
-    (void)env; (void)clazz;
-
-    if (!eglGetNativeClientBufferANDROID_fn || !eglCreateImageKHR_fn || !glEGLImageTargetTexture2DOES_fn) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "EGL extensions not available for HWB");
-        return -1;
-    }
+static int create_hwb_slot(HwbSlot *slot, int width, int height) {
+    memset(slot, 0, sizeof(*slot));
+    VkResult res;
 
     /* Allocate AHardwareBuffer */
     AHardwareBuffer_Desc desc = {
@@ -953,139 +1014,215 @@ Java_{{.JNIPackage}}_NativeBridge_createHwbFBO(JNIEnv *env, jclass clazz, jint w
         .rfu0 = 0,
         .rfu1 = 0,
     };
-    if (AHardwareBuffer_allocate(&desc, &g_hwb) != 0) {
+    if (AHardwareBuffer_allocate(&desc, &slot->hwb) != 0) {
         __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "AHardwareBuffer_allocate failed");
         return -1;
     }
 
-    /* Create EGLImage from HWB */
-    EGLClientBuffer clientBuf = eglGetNativeClientBufferANDROID_fn(g_hwb);
-    if (!clientBuf) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglGetNativeClientBufferANDROID failed");
-        AHardwareBuffer_release(g_hwb);
-        g_hwb = NULL;
+    /* Get VkFormat and memory requirements from the AHardwareBuffer */
+    if (!g_vk_get_ahb_props) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkGetAndroidHardwareBufferPropertiesANDROID not found");
+        goto fail_hwb;
+    }
+
+    VkAndroidHardwareBufferFormatPropertiesANDROID formatProps = {
+        .sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID,
+    };
+    VkAndroidHardwareBufferPropertiesANDROID ahbProps = {
+        .sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID,
+        .pNext = &formatProps,
+    };
+    res = g_vk_get_ahb_props(g_vk_device, slot->hwb, &ahbProps);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkGetAndroidHardwareBufferPropertiesANDROID failed: %d", res);
+        goto fail_hwb;
+    }
+
+    g_vk_format = formatProps.format;
+
+    /* Create VkImage backed by the AHardwareBuffer */
+    VkExternalMemoryImageCreateInfo extMemCI = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
+    };
+
+    VkImageCreateInfo imageCI = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &extMemCI,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = g_vk_format,
+        .extent = { (uint32_t)width, (uint32_t)height, 1 },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                 VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    res = g_vk_create_image(g_vk_device, &imageCI, NULL, &slot->image);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkCreateImage failed: %d", res);
+        goto fail_hwb;
+    }
+
+    /* Allocate and bind memory from the AHardwareBuffer */
+    VkImportAndroidHardwareBufferInfoANDROID importInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
+        .buffer = slot->hwb,
+    };
+
+    VkMemoryDedicatedAllocateInfo dedicatedInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = &importInfo,
+        .image = slot->image,
+    };
+
+    VkPhysicalDeviceMemoryProperties memProps;
+    g_vk_get_phys_dev_mem_props(g_vk_phys_device, &memProps);
+
+    uint32_t memoryTypeIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < memProps.memoryTypeCount; i++) {
+        if (ahbProps.memoryTypeBits & (1u << i)) {
+            memoryTypeIndex = i;
+            break;
+        }
+    }
+    if (memoryTypeIndex == UINT32_MAX) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "No compatible memory type for AHB");
+        goto fail_image;
+    }
+
+    VkMemoryAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &dedicatedInfo,
+        .allocationSize = ahbProps.allocationSize,
+        .memoryTypeIndex = memoryTypeIndex,
+    };
+
+    res = g_vk_allocate_memory(g_vk_device, &allocInfo, NULL, &slot->memory);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkAllocateMemory failed: %d", res);
+        goto fail_image;
+    }
+
+    res = g_vk_bind_image_memory(g_vk_device, slot->image, slot->memory, 0);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkBindImageMemory failed: %d", res);
+        goto fail_memory;
+    }
+
+    /* Create VkFence (signaled initially so first wait is a no-op) */
+    VkFenceCreateInfo fenceCI = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
+    res = g_vk_create_fence(g_vk_device, &fenceCI, NULL, &slot->fence);
+    if (res != VK_SUCCESS) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkCreateFence failed: %d", res);
+        goto fail_memory;
+    }
+    slot->fence_submitted = 0;
+
+    return 0;
+
+fail_memory:
+    g_vk_free_memory(g_vk_device, slot->memory, NULL);
+    slot->memory = VK_NULL_HANDLE;
+fail_image:
+    g_vk_destroy_image(g_vk_device, slot->image, NULL);
+    slot->image = VK_NULL_HANDLE;
+fail_hwb:
+    AHardwareBuffer_release(slot->hwb);
+    slot->hwb = NULL;
+    return -1;
+}
+
+/**
+ * Helper: destroy a single HWB slot.
+ */
+static void destroy_hwb_slot(HwbSlot *slot) {
+    if (!slot) return;
+    if (g_vk_device) {
+        if (slot->fence != VK_NULL_HANDLE && g_vk_destroy_fence) {
+            g_vk_destroy_fence(g_vk_device, slot->fence, NULL);
+        }
+        if (slot->image != VK_NULL_HANDLE && g_vk_destroy_image) {
+            g_vk_destroy_image(g_vk_device, slot->image, NULL);
+        }
+        if (slot->memory != VK_NULL_HANDLE && g_vk_free_memory) {
+            g_vk_free_memory(g_vk_device, slot->memory, NULL);
+        }
+    }
+    if (slot->hwb) { AHardwareBuffer_release(slot->hwb); }
+    memset(slot, 0, sizeof(*slot));
+}
+
+/**
+ * JNI: NativeBridge.createHwbResources(width, height)
+ * Allocates two AHardwareBuffers and imports each as a VkImage via
+ * VK_ANDROID_external_memory_android_hardware_buffer. Creates a VkFence
+ * per slot for double-buffered rendering.
+ */
+JNIEXPORT jint JNICALL
+Java_{{.JNIPackage}}_NativeBridge_createHwbResources(JNIEnv *env, jclass clazz, jint width, jint height) {
+    (void)env; (void)clazz;
+
+    if (!g_vk_device) {
+        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "Vulkan device not initialized");
         return -1;
     }
 
-    EGLint imageAttribs[] = { EGL_NONE };
-    g_egl_image = eglCreateImageKHR_fn(g_egl_display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuf, imageAttribs);
-    if (g_egl_image == EGL_NO_IMAGE_KHR) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "eglCreateImageKHR failed");
-        AHardwareBuffer_release(g_hwb);
-        g_hwb = NULL;
-        return -1;
+    for (int i = 0; i < HWB_COUNT; i++) {
+        if (create_hwb_slot(&g_hwb_slots[i], width, height) != 0) {
+            /* Clean up any slots already created */
+            for (int j = 0; j < i; j++) {
+                destroy_hwb_slot(&g_hwb_slots[j]);
+            }
+            return -1;
+        }
     }
 
-    /* Create GL texture backed by EGLImage */
-    glGenTextures(1, &g_hwb_texture);
-    glBindTexture(GL_TEXTURE_2D, g_hwb_texture);
-    glEGLImageTargetTexture2DOES_fn(GL_TEXTURE_2D, (GLeglImageOES)g_egl_image);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    g_hwb_current = 0;
 
-    /* Create stencil renderbuffer */
-    glGenRenderbuffers(1, &g_hwb_stencil_rb);
-    glBindRenderbuffer(GL_RENDERBUFFER, g_hwb_stencil_rb);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, width, height);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    /* Create FBO */
-    glGenFramebuffers(1, &g_hwb_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, g_hwb_fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, g_hwb_texture, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, g_hwb_stencil_rb);
-
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "FBO incomplete: 0x%x", status);
-        glDeleteFramebuffers(1, &g_hwb_fbo); g_hwb_fbo = 0;
-        glDeleteRenderbuffers(1, &g_hwb_stencil_rb); g_hwb_stencil_rb = 0;
-        glDeleteTextures(1, &g_hwb_texture); g_hwb_texture = 0;
-        eglDestroyImageKHR_fn(g_egl_display, g_egl_image); g_egl_image = EGL_NO_IMAGE_KHR;
-        AHardwareBuffer_release(g_hwb); g_hwb = NULL;
-        return -1;
-    }
-
-    g_hwb_width = width;
-    g_hwb_height = height;
-
-    __android_log_print(ANDROID_LOG_INFO, "DriftJNI", "HWB FBO created: %dx%d fbo=%u", width, height, g_hwb_fbo);
+    __android_log_print(ANDROID_LOG_INFO, "DriftJNI", "HWB Vulkan resources created (double-buffered): %dx%d format=%u",
+        width, height, g_vk_format);
     return 0;
 }
 
 /**
- * JNI: NativeBridge.destroyHwbFBO()
+ * JNI: NativeBridge.destroyHwbResources()
+ * Waits for the GPU to idle, then destroys both buffer slots.
  */
 JNIEXPORT void JNICALL
-Java_{{.JNIPackage}}_NativeBridge_destroyHwbFBO(JNIEnv *env, jclass clazz) {
+Java_{{.JNIPackage}}_NativeBridge_destroyHwbResources(JNIEnv *env, jclass clazz) {
     (void)env; (void)clazz;
 
-    if (g_hwb_fbo) { glDeleteFramebuffers(1, &g_hwb_fbo); g_hwb_fbo = 0; }
-    if (g_hwb_stencil_rb) { glDeleteRenderbuffers(1, &g_hwb_stencil_rb); g_hwb_stencil_rb = 0; }
-    if (g_hwb_texture) { glDeleteTextures(1, &g_hwb_texture); g_hwb_texture = 0; }
-    if (g_egl_image != EGL_NO_IMAGE_KHR && eglDestroyImageKHR_fn) {
-        eglDestroyImageKHR_fn(g_egl_display, g_egl_image);
-        g_egl_image = EGL_NO_IMAGE_KHR;
+    if (g_vk_device && g_vk_device_wait_idle) {
+        g_vk_device_wait_idle(g_vk_device);
     }
-    if (g_hwb) { AHardwareBuffer_release(g_hwb); g_hwb = NULL; }
-    g_hwb_width = 0;
-    g_hwb_height = 0;
-}
 
-/**
- * JNI: NativeBridge.bindHwbFBO()
- */
-JNIEXPORT void JNICALL
-Java_{{.JNIPackage}}_NativeBridge_bindHwbFBO(JNIEnv *env, jclass clazz) {
-    (void)env; (void)clazz;
-    glBindFramebuffer(GL_FRAMEBUFFER, g_hwb_fbo);
-    glViewport(0, 0, g_hwb_width, g_hwb_height);
-}
-
-/**
- * JNI: NativeBridge.unbindHwbFBO()
- */
-JNIEXPORT void JNICALL
-Java_{{.JNIPackage}}_NativeBridge_unbindHwbFBO(JNIEnv *env, jclass clazz) {
-    (void)env; (void)clazz;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-/**
- * JNI: NativeBridge.makeCurrent()
- */
-JNIEXPORT void JNICALL
-Java_{{.JNIPackage}}_NativeBridge_makeCurrent(JNIEnv *env, jclass clazz) {
-    (void)env; (void)clazz;
-    if (g_egl_display != EGL_NO_DISPLAY && g_egl_context != EGL_NO_CONTEXT) {
-        eglMakeCurrent(g_egl_display, g_egl_surface, g_egl_surface, g_egl_context);
+    for (int i = 0; i < HWB_COUNT; i++) {
+        destroy_hwb_slot(&g_hwb_slots[i]);
     }
+    g_hwb_current = 0;
 }
 
 /**
- * JNI: NativeBridge.releaseContext()
- */
-JNIEXPORT void JNICALL
-Java_{{.JNIPackage}}_NativeBridge_releaseContext(JNIEnv *env, jclass clazz) {
-    (void)env; (void)clazz;
-    if (g_egl_display != EGL_NO_DISPLAY) {
-        eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    }
-}
-
-/**
- * JNI: NativeBridge.getHardwareBuffer()
- * Returns the current AHardwareBuffer as a Java HardwareBuffer object.
- * Used by SkiaHostView to wrap as a Bitmap for HWUI onDraw().
+ * JNI: NativeBridge.getHardwareBuffer(index)
+ * Returns the AHardwareBuffer for the given slot as a Java HardwareBuffer object.
+ * Used by SkiaHostView to wrap each slot as a Bitmap for HWUI onDraw().
  */
 JNIEXPORT jobject JNICALL
-Java_{{.JNIPackage}}_NativeBridge_getHardwareBuffer(JNIEnv *env, jclass clazz) {
+Java_{{.JNIPackage}}_NativeBridge_getHardwareBuffer(JNIEnv *env, jclass clazz, jint index) {
     (void)clazz;
-    if (!g_hwb) return NULL;
-    return AHardwareBuffer_toHardwareBuffer(env, g_hwb);
+    if (index < 0 || index >= HWB_COUNT) return NULL;
+    AHardwareBuffer *hwb = g_hwb_slots[index].hwb;
+    if (!hwb) return NULL;
+    return AHardwareBuffer_toHardwareBuffer(env, hwb);
 }
 
 
@@ -1104,13 +1241,8 @@ Java_{{.JNIPackage}}_NativeBridge_stepAndSnapshot(JNIEnv *env, jclass clazz, jin
     char *outData = NULL;
     int outLen = 0;
     int result = drift_step_and_snapshot(width, height, &outData, &outLen);
-    if (result != 0) {
-        if (outData) free(outData);
-        return NULL;
-    }
-
-    if (!outData || outLen <= 0) {
-        if (outData) free(outData);
+    if (result != 0 || !outData || outLen <= 0) {
+        free(outData);
         return NULL;
     }
 
@@ -1124,22 +1256,70 @@ Java_{{.JNIPackage}}_NativeBridge_stepAndSnapshot(JNIEnv *env, jclass clazz, jin
 
 /**
  * JNI: NativeBridge.renderFrameSync(width, height)
- * Calls Go DriftSkiaRenderFrameSync (split pipeline render after StepAndSnapshot).
+ * Double-buffered: picks the next slot, waits on its fence (from two frames ago),
+ * renders into that slot's VkImage, then submits a fence for this frame.
+ * Returns the slot index rendered into (0 or 1), or -1 on error.
  */
 JNIEXPORT jint JNICALL
 Java_{{.JNIPackage}}_NativeBridge_renderFrameSync(JNIEnv *env, jclass clazz, jint width, jint height) {
     (void)env; (void)clazz;
 
-    if (resolve_symbol("DriftSkiaRenderFrameSync", (void **)&drift_skia_render_frame_sync) != 0) {
+    if (resolve_symbol("DriftSkiaRenderVulkanSync", (void **)&drift_skia_render_vulkan_sync) != 0) {
         return -1;
     }
 
-    return (jint)drift_skia_render_frame_sync(width, height);
+    int slot_idx = g_hwb_current;
+    HwbSlot *slot = &g_hwb_slots[slot_idx];
+
+    /* Wait on this slot's fence (ensures GPU finished the frame that last used it).
+     * Use a finite timeout to avoid hanging forever if the GPU stalls (e.g. during
+     * app backgrounding on some devices). 1 second is generous for a single frame. */
+    if (slot->fence_submitted) {
+        if (g_vk_wait_for_fences && g_vk_reset_fences) {
+            static const uint64_t FENCE_TIMEOUT_NS = 1000000000ULL; /* 1 second */
+            VkResult fence_res = g_vk_wait_for_fences(g_vk_device, 1, &slot->fence, VK_TRUE, FENCE_TIMEOUT_NS);
+            if (fence_res == VK_TIMEOUT) {
+                __android_log_print(ANDROID_LOG_WARN, "DriftJNI", "Fence wait timed out on slot %d, resetting device", slot_idx);
+                if (g_vk_device_wait_idle) {
+                    g_vk_device_wait_idle(g_vk_device);
+                }
+            } else if (fence_res != VK_SUCCESS) {
+                __android_log_print(ANDROID_LOG_ERROR, "DriftJNI", "vkWaitForFences failed: %d", fence_res);
+                return -1;
+            }
+            g_vk_reset_fences(g_vk_device, 1, &slot->fence);
+        }
+        slot->fence_submitted = 0;
+    }
+
+    /* Render into this slot's VkImage */
+    int result = drift_skia_render_vulkan_sync(width, height, (uintptr_t)slot->image, (uint32_t)g_vk_format);
+    if (result != 0) {
+        return -1;
+    }
+
+    /* Submit an empty batch with just the fence to track GPU completion */
+    if (g_vk_queue_submit) {
+        VkSubmitInfo submitInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        };
+        VkResult res = g_vk_queue_submit(g_vk_queue, 1, &submitInfo, slot->fence);
+        if (res == VK_SUCCESS) {
+            slot->fence_submitted = 1;
+        } else {
+            __android_log_print(ANDROID_LOG_WARN, "DriftJNI", "vkQueueSubmit fence failed: %d", res);
+        }
+    }
+
+    /* Advance to next slot */
+    g_hwb_current = (g_hwb_current + 1) % HWB_COUNT;
+
+    return (jint)slot_idx;
 }
 
 /**
  * JNI: NativeBridge.purgeResources()
- * Resets GL state tracking and releases all cached GPU resources.
+ * Releases all cached GPU resources.
  * Call after sleep/wake or surface recreation.
  */
 JNIEXPORT void JNICALL

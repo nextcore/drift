@@ -12,21 +12,38 @@ import (
 	"github.com/go-drift/drift/pkg/engine"
 )
 
-// DriftSkiaInitGL initializes a Skia GL context using the current GL context.
-//
-//export DriftSkiaInitGL
-func DriftSkiaInitGL() C.int {
-	if err := engine.InitSkiaGL(); err != nil {
-		return 1
-	}
-	return 0
-}
-
 // DriftSkiaInitMetal initializes a Skia Metal context.
 //
 //export DriftSkiaInitMetal
 func DriftSkiaInitMetal(device C.uintptr_t, queue C.uintptr_t) C.int {
 	if err := engine.InitSkiaMetal(unsafe.Pointer(uintptr(device)), unsafe.Pointer(uintptr(queue))); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// DriftSkiaInitVulkan initializes a Skia Vulkan context.
+//
+//export DriftSkiaInitVulkan
+func DriftSkiaInitVulkan(instance, physDevice, device, queue C.uintptr_t, queueFamilyIndex C.uint32_t, getInstanceProcAddr C.uintptr_t) C.int {
+	if err := engine.InitSkiaVulkan(
+		uintptr(instance),
+		uintptr(physDevice),
+		uintptr(device),
+		uintptr(queue),
+		uint32(queueFamilyIndex),
+		uintptr(getInstanceProcAddr),
+	); err != nil {
+		return 1
+	}
+	return 0
+}
+
+// DriftSkiaRenderVulkanSync renders a frame into the provided VkImage.
+//
+//export DriftSkiaRenderVulkanSync
+func DriftSkiaRenderVulkanSync(width, height C.int, vkImage C.uintptr_t, vkFormat C.uint32_t) C.int {
+	if err := engine.RenderSkiaVulkanSync(int(width), int(height), uintptr(vkImage), uint32(vkFormat)); err != nil {
 		return 1
 	}
 	return 0
@@ -75,17 +92,6 @@ func DriftStepAndSnapshot(width, height C.int, outData **C.char, outLen *C.int) 
 	return 0
 }
 
-// DriftSkiaRenderFrameSync renders a frame using the split pipeline (after StepAndSnapshot).
-// Geometry was already captured; this only composites into the GPU canvas.
-//
-//export DriftSkiaRenderFrameSync
-func DriftSkiaRenderFrameSync(width, height C.int) C.int {
-	if err := engine.RenderSkiaGLSync(int(width), int(height)); err != nil {
-		return 1
-	}
-	return 0
-}
-
 // DriftSkiaRenderMetalSync renders a frame using the split pipeline (after StepAndSnapshot).
 // Geometry was already captured; this only composites into the Metal texture.
 //
@@ -97,12 +103,12 @@ func DriftSkiaRenderMetalSync(width, height C.int, texture C.uintptr_t) C.int {
 	return 0
 }
 
-// DriftSkiaPurgeResources resets GL state tracking and releases all cached GPU
-// resources. Call after sleep/wake or surface recreation to prevent stale textures.
+// DriftSkiaPurgeResources releases all cached GPU resources.
+// Call after sleep/wake or surface recreation to prevent stale textures.
 //
 //export DriftSkiaPurgeResources
 func DriftSkiaPurgeResources() {
-	engine.PurgeSkiaGLResources()
+	engine.PurgeSkiaResources()
 }
 
 // DriftShouldWarmUpViews returns 1 if the native embedder should pre-warm

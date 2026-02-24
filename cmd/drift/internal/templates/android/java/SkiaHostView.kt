@@ -2,17 +2,17 @@
  * SkiaHostView renders Skia content via an AHardwareBuffer-backed FBO.
  *
  * Instead of rendering to a separate SurfaceView/TextureView surface, Skia
- * draws into a GPU-memory HardwareBuffer. That buffer is wrapped as a hardware
- * Bitmap and drawn in onDraw() through the standard HWUI pipeline. Because
- * overlay views (EditText, etc.) are drawn in the same HWUI display list,
- * Skia content and overlays land in a single RenderThread buffer and a single
- * SurfaceFlinger layer, eliminating cross-surface sync lag.
+ * draws into a GPU-memory HardwareBuffer via Vulkan. That buffer is wrapped as
+ * a hardware Bitmap and drawn in onDraw() through the standard HWUI pipeline.
+ * Because overlay views (EditText, etc.) are drawn in the same HWUI display
+ * list, Skia content and overlays land in a single RenderThread buffer and a
+ * single SurfaceFlinger layer, eliminating cross-surface sync lag.
  *
  * Requires API 31+ (minSdk) for Bitmap.wrapHardwareBuffer().
  *
- * EGL initialization happens on a background thread. After init, all rendering
- * runs synchronously on the UI thread (called from UnifiedFrameOrchestrator.doFrame
- * during the ANIMATION phase).
+ * Vulkan initialization happens on a background thread. After init, all
+ * rendering runs synchronously on the UI thread (called from
+ * UnifiedFrameOrchestrator.doFrame during the ANIMATION phase).
  */
 package {{.PackageName}}
 
@@ -33,8 +33,9 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
     private var initThread: HandlerThread? = HandlerThread("drift-init").also { it.start() }
     private var initHandler: Handler? = initThread?.let { Handler(it.looper) }
 
-    // HardwareBuffer bitmap for onDraw
-    private var hwBitmap: Bitmap? = null
+    // Double-buffered HardwareBuffer bitmaps for onDraw
+    private var hwBitmaps: Array<Bitmap?> = arrayOfNulls(2)
+    private var currentBitmapIndex = 0
 
     @Volatile override var surfaceWidth = 0
         private set
@@ -68,7 +69,7 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
         if (!engineReady) {
             // First size: kick off init on background thread
             initHandler?.post {
-                initEGL()
+                initVulkan()
                 createHwbResources(w, h)
                 if (!initEngine()) {
                     initThread?.quitSafely()
@@ -76,7 +77,6 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
                     initHandler = null
                     return@post
                 }
-                NativeBridge.releaseContext()
                 engineReady = true
                 initThread?.quitSafely()
                 initThread = null
@@ -89,11 +89,9 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
                 }
             }
         } else {
-            // Resize: recreate HWB FBO at new size
-            NativeBridge.makeCurrent()
-            NativeBridge.destroyHwbFBO()
+            // Resize: recreate HWB resources at new size
+            NativeBridge.destroyHwbResources()
             createHwbResources(w, h)
-            NativeBridge.releaseContext()
             needsResourcePurge = true
             NativeBridge.requestFrame()
             onFrameNeeded?.invoke()
@@ -112,32 +110,25 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
         val h = surfaceHeight
         if (w <= 0 || h <= 0 || !engineReady) return
 
-        NativeBridge.makeCurrent()
-
         // Purge stale GPU caches (glyph atlas, textures) after sleep/wake or resize.
-        // Must happen while EGL context is current.
         if (needsResourcePurge) {
             needsResourcePurge = false
             NativeBridge.purgeResources()
         }
 
-        NativeBridge.bindHwbFBO()
-
-        val result = NativeBridge.renderFrameSync(w, h)
-        if (result != 0) {
-            Log.e(TAG, "renderFrameSync failed: $result")
+        val slotIndex = NativeBridge.renderFrameSync(w, h)
+        if (slotIndex < 0) {
+            Log.e(TAG, "renderFrameSync failed: $slotIndex")
+        } else {
+            currentBitmapIndex = slotIndex
         }
-
-        NativeBridge.unbindHwbFBO()
-        android.opengl.GLES20.glFlush()
-        NativeBridge.releaseContext()
 
         // Mark this View dirty so onDraw runs during TRAVERSAL
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
-        hwBitmap?.let { bitmap ->
+        hwBitmaps[currentBitmapIndex]?.let { bitmap ->
             canvas.drawBitmap(bitmap, 0f, 0f, null)
         }
     }
@@ -152,34 +143,35 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
         }
     }
 
-    // EGL setup (runs on init thread)
+    // Vulkan setup (runs on init thread)
 
-    private fun initEGL() {
-        if (NativeBridge.initEGL() != 0) {
-            Log.e(TAG, "Failed to initialize EGL")
+    private fun initVulkan() {
+        if (NativeBridge.initVulkan() != 0) {
+            Log.e(TAG, "Failed to initialize Vulkan")
             return
         }
-        NativeBridge.makeCurrent()
-        Log.i(TAG, "EGL initialized (HardwareBuffer, UI-thread render)")
+        Log.i(TAG, "Vulkan initialized (HardwareBuffer, UI-thread render)")
     }
 
     private fun createHwbResources(w: Int, h: Int) {
-        val fboId = NativeBridge.createHwbFBO(w, h)
-        if (fboId < 0) {
-            Log.e(TAG, "createHwbFBO failed")
+        if (NativeBridge.createHwbResources(w, h) < 0) {
+            Log.e(TAG, "createHwbResources failed")
             return
         }
 
-        val hwb = NativeBridge.getHardwareBuffer()
-        if (hwb == null) {
-            Log.e(TAG, "getHardwareBuffer returned null")
-            return
+        for (i in hwBitmaps.indices) {
+            hwBitmaps[i]?.recycle()
+            val hwb = NativeBridge.getHardwareBuffer(i)
+            if (hwb == null) {
+                Log.e(TAG, "getHardwareBuffer($i) returned null")
+                hwBitmaps[i] = null
+                continue
+            }
+            hwBitmaps[i] = Bitmap.wrapHardwareBuffer(hwb, ColorSpace.get(ColorSpace.Named.SRGB))
+            hwb.close()
         }
-
-        hwBitmap?.recycle()
-        hwBitmap = Bitmap.wrapHardwareBuffer(hwb, ColorSpace.get(ColorSpace.Named.SRGB))
-        hwb.close()
-        Log.i(TAG, "HWB bitmap created: ${w}x${h}")
+        currentBitmapIndex = 0
+        Log.i(TAG, "HWB bitmaps created (double-buffered): ${w}x${h}")
     }
 
     private fun initEngine(): Boolean {
@@ -187,8 +179,8 @@ class SkiaHostView(context: Context) : View(context), DriftSkiaHost {
             Log.e(TAG, "Failed to initialize Drift app")
             return false
         }
-        if (NativeBridge.initSkiaGL() != 0) {
-            Log.e(TAG, "Failed to initialize Skia GL backend")
+        if (NativeBridge.initSkiaVulkan() != 0) {
+            Log.e(TAG, "Failed to initialize Skia Vulkan backend")
             return false
         }
         if (NativeBridge.platformInit() != 0) {
