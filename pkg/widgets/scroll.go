@@ -642,8 +642,8 @@ func (p *ScrollPosition) normalizeBallisticVelocity(velocity float64) float64 {
 	}
 	velocity *= 0.9
 	viewport := viewportExtentForPosition(p)
-	maxAbs := clamp(viewport*5.4, 1080, 4500)
-	return clamp(velocity, -maxAbs, maxAbs)
+	maxAbs := Clamp(viewport*5.4, 1080, 4500)
+	return Clamp(velocity, -maxAbs, maxAbs)
 }
 
 // StopBallistic halts any ongoing inertial scroll.
@@ -717,22 +717,12 @@ func (BouncingScrollPhysics) ApplyBoundaryConditions(position *ScrollPosition, v
 	return 0
 }
 
-func clamp(value, min, max float64) float64 {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
-}
-
 func (p *ScrollPosition) clampOffset(value float64, allowOverscroll bool) float64 {
 	if !allowOverscroll {
-		return clamp(value, p.min, p.max)
+		return Clamp(value, p.min, p.max)
 	}
-	limit := clamp(viewportExtentForPosition(p)*0.35, 80, 220)
-	return clamp(value, p.min-limit, p.max+limit)
+	limit := Clamp(viewportExtentForPosition(p)*0.35, 80, 220)
+	return Clamp(value, p.min-limit, p.max+limit)
 }
 
 func viewportExtentForPosition(p *ScrollPosition) float64 {
