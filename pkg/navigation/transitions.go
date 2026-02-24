@@ -196,6 +196,11 @@ func (r *renderSlideTransition) Paint(ctx *layout.PaintContext) {
 	ctx.PaintChildWithLayer(r.child, offset)
 }
 
+func (r *renderSlideTransition) Dispose() {
+	r.unsubscribeAnimation()
+	r.RenderBoxBase.Dispose()
+}
+
 func (r *renderSlideTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
 	if r.child == nil {
 		return false
@@ -320,6 +325,11 @@ func (r *renderBackgroundSlideTransition) Paint(ctx *layout.PaintContext) {
 	ctx.PaintChildWithLayer(r.child, offset)
 }
 
+func (r *renderBackgroundSlideTransition) Dispose() {
+	r.unsubscribeAnimation()
+	r.RenderBoxBase.Dispose()
+}
+
 func (r *renderBackgroundSlideTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
 	if r.child == nil {
 		return false
@@ -436,6 +446,11 @@ func (r *renderFadeTransition) Paint(ctx *layout.PaintContext) {
 	// For now, just paint the child directly.
 	// In a full implementation, we'd use an OpacityLayer.
 	ctx.PaintChildWithLayer(r.child, graphics.Offset{})
+}
+
+func (r *renderFadeTransition) Dispose() {
+	r.unsubscribeAnimation()
+	r.RenderBoxBase.Dispose()
 }
 
 func (r *renderFadeTransition) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {

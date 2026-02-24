@@ -404,14 +404,23 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 	}
 
 	// Add exiting route on top (it's animating out).
-	// Always block interaction on the exiting route.
+	// Use the same wrapper structure as active routes (ExcludeSemantics > Offstage >
+	// IgnorePointer > BackgroundSlideTransition > routeBuilder) so that element
+	// reconciliation reuses existing elements instead of destroying and recreating
+	// the entire render subtree. This prevents platform view lag during pop animations.
 	if s.exitingRoute != nil {
 		children = append(children, widgets.ExcludeSemantics{
-			Child: widgets.IgnorePointer{
-				Ignoring: true,
-				Child: routeBuilder{
-					route: s.exitingRoute,
-					isTop: false, // No longer visually on top
+			Child: widgets.Offstage{
+				Offstage: false, // visible during exit animation
+				Child: widgets.IgnorePointer{
+					Ignoring: true,
+					Child: BackgroundSlideTransition{
+						Animation: nil, // no background parallax for exiting route
+						Child: routeBuilder{
+							route: s.exitingRoute,
+							isTop: false, // No longer visually on top
+						},
+					},
 				},
 			},
 			Excluding: true, // Exclude from accessibility - user is navigating away
