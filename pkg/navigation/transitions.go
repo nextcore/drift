@@ -442,10 +442,22 @@ func (r *renderFadeTransition) Paint(ctx *layout.PaintContext) {
 	if r.child == nil {
 		return
 	}
-	// Note: Full opacity support would require layer compositing.
-	// For now, just paint the child directly.
-	// In a full implementation, we'd use an OpacityLayer.
+	opacity := 1.0
+	if r.animation != nil {
+		opacity = r.animation.Value
+	}
+	if opacity <= 0 {
+		return
+	}
+	if opacity >= 1 {
+		ctx.PaintChildWithLayer(r.child, graphics.Offset{})
+		return
+	}
+	size := r.Size()
+	bounds := graphics.RectFromLTWH(0, 0, size.Width, size.Height)
+	ctx.Canvas.SaveLayerAlpha(bounds, opacity)
 	ctx.PaintChildWithLayer(r.child, graphics.Offset{})
+	ctx.Canvas.Restore()
 }
 
 func (r *renderFadeTransition) Dispose() {
