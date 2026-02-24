@@ -50,6 +50,7 @@ func (c *IconCache) Get(key string, loader func() (*Icon, error)) (*Icon, error)
 	c.mu.Lock()
 	if existing := c.items[key]; existing != nil {
 		c.mu.Unlock()
+		icon.Destroy() // discard duplicate loaded by concurrent request
 		return existing, nil
 	}
 	c.items[key] = icon
