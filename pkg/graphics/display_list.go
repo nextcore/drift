@@ -136,7 +136,7 @@ func (c *recordingCanvas) ClipRRect(rrect RRect) {
 }
 
 func (c *recordingCanvas) ClipPath(path *Path, op ClipOp, antialias bool) {
-	c.recorder.append(opClipPath{path: deepCopyPath(path), op: op, antialias: antialias})
+	c.recorder.append(opClipPath{path: CopyPath(path), op: op, antialias: antialias})
 }
 
 func (c *recordingCanvas) Clear(color Color) {
@@ -172,7 +172,7 @@ func (c *recordingCanvas) DrawImageRect(img image.Image, srcRect, dstRect Rect, 
 }
 
 func (c *recordingCanvas) DrawPath(path *Path, paint Paint) {
-	c.recorder.append(opPath{path: deepCopyPath(path), paint: paint})
+	c.recorder.append(opPath{path: CopyPath(path), paint: paint})
 }
 
 func (c *recordingCanvas) DrawRectShadow(rect Rect, shadow BoxShadow) {
@@ -485,8 +485,3 @@ func (op opLottie) execute(canvas Canvas) {
 	canvas.DrawLottie(op.animPtr, op.bounds, op.t)
 }
 
-// deepCopyPath creates a fully independent copy of a Path, including all
-// command arguments. Returns nil if path is nil.
-func deepCopyPath(path *Path) *Path {
-	return CopyPath(path)
-}
