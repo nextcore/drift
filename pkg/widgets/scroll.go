@@ -399,7 +399,7 @@ func (r *renderScrollView) ScrollOffset() graphics.Offset {
 	return graphics.Offset{Y: -offset}
 }
 
-// SemanticScrollOffset implements layout.ScrollOffsetProvider.
+// SemanticScrollOffset implements layout.SemanticScrollOffsetProvider.
 // Returns the scroll offset to subtract from child positions in the semantics tree.
 func (r *renderScrollView) SemanticScrollOffset() graphics.Offset {
 	offset := r.scrollOffset()

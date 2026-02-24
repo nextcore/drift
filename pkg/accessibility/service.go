@@ -224,7 +224,7 @@ func (s *Service) buildFromRender(renderObj layout.RenderObject, parent *semanti
 
 	// Compute offset for children, accounting for scroll offset if this is a scrollable
 	childOffset := absolutePos
-	if scroller, ok := renderObj.(layout.ScrollOffsetProvider); ok {
+	if scroller, ok := renderObj.(layout.SemanticScrollOffsetProvider); ok {
 		scrollOffset := scroller.SemanticScrollOffset()
 		childOffset.X -= scrollOffset.X
 		childOffset.Y -= scrollOffset.Y

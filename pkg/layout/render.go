@@ -51,9 +51,9 @@ type RepaintBoundaryNode interface {
 	NeedsPaint() bool
 }
 
-// ScrollOffsetProvider is implemented by scrollable render objects.
+// SemanticScrollOffsetProvider is implemented by scrollable render objects.
 // The accessibility system uses this to adjust child positions for scroll offset.
-type ScrollOffsetProvider interface {
+type SemanticScrollOffsetProvider interface {
 	// SemanticScrollOffset returns the scroll offset to subtract from child positions.
 	// A positive Y value means content has scrolled up (showing lower content).
 	SemanticScrollOffset() graphics.Offset
