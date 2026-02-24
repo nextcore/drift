@@ -30,12 +30,6 @@ type StateBase struct {
 	mu        sync.Mutex
 }
 
-// setElement stores the element reference for triggering rebuilds.
-// This method is called automatically by the framework.
-func (s *StateBase) setElement(element *StatefulElement) {
-	s.element = element
-}
-
 // SetElement stores the element reference for triggering rebuilds.
 // This method is called automatically by the framework.
 func (s *StateBase) SetElement(element *StatefulElement) {

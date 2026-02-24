@@ -281,8 +281,6 @@ func (e *StatefulElement) Mount(parent Element, slot any) {
 	e.state = widget.CreateState()
 	if setter, ok := e.state.(interface{ SetElement(*StatefulElement) }); ok {
 		setter.SetElement(e)
-	} else if setter, ok := e.state.(interface{ setElement(*StatefulElement) }); ok {
-		setter.setElement(e)
 	}
 	e.state.InitState()
 	e.dirty = true
