@@ -236,10 +236,10 @@ func TestExpanded_ClampsChildSize(t *testing.T) {
 	}
 }
 
-// TestCenter_UnboundedConstraints verifies Center shrink-wraps to child size
-// when given unbounded constraints.
+// TestCenter_UnboundedConstraints verifies Center (via renderAlign) shrink-wraps
+// to child size when given unbounded constraints.
 func TestCenter_UnboundedConstraints(t *testing.T) {
-	center := &renderCenter{}
+	center := &renderAlign{alignment: layout.AlignmentCenter}
 	center.SetSelf(center)
 
 	child := &mockFixedChild{width: 100, height: 50}
@@ -278,9 +278,9 @@ func TestCenter_UnboundedConstraints(t *testing.T) {
 	}
 }
 
-// TestCenter_PartiallyUnbounded tests Center with only one dimension unbounded.
+// TestCenter_PartiallyUnbounded tests Center (via renderAlign) with only one dimension unbounded.
 func TestCenter_PartiallyUnbounded(t *testing.T) {
-	center := &renderCenter{}
+	center := &renderAlign{alignment: layout.AlignmentCenter}
 	center.SetSelf(center)
 
 	child := &mockFixedChild{width: 80, height: 40}
