@@ -129,15 +129,11 @@ func (l ListView) buildContent() core.Widget {
 }
 
 type listViewBuilderState struct {
-	element        *core.StatefulElement
+	core.StateBase
 	controller     *ScrollController
 	removeListener func()
 	visibleStart   int
 	visibleEnd     int
-}
-
-func (s *listViewBuilderState) SetElement(element *core.StatefulElement) {
-	s.element = element
 }
 
 func (s *listViewBuilderState) InitState() {
@@ -172,23 +168,13 @@ func (s *listViewBuilderState) Build(ctx core.BuildContext) core.Widget {
 	}
 }
 
-func (s *listViewBuilderState) SetState(fn func()) {
-	if fn != nil {
-		fn()
-	}
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *listViewBuilderState) Dispose() {
 	if s.removeListener != nil {
 		s.removeListener()
 		s.removeListener = nil
 	}
+	s.StateBase.Dispose()
 }
-
-func (s *listViewBuilderState) DidChangeDependencies() {}
 
 func (s *listViewBuilderState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	oldList, ok := oldWidget.(ListViewBuilder)
@@ -214,10 +200,10 @@ func (s *listViewBuilderState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 }
 
 func (s *listViewBuilderState) currentWidget() (ListViewBuilder, bool) {
-	if s.element == nil {
+	if s.Element() == nil {
 		return ListViewBuilder{}, false
 	}
-	widgetValue, ok := s.element.Widget().(ListViewBuilder)
+	widgetValue, ok := s.Element().Widget().(ListViewBuilder)
 	return widgetValue, ok
 }
 
@@ -236,8 +222,8 @@ func (s *listViewBuilderState) onScroll() {
 		return
 	}
 	if s.updateVisibleRange(widgetValue) {
-		if s.element != nil {
-			s.element.MarkNeedsBuild()
+		if s.Element() != nil {
+			s.Element().MarkNeedsBuild()
 		}
 	}
 }
