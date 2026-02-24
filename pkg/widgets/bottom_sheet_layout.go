@@ -80,21 +80,9 @@ type renderBottomSheetPositioner struct {
 }
 
 func (r *renderBottomSheetPositioner) SetChild(child layout.RenderObject) {
-	if r.child != nil {
-		if s, ok := r.child.(interface{ SetParent(layout.RenderObject) }); ok {
-			s.SetParent(nil)
-		}
-	}
-	if child == nil {
-		r.child = nil
-		return
-	}
-	if box, ok := child.(layout.RenderBox); ok {
-		r.child = box
-		if s, ok := r.child.(interface{ SetParent(layout.RenderObject) }); ok {
-			s.SetParent(r)
-		}
-	}
+	setParentOnChild(r.child, nil)
+	r.child = setChildFromRenderObject(child)
+	setParentOnChild(r.child, r)
 }
 
 func (r *renderBottomSheetPositioner) VisitChildren(visitor func(layout.RenderObject)) {
