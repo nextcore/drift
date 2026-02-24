@@ -45,10 +45,6 @@ func (r *renderView) IsRepaintBoundary() bool {
 	return true
 }
 
-func (r *renderView) EnsureLayer() *graphics.Layer {
-	return r.RenderBoxBase.EnsureLayer()
-}
-
 func (r *renderView) SetChild(child layout.RenderObject) {
 	setParentOnChild(r.child, nil)
 	r.child = setChildFromRenderObject(child)
