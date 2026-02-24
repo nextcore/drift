@@ -367,19 +367,15 @@ func (r *renderFlex) PerformLayout() {
 			containerType = "Column"
 		}
 		panic(fmt.Sprintf(
-			"CrossAxisAlignmentStretch used in %s with unbounded %s.\n\n"+
+			"CrossAxisAlignmentStretch used in %[1]s with unbounded %[2]s.\n\n"+
 				"Children cannot stretch to fill infinite space. This happens when:\n"+
-				"- The %s is inside a ScrollView (which has unbounded %s)\n"+
-				"- The %s is a direct child of another flex without constrained %s\n\n"+
+				"- The %[1]s is inside a ScrollView (which has unbounded %[2]s)\n"+
+				"- The %[1]s is a direct child of another flex without constrained %[2]s\n\n"+
 				"Solutions:\n"+
 				"- Use CrossAxisAlignmentStart, CrossAxisAlignmentCenter, or CrossAxisAlignmentEnd instead\n"+
-				"- Wrap the %s in a SizedBox or Container with a fixed %s\n"+
-				"- Ensure the parent provides bounded %s constraints",
+				"- Wrap the %[1]s in a SizedBox or Container with a fixed %[2]s\n"+
+				"- Ensure the parent provides bounded %[2]s constraints",
 			containerType, crossAxisName,
-			containerType, crossAxisName,
-			containerType, crossAxisName,
-			containerType, crossAxisName,
-			crossAxisName,
 		))
 	}
 
@@ -421,14 +417,12 @@ func (r *renderFlex) PerformLayout() {
 			mainAxisName = "height"
 		}
 		panic(fmt.Sprintf(
-			"Expanded/Flexible used in %s with unbounded %s.\n\n"+
+			"Expanded/Flexible used in %[1]s with unbounded %[2]s.\n\n"+
 				"Flex children need a finite main axis to divide space. This happens when:\n"+
-				"- The %s is inside a ScrollView (which has unbounded %s)\n\n"+
+				"- The %[1]s is inside a ScrollView (which has unbounded %[2]s)\n\n"+
 				"Solutions:\n"+
 				"- Remove Expanded/Flexible and use fixed-size widgets instead\n"+
-				"- Wrap the %s in a SizedBox or Container with a fixed %s",
-			containerType, mainAxisName,
-			containerType, mainAxisName,
+				"- Wrap the %[1]s in a SizedBox or Container with a fixed %[2]s",
 			containerType, mainAxisName,
 		))
 	}
