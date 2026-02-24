@@ -52,6 +52,11 @@ func (e *elementBase) UpdateSlot(newSlot any) {
 	e.slot = newSlot
 }
 
+// NeedsBuild reports whether this element is marked dirty and awaiting rebuild.
+func (e *elementBase) NeedsBuild() bool {
+	return e.dirty
+}
+
 func (e *elementBase) MarkNeedsBuild() {
 	if e.dirty {
 		return

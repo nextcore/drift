@@ -532,23 +532,8 @@ func getNeedsBuild(elem core.Element) bool {
 	if elem == nil {
 		return false
 	}
-	// The dirty field is unexported, but we can check via type assertion
-	// to a common interface if available. For now, we use reflection.
-	v := reflect.ValueOf(elem)
-	if !v.IsValid() {
-		return false
-	}
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return false
-		}
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Struct {
-		return false
-	}
-	if dirty := v.FieldByName("dirty"); dirty.IsValid() && dirty.Kind() == reflect.Bool {
-		return dirty.Bool()
+	if nb, ok := elem.(interface{ NeedsBuild() bool }); ok {
+		return nb.NeedsBuild()
 	}
 	return false
 }
