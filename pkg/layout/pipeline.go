@@ -204,26 +204,21 @@ func (p *PipelineOwner) FlushPaint() []RenderObject {
 		return nil
 	}
 
-	dirty := make([]RenderObject, 0, len(p.dirtyPaint))
+	result := make([]RenderObject, 0, len(p.dirtyPaint))
 	for obj := range p.dirtyPaint {
-		dirty = append(dirty, obj)
-	}
-
-	// Sort by depth - parents first (same as flushDirtyBoundaries)
-	slices.SortFunc(dirty, func(a, b RenderObject) int {
-		return getDepth(a) - getDepth(b)
-	})
-
-	// Filter to boundaries that still need paint
-	result := make([]RenderObject, 0, len(dirty))
-	for _, node := range dirty {
-		if np, ok := node.(interface{ NeedsPaint() bool }); ok && np.NeedsPaint() {
-			result = append(result, node)
+		if np, ok := obj.(interface{ NeedsPaint() bool }); ok && np.NeedsPaint() {
+			result = append(result, obj)
 		}
 	}
 
 	p.dirtyPaint = nil
 	p.needsPaint = false
+
+	// Sort by depth - parents first (same as flushDirtyBoundaries)
+	slices.SortFunc(result, func(a, b RenderObject) int {
+		return getDepth(a) - getDepth(b)
+	})
+
 	return result
 }
 
