@@ -165,8 +165,7 @@ func (r *renderFlexChild) Paint(ctx *layout.PaintContext) {
 
 // HitTest tests if the position hits this widget.
 func (r *renderFlexChild) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	size := r.Size()
-	if position.X < 0 || position.Y < 0 || position.X > size.Width || position.Y > size.Height {
+	if !withinBounds(position, r.Size()) {
 		return false
 	}
 	if r.child != nil {
