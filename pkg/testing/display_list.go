@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"math"
-	"sort"
 	"unsafe"
 
 	"github.com/go-drift/drift/pkg/graphics"
@@ -293,12 +292,3 @@ func sortedMap(kvs ...any) map[string]any {
 	return m
 }
 
-// sortedKeys returns the keys of a map in sorted order.
-func sortedKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}

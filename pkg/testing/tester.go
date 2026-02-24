@@ -40,7 +40,6 @@ type WidgetTester struct {
 	theme      *theme.AppThemeData
 	dispatches []func()
 	pointers   map[int]*pointerState
-	recorder   *graphics.PictureRecorder
 }
 
 // NewWidgetTester creates a tester with default test environment.
@@ -54,7 +53,6 @@ func NewWidgetTester() *WidgetTester {
 		scale:      DefaultScale,
 		theme:      theme.NewAppThemeData(theme.TargetPlatformMaterial, theme.BrightnessLight).Copy(),
 		pointers:   make(map[int]*pointerState),
-		recorder:   &graphics.PictureRecorder{},
 	}
 	t.prevClock = animation.SetClock(clk)
 	// Register this tester's dispatch function with the platform package
