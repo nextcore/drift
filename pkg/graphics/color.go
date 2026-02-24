@@ -63,7 +63,7 @@ func clamp01(v float64) float64 {
 }
 
 // Common colors.
-var (
+const (
 	ColorTransparent = Color(0x00000000)
 	ColorBlack       = Color(0xFF000000)
 	ColorWhite       = Color(0xFFFFFFFF)
