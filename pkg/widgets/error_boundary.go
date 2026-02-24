@@ -283,24 +283,9 @@ func (r *renderErrorBoundary) PerformLayout() {
 		return
 	}
 
-	var panicked bool
-	var panicValue any
-	var stack string
-
-	func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				panicked = true
-				panicValue = rec
-				stack = errors.CaptureStack()
-			}
-		}()
+	if r.recoverFromPanic("layout", func() {
 		r.child.Layout(constraints, true)
-	}()
-
-	if panicked {
-		r.hasError = true
-		r.deferErrorCapture("layout", panicValue, stack)
+	}) {
 		r.SetSize(constraints.Constrain(graphics.Size{}))
 		return
 	}
@@ -312,25 +297,9 @@ func (r *renderErrorBoundary) Paint(ctx *layout.PaintContext) {
 		return
 	}
 
-	var panicked bool
-	var panicValue any
-	var stack string
-
-	func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				panicked = true
-				panicValue = rec
-				stack = errors.CaptureStack()
-			}
-		}()
+	r.recoverFromPanic("paint", func() {
 		ctx.PaintChildWithLayer(r.child, getChildOffset(r.child))
-	}()
-
-	if panicked {
-		r.hasError = true
-		r.deferErrorCapture("paint", panicValue, stack)
-	}
+	})
 }
 
 func (r *renderErrorBoundary) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
@@ -341,10 +310,23 @@ func (r *renderErrorBoundary) HitTest(position graphics.Offset, result *layout.H
 		return false
 	}
 
+	var hitResult bool
+	if r.recoverFromPanic("hittest", func() {
+		offset := getChildOffset(r.child)
+		local := graphics.Offset{X: position.X - offset.X, Y: position.Y - offset.Y}
+		hitResult = r.child.HitTest(local, result)
+	}) {
+		return false
+	}
+	return hitResult
+}
+
+// recoverFromPanic runs fn and recovers from any panic, returning true if a panic occurred.
+// On panic, it sets hasError and defers error capture for the given phase.
+func (r *renderErrorBoundary) recoverFromPanic(phase string, fn func()) bool {
 	var panicked bool
 	var panicValue any
 	var stack string
-	var hitResult bool
 
 	func() {
 		defer func() {
@@ -354,17 +336,14 @@ func (r *renderErrorBoundary) HitTest(position graphics.Offset, result *layout.H
 				stack = errors.CaptureStack()
 			}
 		}()
-		offset := getChildOffset(r.child)
-		local := graphics.Offset{X: position.X - offset.X, Y: position.Y - offset.Y}
-		hitResult = r.child.HitTest(local, result)
+		fn()
 	}()
 
 	if panicked {
 		r.hasError = true
-		r.deferErrorCapture("hittest", panicValue, stack)
-		return false
+		r.deferErrorCapture(phase, panicValue, stack)
 	}
-	return hitResult
+	return panicked
 }
 
 // deferErrorCapture schedules error capture for next frame to avoid re-entrancy
