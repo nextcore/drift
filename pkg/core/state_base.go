@@ -1,6 +1,9 @@
 package core
 
-import "sync"
+import (
+	"slices"
+	"sync"
+)
 
 // stateBase is satisfied by any struct that embeds StateBase.
 // Hooks and NewManaged accept stateBase so callers can pass s directly.
@@ -24,10 +27,11 @@ func (s *StateBase) state() *StateBase { return s }
 //	    // No need to implement SetElement, SetState, Dispose, etc.
 //	}
 type StateBase struct {
-	element   *StatefulElement
-	disposers []func()
-	disposed  bool
-	mu        sync.Mutex
+	element    *StatefulElement
+	disposers  map[int]func()
+	nextDispID int
+	disposed   bool
+	mu         sync.Mutex
 }
 
 // SetElement stores the element reference for triggering rebuilds.
@@ -76,15 +80,17 @@ func (s *StateBase) OnDispose(cleanup func()) func() {
 		return func() {}
 	}
 
-	index := len(s.disposers)
-	s.disposers = append(s.disposers, cleanup)
+	if s.disposers == nil {
+		s.disposers = make(map[int]func())
+	}
+	id := s.nextDispID
+	s.nextDispID++
+	s.disposers[id] = cleanup
 
 	return func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		if index < len(s.disposers) {
-			s.disposers[index] = nil
-		}
+		delete(s.disposers, id)
 	}
 }
 
@@ -99,11 +105,14 @@ func (s *StateBase) RunDisposers() {
 	}
 	s.disposed = true
 
-	// Run disposers in reverse order (LIFO)
-	for i := len(s.disposers) - 1; i >= 0; i-- {
-		if s.disposers[i] != nil {
-			s.disposers[i]()
-		}
+	// Run disposers in reverse registration order (LIFO)
+	keys := make([]int, 0, len(s.disposers))
+	for k := range s.disposers {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for i := len(keys) - 1; i >= 0; i-- {
+		s.disposers[keys[i]]()
 	}
 	s.disposers = nil
 }
