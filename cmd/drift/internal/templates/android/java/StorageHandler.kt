@@ -13,6 +13,7 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import java.io.File
+import android.util.Base64
 
 object StorageHandler {
     private const val PICK_FILE_REQUEST = 9002
@@ -92,6 +93,7 @@ object StorageHandler {
         @Suppress("UNCHECKED_CAST")
         val data = when (val dataArg = argsMap["data"]) {
             is ByteArray -> dataArg
+            is String -> Base64.decode(dataArg, Base64.DEFAULT)
             is List<*> -> (dataArg as List<Number>).map { it.toByte() }.toByteArray()
             else -> null
         }
@@ -143,6 +145,7 @@ object StorageHandler {
         @Suppress("UNCHECKED_CAST")
         val data = when (val dataArg = argsMap["data"]) {
             is ByteArray -> dataArg
+            is String -> Base64.decode(dataArg, Base64.DEFAULT)
             is List<*> -> (dataArg as List<Number>).map { it.toByte() }.toByteArray()
             else -> null
         } ?: return Pair(null, IllegalArgumentException("Missing data"))

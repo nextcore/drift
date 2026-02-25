@@ -263,7 +263,7 @@ final class StorageHandler: NSObject {
             return Data(bytes.map { UInt8(truncatingIfNeeded: $0) })
         }
         if let string = value as? String {
-            return string.data(using: .utf8)
+            return Data(base64Encoded: string)
         }
         return nil
     }
