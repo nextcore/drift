@@ -298,39 +298,6 @@ func (f *textInputViewFactory) Create(viewID int64, params map[string]any) (Plat
 }
 
 // toFloat64 converts various numeric types to float64.
-func toFloat64(v any) (float64, bool) {
-	switch n := v.(type) {
-	case float64:
-		return n, true
-	case float32:
-		return float64(n), true
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	case int32:
-		return float64(n), true
-	default:
-		return 0, false
-	}
-}
-
-// toUint32 converts various numeric types to uint32.
-func toUint32(v any) (uint32, bool) {
-	switch n := v.(type) {
-	case uint32:
-		return n, true
-	case int:
-		return uint32(n), true
-	case int64:
-		return uint32(n), true
-	case float64:
-		return uint32(n), true
-	default:
-		return 0, false
-	}
-}
-
 // RegisterTextInputViewFactory registers the text input view factory.
 func RegisterTextInputViewFactory() {
 	GetPlatformViewRegistry().RegisterFactory(&textInputViewFactory{})

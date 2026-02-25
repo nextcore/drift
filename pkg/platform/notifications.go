@@ -2,7 +2,6 @@ package platform
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-drift/drift/pkg/errors"
@@ -345,78 +344,3 @@ func parseNotificationErrorWithError(data any) (NotificationError, error) {
 	}, nil
 }
 
-func parseString(value any) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case []byte:
-		return string(v)
-	case fmt.Stringer:
-		return v.String()
-	default:
-		return ""
-	}
-}
-
-func parseBool(value any) bool {
-	switch v := value.(type) {
-	case bool:
-		return v
-	case string:
-		return v == "true"
-	default:
-		return false
-	}
-}
-
-func parseMap(value any) map[string]any {
-	if value == nil {
-		return nil
-	}
-	if m, ok := value.(map[string]any); ok {
-		return m
-	}
-	if m, ok := value.(map[any]any); ok {
-		converted := make(map[string]any, len(m))
-		for key, val := range m {
-			if keyString, ok := key.(string); ok {
-				converted[keyString] = val
-			}
-		}
-		return converted
-	}
-	return nil
-}
-
-func parseTime(value any) time.Time {
-	var millis int64
-	switch v := value.(type) {
-	case int64:
-		millis = v
-	case int:
-		millis = int64(v)
-	case int32:
-		millis = int64(v)
-	case float64:
-		millis = int64(v)
-	case float32:
-		millis = int64(v)
-	case uint64:
-		millis = int64(v)
-	case uint32:
-		millis = int64(v)
-	case uint:
-		millis = int64(v)
-	case int16:
-		millis = int64(v)
-	case int8:
-		millis = int64(v)
-	case uint16:
-		millis = int64(v)
-	case uint8:
-		millis = int64(v)
-	default:
-		return time.Time{}
-	}
-	return time.UnixMilli(millis)
-}

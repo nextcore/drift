@@ -158,31 +158,20 @@ func parseLocationUpdateWithError(data any) (LocationUpdate, error) {
 	if !ok {
 		return LocationUpdate{}, fmt.Errorf("expected map, got %T", data)
 	}
+	lat, _ := toFloat64(m["latitude"])
+	lon, _ := toFloat64(m["longitude"])
+	alt, _ := toFloat64(m["altitude"])
+	acc, _ := toFloat64(m["accuracy"])
+	hdg, _ := toFloat64(m["heading"])
+	spd, _ := toFloat64(m["speed"])
 	return LocationUpdate{
-		Latitude:  parseFloat64(m["latitude"]),
-		Longitude: parseFloat64(m["longitude"]),
-		Altitude:  parseFloat64(m["altitude"]),
-		Accuracy:  parseFloat64(m["accuracy"]),
-		Heading:   parseFloat64(m["heading"]),
-		Speed:     parseFloat64(m["speed"]),
+		Latitude:  lat,
+		Longitude: lon,
+		Altitude:  alt,
+		Accuracy:  acc,
+		Heading:   hdg,
+		Speed:     spd,
 		Timestamp: parseTime(m["timestamp"]),
 		IsMocked:  parseBool(m["isMocked"]),
 	}, nil
-}
-
-func parseFloat64(value any) float64 {
-	switch v := value.(type) {
-	case float64:
-		return v
-	case float32:
-		return float64(v)
-	case int:
-		return float64(v)
-	case int64:
-		return float64(v)
-	case int32:
-		return float64(v)
-	default:
-		return 0
-	}
 }
