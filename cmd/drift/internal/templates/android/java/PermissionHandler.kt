@@ -30,11 +30,6 @@ object PermissionHandler {
         },
         "location" to Manifest.permission.ACCESS_FINE_LOCATION,
         "location_always" to Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-        "storage" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        },
         "contacts" to Manifest.permission.READ_CONTACTS,
         "calendar" to Manifest.permission.READ_CALENDAR,
         "notifications" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

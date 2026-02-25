@@ -57,6 +57,6 @@ func buildSystemHubPage(ctx core.BuildContext) core.Widget {
 		ctx,
 		CategorySystem,
 		"System",
-		"Native device integration. Location, notifications, storage, sharing, clipboard, and permissions.",
+		"Native device integration. Location, notifications, sharing, clipboard, and permissions.",
 	)
 }

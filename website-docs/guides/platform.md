@@ -242,10 +242,6 @@ result, err := platform.Contacts.Permission.Request(ctx)
 // Calendar
 status, err := platform.Calendar.Permission.Status(ctx)
 result, err := platform.Calendar.Permission.Request(ctx)
-
-// Storage
-status, err := platform.StoragePermission.Permission.Status(ctx)
-result, err := platform.StoragePermission.Permission.Request(ctx)
 ```
 
 ### Open App Settings

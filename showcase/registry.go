@@ -39,7 +39,7 @@ var categories = []CategoryInfo{
 	{CategoryWidgets, "/widgets-hub", "Widgets", "Buttons, forms, menus, media"},
 	{CategoryMotion, "/motion-hub", "Motion", "Gestures, animation, effects"},
 	{CategoryMedia, "/media-hub", "Media", "Camera, web content, images"},
-	{CategorySystem, "/system-hub", "System", "Permissions, storage, sharing"},
+	{CategorySystem, "/system-hub", "System", "Permissions, sharing"},
 }
 
 // demos is the registry of all showcase demo pages.
@@ -77,7 +77,7 @@ var demos = []Demo{
 	{"/audio-player", "Audio Player", "Headless audio with custom UI", CategoryMedia, "icon-music.svg", buildAudioPlayerPage},
 
 	// System demos
-	{"/permissions", "Other Permissions", "Contacts, calendar, storage access", CategorySystem, "icon-shield.svg", buildPermissionsPage},
+	{"/permissions", "Other Permissions", "Contacts, calendar, photos", CategorySystem, "icon-shield.svg", buildPermissionsPage},
 	{"/location", "Location", "GPS and location services", CategorySystem, "icon-location.svg", buildLocationPage},
 	{"/notifications", "Notifications", "Push and local notifications", CategorySystem, "icon-bell.svg", buildNotificationsPage},
 	{"/storage", "Storage", "File picker and directories", CategorySystem, "icon-folder.svg", buildStoragePage},

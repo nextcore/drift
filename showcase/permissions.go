@@ -31,7 +31,6 @@ type permissionDemo struct {
 var otherPermissions = []permissionDemo{
 	{"Contacts", platform.Contacts.Permission},
 	{"Calendar", platform.Calendar.Permission},
-	{"Storage", platform.StoragePermission.Permission},
 	{"Microphone", platform.Microphone.Permission},
 	{"Photos", platform.Photos.Permission},
 }
