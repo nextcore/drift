@@ -323,6 +323,8 @@ DriftSkiaSurface drift_skia_surface_create_offscreen_vulkan(DriftSkiaContext ctx
 void drift_skia_context_flush_and_submit(DriftSkiaContext ctx, int sync_cpu);
 void drift_skia_context_purge_resources(DriftSkiaContext ctx);
 
+void drift_skia_replay_command_buffer(DriftSkiaCanvas canvas, const float* data, int count);
+
 #ifdef __cplusplus
 }
 #endif

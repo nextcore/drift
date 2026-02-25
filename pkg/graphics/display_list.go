@@ -13,11 +13,20 @@ type DisplayList struct {
 }
 
 // Paint replays the recorded operations onto the provided canvas.
+// On platforms with Skia (android, darwin, ios), batchable ops are encoded
+// into a command buffer and replayed in a single CGO call for performance.
 func (d *DisplayList) Paint(canvas Canvas) {
+	if tryBatchReplay != nil && tryBatchReplay(d, canvas) {
+		return
+	}
 	for _, op := range d.ops {
 		op.execute(canvas)
 	}
 }
+
+// tryBatchReplay is set by the platform-specific replay implementation.
+// Returns true if the canvas was handled via batched replay.
+var tryBatchReplay func(d *DisplayList, canvas Canvas) bool
 
 // Size returns the size recorded when the display list was created.
 func (d *DisplayList) Size() Size {
@@ -484,4 +493,3 @@ type opLottie struct {
 func (op opLottie) execute(canvas Canvas) {
 	canvas.DrawLottie(op.animPtr, op.bounds, op.t)
 }
-

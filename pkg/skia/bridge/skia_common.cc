@@ -1550,4 +1550,332 @@ void drift_skia_context_flush_and_submit(DriftSkiaContext ctx, int sync_cpu) {
     context->flushAndSubmit(sync_cpu ? GrSyncCpu::kYes : GrSyncCpu::kNo);
 }
 
+// Command buffer replay opcodes - must match Go constants in command_buffer.go
+enum CmdOp {
+    CMD_SAVE             = 1,
+    CMD_RESTORE          = 2,
+    CMD_SAVE_LAYER_ALPHA = 3,
+    CMD_SAVE_LAYER_BLUR  = 4,
+    CMD_SAVE_LAYER       = 5,
+    CMD_TRANSLATE        = 6,
+    CMD_SCALE            = 7,
+    CMD_ROTATE           = 8,
+    CMD_CLIP_RECT        = 9,
+    CMD_CLIP_RRECT       = 10,
+    CMD_CLEAR            = 11,
+    CMD_DRAW_RECT        = 12,
+    CMD_DRAW_RRECT       = 13,
+    CMD_DRAW_CIRCLE      = 14,
+    CMD_DRAW_LINE        = 15,
+    CMD_DRAW_RECT_SHADOW = 16,
+    CMD_DRAW_RRECT_SHADOW = 17,
+    CMD_SVG_TINTED       = 18,
+    CMD_LOTTIE           = 19,
+};
+
+// Read a float and advance the cursor.
+static inline float rf(const float* data, int& i) {
+    return data[i++];
+}
+
+// Read a uint32 encoded as float bits and advance the cursor.
+static inline uint32_t ru32(const float* data, int& i) {
+    uint32_t v;
+    std::memcpy(&v, &data[i], sizeof(float));
+    i++;
+    return v;
+}
+
+// Read a pointer encoded as two float32 halves (lo/hi) and advance the cursor.
+static inline void* rptr(const float* data, int& i) {
+    uint32_t lo = ru32(data, i);
+    uint32_t hi = ru32(data, i);
+    if constexpr (sizeof(void*) > 4) {
+        uintptr_t v = static_cast<uintptr_t>(lo) | (static_cast<uintptr_t>(hi) << 32);
+        return reinterpret_cast<void*>(v);
+    } else {
+        (void)hi;
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(lo));
+    }
+}
+
+// Read paint sub-encoding from the command buffer. Returns the SkPaint and
+// optionally sets the gradient shader.
+static SkPaint read_paint(const float* data, int& i) {
+    uint32_t argb = ru32(data, i);
+    int style = static_cast<int>(rf(data, i));
+    float stroke_width = rf(data, i);
+    int cap = static_cast<int>(rf(data, i));
+    int join = static_cast<int>(rf(data, i));
+    float miter = rf(data, i);
+    int blend = static_cast<int>(rf(data, i));
+    float alpha = rf(data, i);
+
+    // Dash
+    int dash_count = static_cast<int>(rf(data, i));
+    const float* dash_ptr = nullptr;
+    float dash_phase = 0;
+    if (dash_count > 0) {
+        dash_ptr = &data[i];
+        i += dash_count;
+        dash_phase = rf(data, i);
+    }
+
+    SkPaint paint = make_paint_ext(argb, style, stroke_width, 1,
+        cap, join, miter,
+        dash_ptr, dash_count, dash_phase,
+        blend, alpha);
+
+    // Gradient
+    float has_gradient = rf(data, i);
+    if (has_gradient != 0) {
+        int gradient_type = static_cast<int>(rf(data, i));
+        float x1 = rf(data, i);
+        float y1 = rf(data, i);
+        float x2 = rf(data, i);
+        float y2 = rf(data, i);
+        float cx = rf(data, i);
+        float cy = rf(data, i);
+        float radius = rf(data, i);
+        int stop_count = static_cast<int>(rf(data, i));
+        // Read colors as uint32 bits
+        std::vector<uint32_t> colors(stop_count);
+        for (int s = 0; s < stop_count; s++) {
+            colors[s] = ru32(data, i);
+        }
+        const float* positions = &data[i];
+        i += stop_count;
+        auto shader = make_gradient_shader(gradient_type, x1, y1, x2, y2, cx, cy, radius,
+            colors.data(), positions, stop_count);
+        if (shader) {
+            paint.setShader(shader);
+        }
+    }
+
+    return paint;
+}
+
+void drift_skia_replay_command_buffer(DriftSkiaCanvas canvas, const float* data, int count) {
+    if (!canvas || !data || count <= 0) {
+        return;
+    }
+    auto sk_canvas = reinterpret_cast<SkCanvas*>(canvas);
+    int i = 0;
+
+    while (i < count) {
+        int op = static_cast<int>(rf(data, i));
+
+        switch (op) {
+        case CMD_SAVE:
+            sk_canvas->save();
+            break;
+
+        case CMD_RESTORE:
+            sk_canvas->restore();
+            break;
+
+        case CMD_SAVE_LAYER_ALPHA: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float alpha = rf(data, i);
+            if (alpha < 0) alpha = 0;
+            if (alpha > 1) alpha = 1;
+            SkRect bounds = SkRect::MakeLTRB(l, t, r, b);
+            sk_canvas->saveLayerAlpha(&bounds, static_cast<uint8_t>(alpha * 255));
+            break;
+        }
+
+        case CMD_SAVE_LAYER_BLUR: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float sigma_x = rf(data, i), sigma_y = rf(data, i);
+            drift_skia_canvas_save_layer_blur(canvas, l, t, r, b, sigma_x, sigma_y);
+            break;
+        }
+
+        case CMD_SAVE_LAYER: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            int blend_mode = static_cast<int>(rf(data, i));
+            float alpha = rf(data, i);
+            SkRect bounds = SkRect::MakeLTRB(l, t, r, b);
+            SkRect* boundsPtr = (l == 0 && t == 0 && r == 0 && b == 0) ? nullptr : &bounds;
+            SkPaint paint;
+            paint.setBlendMode(static_cast<SkBlendMode>(blend_mode));
+            if (alpha < 1.0f) {
+                paint.setAlphaf(alpha);
+            }
+            // Color filter
+            int cf_len = static_cast<int>(rf(data, i));
+            if (cf_len > 0) {
+                int consumed = 0;
+                auto cf = parse_color_filter(&data[i], cf_len, consumed);
+                if (cf) paint.setColorFilter(cf);
+                i += cf_len;
+            }
+            // Image filter
+            int if_len = static_cast<int>(rf(data, i));
+            if (if_len > 0) {
+                int consumed = 0;
+                auto imf = parse_image_filter(&data[i], if_len, consumed);
+                if (imf) paint.setImageFilter(imf);
+                i += if_len;
+            }
+            sk_canvas->saveLayer(boundsPtr, &paint);
+            break;
+        }
+
+        case CMD_TRANSLATE: {
+            float dx = rf(data, i), dy = rf(data, i);
+            sk_canvas->translate(dx, dy);
+            break;
+        }
+
+        case CMD_SCALE: {
+            float sx = rf(data, i), sy = rf(data, i);
+            sk_canvas->scale(sx, sy);
+            break;
+        }
+
+        case CMD_ROTATE: {
+            float radians = rf(data, i);
+            sk_canvas->rotate(radians * 180.0f / 3.14159265f);
+            break;
+        }
+
+        case CMD_CLIP_RECT: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            sk_canvas->clipRect(SkRect::MakeLTRB(l, t, r, b));
+            break;
+        }
+
+        case CMD_CLIP_RRECT: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float rx1 = rf(data, i), ry1 = rf(data, i);
+            float rx2 = rf(data, i), ry2 = rf(data, i);
+            float rx3 = rf(data, i), ry3 = rf(data, i);
+            float rx4 = rf(data, i), ry4 = rf(data, i);
+            SkRect rect = SkRect::MakeLTRB(l, t, r, b);
+            SkVector radii[4] = {{rx1, ry1}, {rx2, ry2}, {rx3, ry3}, {rx4, ry4}};
+            SkRRect rrect;
+            rrect.setRectRadii(rect, radii);
+            sk_canvas->clipRRect(rrect);
+            break;
+        }
+
+        case CMD_CLEAR: {
+            uint32_t argb = ru32(data, i);
+            sk_canvas->clear(to_sk_color(argb));
+            break;
+        }
+
+        case CMD_DRAW_RECT: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            SkPaint paint = read_paint(data, i);
+            sk_canvas->drawRect(SkRect::MakeLTRB(l, t, r, b), paint);
+            break;
+        }
+
+        case CMD_DRAW_RRECT: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float rx1 = rf(data, i), ry1 = rf(data, i);
+            float rx2 = rf(data, i), ry2 = rf(data, i);
+            float rx3 = rf(data, i), ry3 = rf(data, i);
+            float rx4 = rf(data, i), ry4 = rf(data, i);
+            SkRect rect = SkRect::MakeLTRB(l, t, r, b);
+            SkVector radii[4] = {{rx1, ry1}, {rx2, ry2}, {rx3, ry3}, {rx4, ry4}};
+            SkRRect rrect;
+            rrect.setRectRadii(rect, radii);
+            SkPaint paint = read_paint(data, i);
+            sk_canvas->drawRRect(rrect, paint);
+            break;
+        }
+
+        case CMD_DRAW_CIRCLE: {
+            float cx = rf(data, i), cy = rf(data, i), radius = rf(data, i);
+            SkPaint paint = read_paint(data, i);
+            sk_canvas->drawCircle(cx, cy, radius, paint);
+            break;
+        }
+
+        case CMD_DRAW_LINE: {
+            float x1 = rf(data, i), y1 = rf(data, i), x2 = rf(data, i), y2 = rf(data, i);
+            SkPaint paint = read_paint(data, i);
+            // Lines are always stroke
+            paint.setStyle(SkPaint::kStroke_Style);
+            sk_canvas->drawLine(x1, y1, x2, y2, paint);
+            break;
+        }
+
+        case CMD_DRAW_RECT_SHADOW: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            uint32_t color = ru32(data, i);
+            float sigma = rf(data, i);
+            float dx = rf(data, i), dy = rf(data, i);
+            float spread = rf(data, i);
+            int blur_style = static_cast<int>(rf(data, i));
+            drift_skia_canvas_draw_rect_shadow(canvas, l, t, r, b, color, sigma, dx, dy, spread, blur_style);
+            break;
+        }
+
+        case CMD_DRAW_RRECT_SHADOW: {
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float rx1 = rf(data, i), ry1 = rf(data, i);
+            float rx2 = rf(data, i), ry2 = rf(data, i);
+            float rx3 = rf(data, i), ry3 = rf(data, i);
+            float rx4 = rf(data, i), ry4 = rf(data, i);
+            uint32_t color = ru32(data, i);
+            float sigma = rf(data, i);
+            float dx = rf(data, i), dy = rf(data, i);
+            float spread = rf(data, i);
+            int blur_style = static_cast<int>(rf(data, i));
+            drift_skia_canvas_draw_rrect_shadow(canvas, l, t, r, b,
+                rx1, ry1, rx2, ry2, rx3, ry3, rx4, ry4,
+                color, sigma, dx, dy, spread, blur_style);
+            break;
+        }
+
+        case CMD_SVG_TINTED: {
+            void* svg_ptr = rptr(data, i);
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            uint32_t tint_argb = ru32(data, i);
+            if (svg_ptr) {
+                float w = r - l, h = b - t;
+                if (w > 0 && h > 0) {
+                    sk_canvas->save();
+                    sk_canvas->clipRect(SkRect::MakeLTRB(l, t, r, b));
+                    if (l != 0 || t != 0) {
+                        sk_canvas->translate(l, t);
+                    }
+                    drift_skia_svg_dom_render_tinted(svg_ptr, canvas, w, h, tint_argb);
+                    sk_canvas->restore();
+                }
+            }
+            break;
+        }
+
+        case CMD_LOTTIE: {
+            void* anim_ptr = rptr(data, i);
+            float l = rf(data, i), t = rf(data, i), r = rf(data, i), b = rf(data, i);
+            float t_val = rf(data, i);
+            if (anim_ptr) {
+                float w = r - l, h = b - t;
+                if (w > 0 && h > 0) {
+                    sk_canvas->save();
+                    sk_canvas->clipRect(SkRect::MakeLTRB(l, t, r, b));
+                    if (l != 0 || t != 0) {
+                        sk_canvas->translate(l, t);
+                    }
+                    drift_skia_skottie_seek(anim_ptr, t_val);
+                    drift_skia_skottie_render(anim_ptr, canvas, w, h);
+                    sk_canvas->restore();
+                }
+            }
+            break;
+        }
+
+        default:
+            // Unknown opcode, bail out to prevent reading garbage
+            return;
+        }
+    }
+}
+
 }  // extern "C"
