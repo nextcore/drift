@@ -153,7 +153,7 @@ func (d Dropdown[T]) CreateState() core.State {
 }
 
 type dropdownState[T comparable] struct {
-	element  *core.StatefulElement
+	core.StateBase
 	expanded bool
 }
 
@@ -211,12 +211,6 @@ func HandleDropdownPointerDown(entries []layout.RenderObject) {
 	}
 }
 
-func (s *dropdownState[T]) SetElement(element *core.StatefulElement) {
-	s.element = element
-}
-
-func (s *dropdownState[T]) InitState() {}
-
 func (s *dropdownState[T]) setExpanded(expanded bool) {
 	if s.expanded == expanded {
 		return
@@ -244,7 +238,7 @@ func (s *dropdownState[T]) isExpanded() bool {
 }
 
 func (s *dropdownState[T]) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(Dropdown[T])
+	w := s.Element().Widget().(Dropdown[T])
 
 	// Use field values directly — zero means zero
 	textStyle := w.TextStyle
@@ -583,26 +577,16 @@ func (r *renderDropdownScope) HitTest(position graphics.Offset, result *layout.H
 	return true
 }
 
-func (s *dropdownState[T]) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *dropdownState[T]) Dispose() {
 	unregisterDropdown(s)
+	s.StateBase.Dispose()
 }
 
-func (s *dropdownState[T]) DidChangeDependencies() {}
-
-func (s *dropdownState[T]) DidUpdateWidget(oldWidget core.StatefulWidget) {}
-
 func (s *dropdownState[T]) requestParentLayout() {
-	if s.element == nil {
+	if s.Element() == nil {
 		return
 	}
-	ancestor := s.element.FindAncestor(func(element core.Element) bool {
+	ancestor := s.Element().FindAncestor(func(element core.Element) bool {
 		_, ok := element.(interface{ RenderObject() layout.RenderObject })
 		return ok
 	})

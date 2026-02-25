@@ -109,7 +109,7 @@ func (t TabNavigator) CreateState() core.State {
 }
 
 type tabNavigatorState struct {
-	element               *core.StatefulElement
+	core.StateBase
 	nav                   TabNavigator
 	controller            *TabController
 	unsubscribeController func()
@@ -117,12 +117,8 @@ type tabNavigatorState struct {
 	currentIndex          int
 }
 
-func (s *tabNavigatorState) SetElement(element *core.StatefulElement) {
-	s.element = element
-}
-
 func (s *tabNavigatorState) InitState() {
-	s.nav = s.element.Widget().(TabNavigator)
+	s.nav = s.Element().Widget().(TabNavigator)
 	s.navigators = make([]NavigatorState, len(s.nav.Tabs))
 	s.configureController()
 }
@@ -213,22 +209,14 @@ func (s *tabNavigatorState) buildNavigator(tab Tab) Navigator {
 	}
 }
 
-func (s *tabNavigatorState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *tabNavigatorState) Dispose() {
 	s.detachController()
+	s.StateBase.Dispose()
 }
-
-func (s *tabNavigatorState) DidChangeDependencies() {}
 
 func (s *tabNavigatorState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	old := s.nav
-	s.nav = s.element.Widget().(TabNavigator)
+	s.nav = s.Element().Widget().(TabNavigator)
 
 	// Resize navigators if tab count changed
 	if len(s.nav.Tabs) != len(old.Tabs) {

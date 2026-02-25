@@ -231,18 +231,14 @@ type indexedRoute struct {
 }
 
 type routerState struct {
-	element     *core.StatefulElement
+	core.StateBase
 	router      Router
 	internalNav *navigatorState
 	routeIndex  *routeIndex
 }
 
-func (s *routerState) SetElement(element *core.StatefulElement) {
-	s.element = element
-}
-
 func (s *routerState) InitState() {
-	s.router = s.element.Widget().(Router)
+	s.router = s.Element().Widget().(Router)
 	s.routeIndex = s.buildRouteIndex()
 }
 
@@ -409,19 +405,8 @@ func (s *routerState) Build(ctx core.BuildContext) core.Widget {
 	}
 }
 
-func (s *routerState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
-func (s *routerState) Dispose() {}
-
-func (s *routerState) DidChangeDependencies() {}
-
 func (s *routerState) DidUpdateWidget(oldWidget core.StatefulWidget) {
-	s.router = s.element.Widget().(Router)
+	s.router = s.Element().Widget().(Router)
 	s.routeIndex = s.buildRouteIndex()
 }
 

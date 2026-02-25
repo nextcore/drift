@@ -78,17 +78,12 @@ func (f Form) CreateState() core.State {
 // FormState tracks a generation counter that increments on validation, reset,
 // and field changes, triggering rebuilds of dependent widgets.
 type FormState struct {
-	element       *core.StatefulElement
+	core.StateBase
 	fields        map[formFieldState]struct{}
 	generation    int
 	autovalidate  bool
 	onChanged     func()
 	isInitialized bool
-}
-
-// SetElement stores the element for rebuilds.
-func (s *FormState) SetElement(element *core.StatefulElement) {
-	s.element = element
 }
 
 // InitState initializes the form state.
@@ -100,31 +95,18 @@ func (s *FormState) InitState() {
 
 // Build renders the form scope.
 func (s *FormState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(Form)
+	w := s.Element().Widget().(Form)
 	s.autovalidate = w.Autovalidate
 	s.onChanged = w.OnChanged
 	s.isInitialized = true
 	return formScope{state: s, generation: s.generation, child: w.Child}
 }
 
-// SetState executes fn and schedules rebuild.
-func (s *FormState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 // Dispose clears registrations.
 func (s *FormState) Dispose() {
 	s.fields = nil
+	s.StateBase.Dispose()
 }
-
-// DidChangeDependencies is a no-op for FormState.
-func (s *FormState) DidChangeDependencies() {}
-
-// DidUpdateWidget is a no-op for FormState.
-func (s *FormState) DidUpdateWidget(oldWidget core.StatefulWidget) {}
 
 // RegisterField registers a field with this form.
 func (s *FormState) RegisterField(field formFieldState) {

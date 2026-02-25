@@ -52,17 +52,13 @@ func (s Switch) CreateState() core.State {
 }
 
 type switchState struct {
-	element      *core.StatefulElement
+	core.StateBase
 	platformView *platform.SwitchView
 	value        bool
 }
 
-func (s *switchState) SetElement(e *core.StatefulElement) {
-	s.element = e
-}
-
 func (s *switchState) InitState() {
-	w := s.element.Widget().(Switch)
+	w := s.Element().Widget().(Switch)
 	s.value = w.Value
 }
 
@@ -71,12 +67,11 @@ func (s *switchState) Dispose() {
 		platform.GetPlatformViewRegistry().Dispose(s.platformView.ViewID())
 		s.platformView = nil
 	}
+	s.StateBase.Dispose()
 }
 
-func (s *switchState) DidChangeDependencies() {}
-
 func (s *switchState) DidUpdateWidget(oldWidget core.StatefulWidget) {
-	w := s.element.Widget().(Switch)
+	w := s.Element().Widget().(Switch)
 
 	// Sync value if it changed from widget
 	if w.Value != s.value {
@@ -98,15 +93,8 @@ func (s *switchState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	}
 }
 
-func (s *switchState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *switchState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(Switch)
+	w := s.Element().Widget().(Switch)
 
 	return switchRender{
 		state:    s,
@@ -116,7 +104,7 @@ func (s *switchState) Build(ctx core.BuildContext) core.Widget {
 
 // OnValueChanged implements platform.SwitchViewClient.
 func (s *switchState) OnValueChanged(value bool) {
-	w := s.element.Widget().(Switch)
+	w := s.Element().Widget().(Switch)
 
 	s.SetState(func() {
 		s.value = value
@@ -132,7 +120,7 @@ func (s *switchState) ensurePlatformView() {
 		return
 	}
 
-	w := s.element.Widget().(Switch)
+	w := s.Element().Widget().(Switch)
 
 	params := map[string]any{
 		"value": s.value,
@@ -262,7 +250,7 @@ func (r *renderSwitch) DescribeSemanticsConfiguration(config *semantics.Semantic
 
 	// Set action
 	if !r.disabled && r.state != nil {
-		w := r.state.element.Widget().(Switch)
+		w := r.state.Element().Widget().(Switch)
 		if w.OnChanged != nil {
 			config.Actions = semantics.NewSemanticsActions()
 			config.Actions.SetHandler(semantics.SemanticsActionTap, func(args any) {

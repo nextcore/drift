@@ -186,15 +186,11 @@ func (n TextInput) CreateState() core.State {
 }
 
 type textInputState struct {
-	element            *core.StatefulElement
+	core.StateBase
 	platformView       *platform.TextInputView
 	focused            bool
 	focusNode          *focus.FocusNode
 	updatingController bool // suppress echo during programmatic updates
-}
-
-func (s *textInputState) SetElement(e *core.StatefulElement) {
-	s.element = e
 }
 
 func (s *textInputState) InitState() {
@@ -243,15 +239,14 @@ func (s *textInputState) Dispose() {
 		}
 		s.focusNode = nil
 	}
+	s.StateBase.Dispose()
 }
-
-func (s *textInputState) DidChangeDependencies() {}
 
 func (s *textInputState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	if s.platformView == nil {
 		return
 	}
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 	old := oldWidget.(TextInput)
 
 	// Only send config when it actually changed. Redundant config updates
@@ -280,11 +275,11 @@ func (s *textInputState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 
 // FocusRect implements focus.RectProvider for directional navigation.
 func (s *textInputState) FocusRect() focus.FocusRect {
-	if s.element == nil {
+	if s.Element() == nil {
 		return focus.FocusRect{}
 	}
-	offset := core.GlobalOffsetOf(s.element)
-	if ro := s.element.RenderObject(); ro != nil {
+	offset := core.GlobalOffsetOf(s.Element())
+	if ro := s.Element().RenderObject(); ro != nil {
 		if sizer, ok := ro.(interface{ Size() graphics.Size }); ok {
 			size := sizer.Size()
 			return focus.FocusRect{
@@ -298,15 +293,8 @@ func (s *textInputState) FocusRect() focus.FocusRect {
 	return focus.FocusRect{Left: offset.X, Top: offset.Y, Right: offset.X, Bottom: offset.Y}
 }
 
-func (s *textInputState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *textInputState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 
 	// Fully explicit: zero means zero, no fallbacks.
 	// Callers (TextField, theme.TextFieldOf) must provide all visual values.
@@ -330,7 +318,7 @@ func (s *textInputState) ensurePlatformView() {
 		return
 	}
 
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 	config := s.buildPlatformViewConfig(w)
 
 	params := map[string]any{
@@ -424,7 +412,7 @@ func (s *textInputState) updatePlatformViewConfig(w TextInput) {
 
 // OnTextChanged implements TextInputViewClient.
 func (s *textInputState) OnTextChanged(text string, selectionBase, selectionExtent int) {
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 	if w.Controller == nil {
 		return
 	}
@@ -456,7 +444,7 @@ func (s *textInputState) OnTextChanged(text string, selectionBase, selectionExte
 
 // OnAction implements TextInputViewClient.
 func (s *textInputState) OnAction(action platform.TextInputAction) {
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 
 	switch action {
 	case platform.TextInputActionDone, platform.TextInputActionGo,
@@ -479,7 +467,7 @@ func (s *textInputState) OnAction(action platform.TextInputAction) {
 
 // OnFocusChanged implements TextInputViewClient.
 func (s *textInputState) OnFocusChanged(focused bool) {
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 
 	s.SetState(func() {
 		s.focused = focused
@@ -497,8 +485,8 @@ func (s *textInputState) OnFocusChanged(focused bool) {
 		// Set focused target for tap-outside-to-unfocus.
 		// This handles the case when native view gains focus directly
 		// (e.g., user taps on EditText) rather than through our tap gesture.
-		if s.element != nil {
-			platform.SetFocusedTarget(s.element.RenderObject())
+		if s.Element() != nil {
+			platform.SetFocusedTarget(s.Element().RenderObject())
 		}
 		// Track focused input
 		if s.platformView != nil {
@@ -517,7 +505,7 @@ func (s *textInputState) focus() {
 		return
 	}
 
-	w := s.element.Widget().(TextInput)
+	w := s.Element().Widget().(TextInput)
 	if w.Disabled {
 		return
 	}
@@ -544,8 +532,8 @@ func (s *textInputState) focus() {
 	}
 
 	// Set this as the focused target for tap-outside-to-unfocus
-	if s.element != nil {
-		platform.SetFocusedTarget(s.element.RenderObject())
+	if s.Element() != nil {
+		platform.SetFocusedTarget(s.Element().RenderObject())
 	}
 
 	s.SetState(func() {})
@@ -748,8 +736,8 @@ func (r *renderTextInput) DescribeSemanticsConfiguration(config *semantics.Seman
 	if r.state != nil && r.state.focused {
 		flags = flags.Set(semantics.SemanticsIsFocused)
 	}
-	if r.state != nil && r.state.element != nil {
-		if w, ok := r.state.element.Widget().(TextInput); ok {
+	if r.state != nil && r.state.Element() != nil {
+		if w, ok := r.state.Element().Widget().(TextInput); ok {
 			if !w.Disabled {
 				flags = flags.Set(semantics.SemanticsIsEnabled)
 			}
@@ -761,8 +749,8 @@ func (r *renderTextInput) DescribeSemanticsConfiguration(config *semantics.Seman
 	config.Properties.Flags = flags
 
 	// Set current value (text content)
-	if r.state != nil && r.state.element != nil {
-		if w, ok := r.state.element.Widget().(TextInput); ok && w.Controller != nil {
+	if r.state != nil && r.state.Element() != nil {
+		if w, ok := r.state.Element().Widget().(TextInput); ok && w.Controller != nil {
 			config.Properties.Value = w.Controller.Text()
 		}
 	}

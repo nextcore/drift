@@ -43,16 +43,8 @@ func (a ActivityIndicator) CreateState() core.State {
 }
 
 type activityIndicatorState struct {
-	element      *core.StatefulElement
+	core.StateBase
 	platformView *platform.ActivityIndicatorView
-}
-
-func (s *activityIndicatorState) SetElement(e *core.StatefulElement) {
-	s.element = e
-}
-
-func (s *activityIndicatorState) InitState() {
-	// Platform view will be created on first layout
 }
 
 func (s *activityIndicatorState) Dispose() {
@@ -60,19 +52,17 @@ func (s *activityIndicatorState) Dispose() {
 		platform.GetPlatformViewRegistry().Dispose(s.platformView.ViewID())
 		s.platformView = nil
 	}
+	s.StateBase.Dispose()
 }
-
-func (s *activityIndicatorState) DidChangeDependencies() {}
 
 func (s *activityIndicatorState) DidUpdateWidget(oldWidget core.StatefulWidget) {
 	if s.platformView == nil {
 		return
 	}
 
-	w := s.element.Widget().(ActivityIndicator)
+	w := s.Element().Widget().(ActivityIndicator)
 	old := oldWidget.(ActivityIndicator)
 
-	// Update config if anything changed
 	if w.Animating != old.Animating || w.Size != old.Size || w.Color != old.Color {
 		s.platformView.UpdateConfig(platform.ActivityIndicatorViewConfig{
 			Animating: w.Animating,
@@ -82,15 +72,8 @@ func (s *activityIndicatorState) DidUpdateWidget(oldWidget core.StatefulWidget) 
 	}
 }
 
-func (s *activityIndicatorState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *activityIndicatorState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(ActivityIndicator)
+	w := s.Element().Widget().(ActivityIndicator)
 
 	return activityIndicatorRender{
 		state:     s,
@@ -105,7 +88,7 @@ func (s *activityIndicatorState) ensurePlatformView() {
 		return
 	}
 
-	w := s.element.Widget().(ActivityIndicator)
+	w := s.Element().Widget().(ActivityIndicator)
 
 	params := map[string]any{
 		"animating": w.Animating,

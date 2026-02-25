@@ -98,31 +98,12 @@ func (d DatePicker) CreateState() core.State {
 }
 
 type datePickerState struct {
-	element *core.StatefulElement
+	core.StateBase
 	picking bool
 }
 
-func (s *datePickerState) SetElement(e *core.StatefulElement) {
-	s.element = e
-}
-
-func (s *datePickerState) InitState() {}
-
-func (s *datePickerState) Dispose() {}
-
-func (s *datePickerState) DidChangeDependencies() {}
-
-func (s *datePickerState) DidUpdateWidget(oldWidget core.StatefulWidget) {}
-
-func (s *datePickerState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *datePickerState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(DatePicker)
+	w := s.Element().Widget().(DatePicker)
 
 	// If custom child provided, wrap it with gesture detector
 	if w.Child != nil {
@@ -175,7 +156,7 @@ func (s *datePickerState) showPicker() {
 		return
 	}
 
-	w := s.element.Widget().(DatePicker)
+	w := s.Element().Widget().(DatePicker)
 
 	// Determine initial date
 	initialDate := time.Now()

@@ -51,31 +51,12 @@ func (t TimePicker) CreateState() core.State {
 }
 
 type timePickerState struct {
-	element *core.StatefulElement
+	core.StateBase
 	picking bool
 }
 
-func (s *timePickerState) SetElement(e *core.StatefulElement) {
-	s.element = e
-}
-
-func (s *timePickerState) InitState() {}
-
-func (s *timePickerState) Dispose() {}
-
-func (s *timePickerState) DidChangeDependencies() {}
-
-func (s *timePickerState) DidUpdateWidget(oldWidget core.StatefulWidget) {}
-
-func (s *timePickerState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *timePickerState) Build(ctx core.BuildContext) core.Widget {
-	w := s.element.Widget().(TimePicker)
+	w := s.Element().Widget().(TimePicker)
 
 	// If custom child provided, wrap it with gesture detector
 	if w.Child != nil {
@@ -125,7 +106,7 @@ func (s *timePickerState) showPicker() {
 		return
 	}
 
-	w := s.element.Widget().(TimePicker)
+	w := s.Element().Widget().(TimePicker)
 
 	s.picking = true
 

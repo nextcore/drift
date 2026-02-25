@@ -254,7 +254,7 @@ type NavigatorState interface {
 }
 
 type navigatorState struct {
-	element      *core.StatefulElement
+	core.StateBase
 	navigator    Navigator
 	routes       []Route
 	overlayState OverlayState // stored when OnOverlayReady fires
@@ -267,16 +267,8 @@ type navigatorState struct {
 	unsubscribeRefresh func() // cleanup for RefreshListenable
 }
 
-func (s *navigatorState) setElement(element *core.StatefulElement) {
-	s.element = element
-}
-
-func (s *navigatorState) SetElement(element *core.StatefulElement) {
-	s.element = element
-}
-
 func (s *navigatorState) InitState() {
-	s.navigator = s.element.Widget().(Navigator)
+	s.navigator = s.Element().Widget().(Navigator)
 
 	// Register as root navigator if IsRoot is set
 	if s.navigator.IsRoot {
@@ -457,13 +449,6 @@ func (s *navigatorState) Build(ctx core.BuildContext) core.Widget {
 	}
 }
 
-func (s *navigatorState) SetState(fn func()) {
-	fn()
-	if s.element != nil {
-		s.element.MarkNeedsBuild()
-	}
-}
-
 func (s *navigatorState) Dispose() {
 	// Clean up animation listeners
 	s.clearPushListener()
@@ -485,6 +470,7 @@ func (s *navigatorState) Dispose() {
 	if s.navigator.IsRoot {
 		globalScope.ClearRootIf(s)
 	}
+	s.StateBase.Dispose()
 }
 
 // clearPushListener removes the status listener for push animation completion.
@@ -509,10 +495,8 @@ func (s *navigatorState) clearExitingRoute() {
 	}
 }
 
-func (s *navigatorState) DidChangeDependencies() {}
-
 func (s *navigatorState) DidUpdateWidget(oldWidget core.StatefulWidget) {
-	s.navigator = s.element.Widget().(Navigator)
+	s.navigator = s.Element().Widget().(Navigator)
 }
 
 // Push adds a route to the stack.
