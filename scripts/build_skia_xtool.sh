@@ -223,24 +223,28 @@ compile_bridge_device() {
   echo "Compiling bridge for iOS device $arch..."
   echo "Skia out dir: $SKIA_DIR/$out_dir"
 
-  "$CLANGXX" -target "${arch}-apple-ios16.0" \
-    -isysroot "$IPHONEOS_SDK" \
-    -std=c++17 -fPIC -DSKIA_METAL \
-    -I. -I./include \
+  local common_flags="-target ${arch}-apple-ios16.0 -isysroot $IPHONEOS_SDK -std=c++17 -fPIC -DSKIA_METAL -I. -I./include"
+
+  # Compile shared bridge code
+  "$CLANGXX" $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_common.cc" \
+    -o "$out_dir/skia_common.o"
+
+  # Compile Metal backend
+  "$CLANGXX" $common_flags \
     -c "$ROOT_DIR/pkg/skia/bridge/skia_metal.mm" \
-    -o "$out_dir/skia_bridge.o"
+    -o "$out_dir/skia_backend.o"
 
   # Combine using llvm-ar (required for Mach-O archives on Linux)
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  # Extract all static libraries produced by the build
   rm -f ../libdrift_skia.a
   for lib in ../lib*.a; do
     [ -f "$lib" ] && llvm-ar x "$lib"
   done
-  llvm-ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
+  llvm-ar rcs ../libdrift_skia.a *.o ../skia_common.o ../skia_backend.o
   popd > /dev/null
-  rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
+  rm -rf "$out_dir/tmp" "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
 
   echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }
@@ -258,24 +262,28 @@ compile_bridge_simulator() {
   echo "Compiling bridge for iOS simulator $arch..."
   echo "Skia out dir: $SKIA_DIR/$out_dir"
 
-  "$CLANGXX" -target "${arch}-apple-ios16.0-simulator" \
-    -isysroot "$IPHONESIMULATOR_SDK" \
-    -std=c++17 -fPIC -DSKIA_METAL \
-    -I. -I./include \
+  local common_flags="-target ${arch}-apple-ios16.0-simulator -isysroot $IPHONESIMULATOR_SDK -std=c++17 -fPIC -DSKIA_METAL -I. -I./include"
+
+  # Compile shared bridge code
+  "$CLANGXX" $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_common.cc" \
+    -o "$out_dir/skia_common.o"
+
+  # Compile Metal backend
+  "$CLANGXX" $common_flags \
     -c "$ROOT_DIR/pkg/skia/bridge/skia_metal.mm" \
-    -o "$out_dir/skia_bridge.o"
+    -o "$out_dir/skia_backend.o"
 
   # Combine using llvm-ar (required for Mach-O archives on Linux)
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  # Extract all static libraries produced by the build
   rm -f ../libdrift_skia.a
   for lib in ../lib*.a; do
     [ -f "$lib" ] && llvm-ar x "$lib"
   done
-  llvm-ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
+  llvm-ar rcs ../libdrift_skia.a *.o ../skia_common.o ../skia_backend.o
   popd > /dev/null
-  rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
+  rm -rf "$out_dir/tmp" "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
 
   echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }

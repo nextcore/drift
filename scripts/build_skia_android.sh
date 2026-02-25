@@ -127,24 +127,28 @@ compile_bridge() {
 
   local clang="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG/bin/clang++"
 
-  # Compile bridge
-  "$clang" --target="$target_triple" \
-    -std=c++17 -fPIC -DSKIA_VULKAN $arch_flags \
-    -I. -I./include \
-    -c "$ROOT_DIR/pkg/skia/bridge/skia_vk.cc" \
-    -o "$out_dir/skia_bridge.o"
+  local common_flags="--target=$target_triple -std=c++17 -fPIC -DSKIA_VULKAN $arch_flags -I. -I./include"
 
-  # Combine: extract all Skia libs, add bridge, repack
+  # Compile shared bridge code
+  "$clang" $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_common.cc" \
+    -o "$out_dir/skia_common.o"
+
+  # Compile Vulkan backend
+  "$clang" $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_vk.cc" \
+    -o "$out_dir/skia_backend.o"
+
+  # Combine: extract all Skia libs, add bridge objects, repack
   mkdir -p "$out_dir/tmp"
   pushd "$out_dir/tmp" > /dev/null
-  # Extract all static libraries produced by the build
   rm -f ../libdrift_skia.a
   for lib in ../lib*.a; do
     [ -f "$lib" ] && ar x "$lib"
   done
-  ar rcs ../libdrift_skia.a *.o ../skia_bridge.o
+  ar rcs ../libdrift_skia.a *.o ../skia_common.o ../skia_backend.o
   popd > /dev/null
-  rm -rf "$out_dir/tmp" "$out_dir/skia_bridge.o"
+  rm -rf "$out_dir/tmp" "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
 
   echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }

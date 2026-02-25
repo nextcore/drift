@@ -56,19 +56,23 @@ compile_bridge_device() {
   echo "Compiling bridge for iOS device $arch..."
   echo "Skia out dir: $SKIA_DIR/$out_dir"
 
-  xcrun clang++ -arch "$arch" \
-    -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" \
-    -miphoneos-version-min=16.0 \
-    -std=c++17 -fPIC -DSKIA_METAL \
-    -I. -I./include \
+  local common_flags="-arch $arch -isysroot $(xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=16.0 -std=c++17 -fPIC -DSKIA_METAL -I. -I./include"
+
+  # Compile shared bridge code
+  xcrun clang++ $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_common.cc" \
+    -o "$out_dir/skia_common.o"
+
+  # Compile Metal backend
+  xcrun clang++ $common_flags \
     -c "$ROOT_DIR/pkg/skia/bridge/skia_metal.mm" \
-    -o "$out_dir/skia_bridge.o"
+    -o "$out_dir/skia_backend.o"
 
   # Combine using libtool (macOS) - include all static libraries
   rm -f "$out_dir/libdrift_skia.a"
   libtool -static -o "$out_dir/libdrift_skia.a" \
-    "$out_dir"/lib*.a "$out_dir/skia_bridge.o"
-  rm "$out_dir/skia_bridge.o"
+    "$out_dir"/lib*.a "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
+  rm "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
 
   echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }
@@ -86,18 +90,22 @@ compile_bridge_simulator() {
 
   echo "Compiling bridge for iOS simulator $arch..."
 
-  xcrun clang++ -arch "$clang_arch" \
-    -isysroot "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
-    -mios-simulator-version-min=16.0 \
-    -std=c++17 -fPIC -DSKIA_METAL \
-    -I. -I./include \
+  local common_flags="-arch $clang_arch -isysroot $(xcrun --sdk iphonesimulator --show-sdk-path) -mios-simulator-version-min=16.0 -std=c++17 -fPIC -DSKIA_METAL -I. -I./include"
+
+  # Compile shared bridge code
+  xcrun clang++ $common_flags \
+    -c "$ROOT_DIR/pkg/skia/bridge/skia_common.cc" \
+    -o "$out_dir/skia_common.o"
+
+  # Compile Metal backend
+  xcrun clang++ $common_flags \
     -c "$ROOT_DIR/pkg/skia/bridge/skia_metal.mm" \
-    -o "$out_dir/skia_bridge.o"
+    -o "$out_dir/skia_backend.o"
 
   rm -f "$out_dir/libdrift_skia.a"
   libtool -static -o "$out_dir/libdrift_skia.a" \
-    "$out_dir"/lib*.a "$out_dir/skia_bridge.o"
-  rm "$out_dir/skia_bridge.o"
+    "$out_dir"/lib*.a "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
+  rm "$out_dir/skia_common.o" "$out_dir/skia_backend.o"
 
   echo "Created $SKIA_DIR/$out_dir/libdrift_skia.a"
 }

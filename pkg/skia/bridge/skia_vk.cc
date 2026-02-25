@@ -4,44 +4,15 @@
 #include "../skia_bridge.h"
 
 #include <android/log.h>
-#include <algorithm>
-#include <cstddef>
 #include <cstring>
-#include <limits>
 #include <mutex>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
-#include "core/SkCanvas.h"
-#include "core/SkColor.h"
 #include "core/SkColorSpace.h"
-#include "core/SkData.h"
-#include "core/SkFont.h"
-#include "core/SkFontMetrics.h"
-#include "core/SkImage.h"
-#include "core/SkImageInfo.h"
-#include "core/SkPaint.h"
-#include "core/SkPathBuilder.h"
-#include "effects/SkGradient.h"
-#include "effects/SkDashPathEffect.h"
-#include "core/SkBlurTypes.h"
-#include "core/SkMaskFilter.h"
-#include "core/SkRRect.h"
-#include "core/SkScalar.h"
-#include "core/SkSurface.h"
-#include "effects/SkImageFilters.h"
-#include "core/SkColorFilter.h"
-#include "core/SkSurfaceProps.h"
-#include "core/SkTypeface.h"
 #include "core/SkFontMgr.h"
+#include "core/SkImageInfo.h"
 #include "core/SkString.h"
-#include "modules/skparagraph/include/FontCollection.h"
-#include "modules/skparagraph/include/Paragraph.h"
-#include "modules/skparagraph/include/ParagraphBuilder.h"
-#include "modules/skparagraph/include/ParagraphStyle.h"
-#include "modules/skparagraph/include/TextStyle.h"
-#include "modules/skunicode/include/SkUnicode_libgrapheme.h"
+#include "core/SkSurface.h"
+#include "core/SkSurfaceProps.h"
 #include "gpu/ganesh/GrBackendSurface.h"
 #include "gpu/ganesh/GrDirectContext.h"
 #include "gpu/ganesh/SkSurfaceGanesh.h"
@@ -54,18 +25,16 @@
 #include "ports/SkFontMgr_android.h"
 #include "ports/SkFontMgr_android_ndk.h"
 #include "ports/SkFontScanner_FreeType.h"
-#include "skia_path_impl.h"
-#include "skia_skottie_impl.h"
-#include "skia_svg_impl.h"
 
 #include <vulkan/vulkan.h>
 #include "drift_vulkan_extensions.h"
+#include "skia_common_internal.h"
 
-namespace {
+// ═══════════════════════════════════════════════════════════════════════════
+// Backend-provided functions (called by skia_common.cc)
+// ═══════════════════════════════════════════════════════════════════════════
 
-sk_sp<SkFontMgr> get_font_manager();
-
-sk_sp<SkFontMgr> get_font_manager() {
+sk_sp<SkFontMgr> drift_get_font_manager() {
     static std::once_flag once;
     static sk_sp<SkFontMgr> manager;
     std::call_once(once, [] {
@@ -87,16 +56,9 @@ sk_sp<SkFontMgr> get_font_manager() {
     return manager;
 }
 
-#define DRIFT_PLATFORM_FALLBACK_FONT "sans-serif"
-#include "skia_common_impl.h"
-
-}  // namespace
-
-// Provide a weak definition for the default font families used by skparagraph.
-const std::vector<SkString>* ::skia::textlayout::TextStyle::kDefaultFontFamilies __attribute__((weak)) = &textlayout_defaults::kDefaultFontFamilies;
-
-// Shared function definitions (canvas, paint, text, paragraph, path, SVG, Skottie, etc.)
-DRIFT_SKIA_DEFINE_COMMON_FUNCTIONS
+const char* drift_platform_fallback_font() {
+    return "sans-serif";
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Vulkan-specific functions
