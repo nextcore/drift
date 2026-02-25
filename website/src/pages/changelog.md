@@ -9,10 +9,29 @@ All notable changes to Drift are documented here. Patch releases are grouped und
 
 ---
 
-## v0.21.0
+## v0.22.0
+
+- **Vulkan rendering backend**: Android rendering migrated from OpenGL/EGL to Vulkan ([#34](https://github.com/go-drift/drift/pull/34))
+- **Fade transition opacity**: Navigation fade transitions now support opacity
+- **Performance**: Replaced reflection-based dirty checks with typed slot comparison; map-based dirty element dedup in `BuildOwner`; generics constrained to `comparable`
+- **Refactoring**: Extracted `RenderObjectBase` and `StateBase` to reduce widget boilerplate; hoisted shared render and element tree helpers; consolidated type conversion helpers; simplified `Center` as stateless wrapper around `Align`
+- **Skia bridge**: Moved shared bridge implementation to a dedicated compilation unit
+- **Fixes**: Fixed navigation resource cleanup for routes and tab navigators; fixed transition disposal; fixed base64 decoding in storage handler; fixed SVG icon cache race on concurrent hit; fixed overlay rebuild after pending ops
+
+---
+
+## v0.21.x
+
+### v0.21.0
 
 - **Platform view occlusion**: Occlusion region support for native view clipping ([#30](https://github.com/go-drift/drift/pull/30))
 - **Navigation**: `TabScaffold` renamed to `TabNavigator`; `RouteConfig` and `ShellRoute` unified into `ScreenRoute`
+
+### v0.21.1 to v0.21.3
+
+- Added builder methods to `TextField` and `TextFormField` with expanded docs
+- Converted `SvgIcon` from custom element to stateless widget
+- Fixed occlusion emission for semi-transparent backgrounds
 
 ---
 
