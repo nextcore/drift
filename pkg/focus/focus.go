@@ -163,11 +163,7 @@ func (s *FocusScopeNode) FocusInDirection(direction TraversalDirection) {
 
 	// If current rect is invalid, fallback to linear traversal
 	if !hasValidCurrentRect {
-		delta := 1
-		if direction == TraversalDirectionUp || direction == TraversalDirectionLeft {
-			delta = -1
-		}
-		manager.MoveFocus(delta)
+		manager.MoveFocus(linearDelta(direction))
 		return
 	}
 
@@ -207,12 +203,16 @@ func (s *FocusScopeNode) FocusInDirection(direction TraversalDirection) {
 		s.FocusedChild = best
 	} else {
 		// No candidate in direction, fall back to linear traversal
-		delta := 1
-		if direction == TraversalDirectionUp || direction == TraversalDirectionLeft {
-			delta = -1
-		}
-		manager.MoveFocus(delta)
+		manager.MoveFocus(linearDelta(direction))
 	}
+}
+
+// linearDelta returns +1 or -1 for linear focus traversal based on direction.
+func linearDelta(direction TraversalDirection) int {
+	if direction == TraversalDirectionUp || direction == TraversalDirectionLeft {
+		return -1
+	}
+	return 1
 }
 
 // collectFocusableNodes returns all focusable nodes from this scope and nested scopes.
