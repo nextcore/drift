@@ -27,8 +27,10 @@ widgets.Switch{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Value` | `bool` | Current on/off state |
-| `OnTintColor` | `color.Color` | Background color when on |
 | `OnChanged` | `func(bool)` | Called when toggled |
+| `Disabled` | `bool` | Disables interaction when true |
+| `OnTintColor` | `graphics.Color` | Track color when on |
+| `ThumbColor` | `graphics.Color` | Thumb color |
 
 ## Toggle
 
@@ -58,8 +60,8 @@ widgets.Toggle{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Value` | `bool` | Current on/off state |
-| `ActiveColor` | `color.Color` | Track color when on |
-| `InactiveColor` | `color.Color` | Track color when off |
+| `ActiveColor` | `graphics.Color` | Track color when on |
+| `InactiveColor` | `graphics.Color` | Track color when off |
 | `OnChanged` | `func(bool)` | Called when toggled |
 
 ## Switch vs Toggle

@@ -46,7 +46,7 @@ Always use `NewOverlayEntry()` to create entries. This constructor assigns a uni
 ```go
 entry := overlay.NewOverlayEntry(func(ctx core.BuildContext) core.Widget {
     return widgets.Container{
-        Color:  graphics.RGBA(0, 0, 0, 200),
+        Color:  graphics.RGBA(0, 0, 0, 0.78),
         Width:  200,
         Height: 100,
         Child:  widgets.Text{Content: "I'm an overlay!"},
@@ -141,7 +141,7 @@ Currently all entries are always built regardless of this flag.
 ```go
 func buildBarrier(ctx core.BuildContext) core.Widget {
     return overlay.ModalBarrier{
-        Color:         graphics.RGBA(0, 0, 0, 128),  // 50% black
+        Color:         graphics.RGBA(0, 0, 0, 0.5),  // 50% black
         Dismissible:   true,
         OnDismiss:     func() { entry.Remove() },
         SemanticLabel: "Dismiss dialog",
@@ -219,7 +219,7 @@ themed card chrome (surface color, border radius, shadow, padding):
 overlay.ShowDialog(ctx, overlay.DialogOptions{
     BarrierColor: graphics.RGBA(0, 0, 0, 0.5),
     Builder: func(ctx core.BuildContext, dismiss func()) core.Widget {
-        textTheme := theme.ThemeOf(ctx).TextTheme
+        textTheme := theme.TextThemeOf(ctx)
         return overlay.Dialog{
             Child: widgets.Column{
                 MainAxisSize: widgets.MainAxisSizeMin,
@@ -354,7 +354,7 @@ func (s *tooltipState) showTooltip(ctx core.BuildContext, message string) {
     s.entry = overlay.NewOverlayEntry(func(ctx core.BuildContext) core.Widget {
         return widgets.Positioned(widgets.Container{
             Padding: layout.EdgeInsetsAll(8),
-            Color:   graphics.RGBA(50, 50, 50, 230),
+            Color:   graphics.RGBA(50, 50, 50, 0.9),
             Child:   widgets.Text{Content: message},
         }).At(100, 200)
     })

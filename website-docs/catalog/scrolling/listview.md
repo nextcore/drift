@@ -46,19 +46,27 @@ widgets.ListViewBuilder{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Children` | `[]core.Widget` | List items |
-| `Padding` | `layout.EdgeInsets` | Padding around the list |
 | `ScrollDirection` | `Axis` | `AxisVertical` (default) or `AxisHorizontal` |
+| `Controller` | `*ScrollController` | Manages scroll position and provides scroll notifications |
+| `Physics` | `ScrollPhysics` | Determines how the scroll view responds to user input |
+| `Padding` | `layout.EdgeInsets` | Padding around the list |
+| `MainAxisAlignment` | `MainAxisAlignment` | How children are positioned along the scroll axis |
+| `MainAxisSize` | `MainAxisSize` | How much space the list takes along the scroll axis |
 
 ### ListViewBuilder
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `ItemCount` | `int` | Total number of items |
+| `ItemBuilder` | `func(BuildContext, int) Widget` | Builds a widget for the given index |
 | `ItemExtent` | `float64` | Fixed item height (enables virtualization) |
 | `CacheExtent` | `float64` | Extra pixels to render beyond the viewport |
-| `ItemBuilder` | `func(BuildContext, int) Widget` | Builds a widget for the given index |
-| `Padding` | `layout.EdgeInsets` | Padding around the list |
 | `ScrollDirection` | `Axis` | `AxisVertical` (default) or `AxisHorizontal` |
+| `Controller` | `*ScrollController` | Manages scroll position and provides scroll notifications |
+| `Physics` | `ScrollPhysics` | Determines how the scroll view responds to user input |
+| `Padding` | `layout.EdgeInsets` | Padding around the list |
+| `MainAxisAlignment` | `MainAxisAlignment` | How children are positioned along the scroll axis |
+| `MainAxisSize` | `MainAxisSize` | How much space the list takes along the scroll axis |
 
 ## ItemExtent is Required for Virtualization
 

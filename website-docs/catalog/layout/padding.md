@@ -15,13 +15,13 @@ widgets.PaddingAll(16, child)
 
 // Symmetric (horizontal, vertical)
 widgets.Padding{
-    EdgeInsets: layout.EdgeInsetsSymmetric(16, 8),
-    Child:     child,
+    Padding: layout.EdgeInsetsSymmetric(16, 8),
+    Child:   child,
 }
 
 // Individual sides
 widgets.Padding{
-    EdgeInsets: layout.EdgeInsets{
+    Padding: layout.EdgeInsets{
         Left:   16,
         Top:    8,
         Right:  16,
@@ -32,8 +32,8 @@ widgets.Padding{
 
 // Only specific sides
 widgets.Padding{
-    EdgeInsets: layout.EdgeInsetsOnly(16, 0, 16, 0), // left, top, right, bottom
-    Child:     child,
+    Padding: layout.EdgeInsetsOnly(16, 0, 16, 0), // left, top, right, bottom
+    Child:   child,
 }
 ```
 
@@ -41,7 +41,7 @@ widgets.Padding{
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `EdgeInsets` | `layout.EdgeInsets` | Padding on each side |
+| `Padding` | `layout.EdgeInsets` | Padding on each side |
 | `Child` | `core.Widget` | Child widget |
 
 ## EdgeInsets Helpers

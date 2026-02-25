@@ -22,6 +22,9 @@ widgets.Text{
 |----------|------|-------------|
 | `Content` | `string` | Text to display |
 | `Style` | `graphics.TextStyle` | Font size, color, weight, and other styling |
+| `Align` | `graphics.TextAlign` | Horizontal text alignment (only applies when text wraps) |
+| `MaxLines` | `int` | Maximum number of visible lines (0 = unlimited) |
+| `Wrap` | `graphics.TextWrap` | Text wrapping behavior (default wraps at constraint width) |
 
 ## Using Text Themes
 
@@ -45,7 +48,7 @@ widgets.Text{
     Style: graphics.TextStyle{
         Color:    colors.Primary,
         FontSize: 18,
-        Weight:   graphics.FontWeightBold,
+        FontWeight: graphics.FontWeightBold,
     },
 }
 ```

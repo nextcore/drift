@@ -387,11 +387,11 @@ func App() core.Widget {
         Routes: []navigation.ScreenRoute{
             {
                 Path:   "/",
-                Screen: buildHome,
+                Screen: navigation.ScreenOnly(buildHome),
             },
             {
                 Path:   "/products",
-                Screen: buildProductList,
+                Screen: navigation.ScreenOnly(buildProductList),
                 Children: []navigation.ScreenRoute{
                     {
                         Path:   "/:id", // Nested: /products/:id
@@ -401,7 +401,7 @@ func App() core.Widget {
             },
             {
                 Path:   "/settings",
-                Screen: buildSettings,
+                Screen: navigation.ScreenOnly(buildSettings),
             },
         },
         ErrorBuilder: buildNotFound,
@@ -555,15 +555,15 @@ func App() core.Widget {
     return navigation.TabNavigator{
         Tabs: []navigation.Tab{
             navigation.NewTab(
-                widgets.TabItem{Label: "Home", Icon: widgets.Icon{Glyph: "home"}},
+                widgets.TabItem{Label: "Home", Icon: widgets.Icon{Glyph: "🏠", Size: 24}},
                 buildHomeScreen,
             ),
             navigation.NewTab(
-                widgets.TabItem{Label: "Search", Icon: widgets.Icon{Glyph: "search"}},
+                widgets.TabItem{Label: "Search", Icon: widgets.Icon{Glyph: "🔍", Size: 24}},
                 buildSearchScreen,
             ),
             navigation.NewTab(
-                widgets.TabItem{Label: "Profile", Icon: widgets.Icon{Glyph: "person"}},
+                widgets.TabItem{Label: "Profile", Icon: widgets.Icon{Glyph: "👤", Size: 24}},
                 buildProfileScreen,
             ),
         },

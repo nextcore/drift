@@ -25,7 +25,7 @@ widgets.ActivityIndicator{
 |----------|------|-------------|
 | `Animating` | `bool` | Whether the spinner is active |
 | `Size` | `ActivityIndicatorSize` | `Small`, `Medium`, or `Large` |
-| `Color` | `color.Color` | Optional tint color |
+| `Color` | `graphics.Color` | Optional tint color |
 
 ## CircularProgressIndicator
 
@@ -52,8 +52,8 @@ widgets.CircularProgressIndicator{
 |----------|------|-------------|
 | `Value` | `*float64` | Progress 0.0 to 1.0, nil for indeterminate |
 | `Size` | `float64` | Diameter in pixels |
-| `Color` | `color.Color` | Progress arc color |
-| `TrackColor` | `color.Color` | Background track color |
+| `Color` | `graphics.Color` | Progress arc color |
+| `TrackColor` | `graphics.Color` | Background track color |
 | `StrokeWidth` | `float64` | Arc thickness |
 
 ## LinearProgressIndicator
@@ -80,8 +80,8 @@ widgets.LinearProgressIndicator{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Value` | `*float64` | Progress 0.0 to 1.0, nil for indeterminate |
-| `Color` | `color.Color` | Progress bar color |
-| `TrackColor` | `color.Color` | Background track color |
+| `Color` | `graphics.Color` | Progress bar color |
+| `TrackColor` | `graphics.Color` | Background track color |
 | `Height` | `float64` | Bar height |
 | `BorderRadius` | `float64` | Corner radius |
 

@@ -29,11 +29,11 @@ import (
 type playerState struct {
     core.StateBase
     controller *platform.VideoPlayerController
-    status     *core.ManagedState[string]
+    status     *core.Managed[string]
 }
 
 func (s *playerState) InitState() {
-    s.status = core.NewManagedState(&s.StateBase, "Idle")
+    s.status = core.NewManaged(&s.StateBase, "Idle")
     s.controller = core.UseController(&s.StateBase, platform.NewVideoPlayerController)
 
     s.controller.OnPlaybackStateChanged = func(state platform.PlaybackState) {
@@ -149,11 +149,11 @@ import (
 type audioState struct {
     core.StateBase
     controller *platform.AudioPlayerController
-    status     *core.ManagedState[string]
+    status     *core.Managed[string]
 }
 
 func (s *audioState) InitState() {
-    s.status = core.NewManagedState(&s.StateBase, "Idle")
+    s.status = core.NewManaged(&s.StateBase, "Idle")
     s.controller = core.UseController(&s.StateBase, platform.NewAudioPlayerController)
 
     // Callbacks are delivered on the UI thread.
@@ -209,7 +209,7 @@ All methods are safe for concurrent use. Set callback fields before calling `Loa
 func (s *audioState) Build(ctx core.BuildContext) core.Widget {
     return widgets.Column{
         Children: []core.Widget{
-            widgets.Text{Content: s.status.Get()},
+            widgets.Text{Content: s.status.Value()},
             widgets.Row{
                 Children: []core.Widget{
                     theme.ButtonOf(ctx, "Play", func() {

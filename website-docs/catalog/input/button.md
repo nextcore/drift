@@ -30,12 +30,16 @@ widgets.Button{
 |----------|------|-------------|
 | `Label` | `string` | Button text |
 | `OnTap` | `func()` | Tap callback |
-| `Color` | `color.Color` | Background color |
-| `TextColor` | `color.Color` | Label color |
+| `Color` | `graphics.Color` | Background color |
+| `Gradient` | `*graphics.Gradient` | Optional background gradient (replaces Color) |
+| `TextColor` | `graphics.Color` | Label color |
+| `FontSize` | `float64` | Label font size in logical pixels |
 | `Padding` | `layout.EdgeInsets` | Inner padding |
 | `BorderRadius` | `float64` | Corner radius |
 | `Haptic` | `bool` | Enable haptic feedback on tap |
 | `Disabled` | `bool` | Disable the button |
+| `DisabledColor` | `graphics.Color` | Background color when disabled |
+| `DisabledTextColor` | `graphics.Color` | Text color when disabled |
 
 ## Themed vs Explicit
 

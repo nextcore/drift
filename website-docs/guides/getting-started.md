@@ -58,6 +58,8 @@ You should see the list of available commands.
 
 ## 2. Create a Project
 
+The quickest way to scaffold a project is with `drift init`:
+
 ```bash
 drift init hello-drift
 cd hello-drift
@@ -68,11 +70,13 @@ basename, so `drift init ./projects/hello-drift` also works and produces a
 project named `hello-drift`. You can optionally pass a Go module path as a
 second argument (e.g. `drift init hello-drift github.com/username/hello-drift`).
 
-This creates:
-- `main.go` - Your app entry point
-- `go.mod` - Go module file
+This generates a `go.mod` and a `main.go` with a counter demo app. You can run
+it straight away (skip to [step 3](#run-your-app)), or replace `main.go` with a
+minimal example to follow along with this guide.
 
-The generated `main.go`:
+### Minimal main.go
+
+Create a directory with a `go.mod` (`go mod init hello-drift`) and the following `main.go`:
 
 ```go
 package main
@@ -101,7 +105,7 @@ func App() core.Widget {
 }
 ```
 
-## 3. Run Your App
+## 3. Run Your App {#run-your-app}
 
 Choose your target platform:
 
@@ -150,7 +154,7 @@ Requires xtool setup. See [iOS on Linux with xtool](/docs/guides/xtool-setup).
 
 On first run, Drift downloads Skia binaries for your target platform. This happens once and is cached.
 
-## 4. Watch Mode {#hot-reload}
+## 4. Watch Mode {#watch-mode}
 
 Add `--watch` to your run command to automatically rebuild and relaunch your app when source files change:
 
@@ -158,20 +162,10 @@ Add `--watch` to your run command to automatically rebuild and relaunch your app
 drift run android --watch  # or ios --watch, xtool --watch
 ```
 
-After the initial build, Drift prints "Watching for changes..." and waits. Try changing the text in `main.go`:
+After the initial build, Drift prints "Watching for changes..." and waits. Try editing `main.go`, for example changing `"Hello, Drift!"` to `"Hello, World!"`:
 
 ```go
-func App() core.Widget {
-    return widgets.Container{
-        Color: graphics.ColorWhite,
-        Child: widgets.Centered(
-            widgets.Text{
-                Content: "Hello, World!",
-                Style:   graphics.TextStyle{Color: graphics.ColorBlack, FontSize: 24},
-            },
-        ),
-    }
-}
+Content: "Hello, World!",
 ```
 
 Save the file and the app rebuilds automatically. Press **Ctrl+C** to stop watch mode.

@@ -26,7 +26,10 @@ widgets.ScrollView{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Child` | `core.Widget` | Scrollable content |
+| `ScrollDirection` | `Axis` | Scroll axis (default vertical) |
+| `Controller` | `*ScrollController` | Optional scroll controller |
 | `Physics` | `ScrollPhysics` | Scroll behavior (bounce or clamp) |
+| `Padding` | `layout.EdgeInsets` | Padding around scrollable content |
 
 ## Scroll Physics
 

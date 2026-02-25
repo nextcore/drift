@@ -50,11 +50,11 @@ widgets.Dropdown[string]{
 | `Hint` | `string` | Placeholder text when no value is selected |
 | `Items` | `[]DropdownItem[T]` | Available options |
 | `OnChanged` | `func(T)` | Called when selection changes |
-| `BackgroundColor` | `color.Color` | Background color |
-| `BorderColor` | `color.Color` | Border color |
+| `BackgroundColor` | `graphics.Color` | Background color |
+| `BorderColor` | `graphics.Color` | Border color |
 | `BorderRadius` | `float64` | Corner radius |
 | `TextStyle` | `graphics.TextStyle` | Text styling |
-| `SelectedItemColor` | `color.Color` | Highlight color for the selected row |
+| `SelectedItemColor` | `graphics.Color` | Highlight color for the selected row |
 
 ## Explicit Styling Requirements
 

@@ -9,11 +9,11 @@ Display raster images from assets or files, and render SVG content with flexible
 
 ## Image
 
-Display an image from the asset filesystem or a file path:
+Display a decoded image:
 
 ```go
 widgets.Image{
-    Source: "assets/photo.png",
+    Source: myImage,  // image.Image
     Width:  200,
     Height: 150,
 }
@@ -23,7 +23,7 @@ widgets.Image{
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Source` | `string` | Asset path or file path |
+| `Source` | `image.Image` | Decoded image to render |
 | `Width` | `float64` | Display width |
 | `Height` | `float64` | Display height |
 
@@ -33,10 +33,10 @@ Renders an SVG with flexible sizing:
 
 ```go
 widgets.SvgImage{
-    Icon:   myIcon,
-    Width:  120,
-    Height: 80,
-    Color:  colors.Primary,  // Optional tint
+    Source:    myIcon,
+    Width:     120,
+    Height:    80,
+    TintColor: colors.Primary,  // Optional tint
 }
 ```
 
@@ -44,10 +44,10 @@ widgets.SvgImage{
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Icon` | `*svg.Icon` | Loaded SVG icon |
+| `Source` | `*svg.Icon` | Loaded SVG icon |
 | `Width` | `float64` | Display width |
 | `Height` | `float64` | Display height |
-| `Color` | `color.Color` | Optional tint color |
+| `TintColor` | `graphics.Color` | Optional tint color |
 
 ## SvgIcon
 
@@ -55,9 +55,9 @@ A convenience wrapper around `SvgImage` for square icons:
 
 ```go
 widgets.SvgIcon{
-    Icon:  myIcon,
-    Size:  24,
-    Color: colors.OnSurface,
+    Source:    myIcon,
+    Size:      24,
+    TintColor: colors.OnSurface,
 }
 ```
 
@@ -65,9 +65,9 @@ widgets.SvgIcon{
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Icon` | `*svg.Icon` | Loaded SVG icon |
+| `Source` | `*svg.Icon` | Loaded SVG icon |
 | `Size` | `float64` | Width and height (square) |
-| `Color` | `color.Color` | Optional tint color |
+| `TintColor` | `graphics.Color` | Optional tint color |
 
 ## Caching Static SVGs
 

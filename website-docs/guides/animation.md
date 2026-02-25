@@ -53,10 +53,15 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
 Fades widgets in and out:
 
 ```go
+opacity := 0.0
+if isVisible {
+    opacity = 1.0
+}
+
 widgets.AnimatedOpacity{
-    Opacity:     isVisible ? 1.0 : 0.0,
-    Duration:    200 * time.Millisecond,
-    Child: content,
+    Opacity:  opacity,
+    Duration: 200 * time.Millisecond,
+    Child:    content,
 }
 ```
 
@@ -74,12 +79,12 @@ type myState struct {
 
 func (s *myState) InitState() {
     // Create controller with duration
-    s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.controller = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(300 * time.Millisecond)
     })
 
     // Subscribe to value changes
-    core.UseListenable(&s.StateBase, s.controller)
+    core.UseListenable(s, s.controller)
 }
 
 func (s *myState) Build(ctx core.BuildContext) core.Widget {
@@ -205,36 +210,35 @@ type staggeredState struct {
 }
 
 func (s *staggeredState) InitState() {
-    s.controller1 = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.controller1 = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(200 * time.Millisecond)
     })
-    s.controller2 = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.controller2 = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(200 * time.Millisecond)
     })
-    s.controller3 = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.controller3 = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(200 * time.Millisecond)
     })
 
-    core.UseListenable(&s.StateBase, s.controller1)
-    core.UseListenable(&s.StateBase, s.controller2)
-    core.UseListenable(&s.StateBase, s.controller3)
-}
+    core.UseListenable(s, s.controller1)
+    core.UseListenable(s, s.controller2)
+    core.UseListenable(s, s.controller3)
 
-func (s *staggeredState) startAnimation() {
-    s.controller1.Forward()
-
-    // Start second after first completes
+    // Chain animations: start next when previous completes
     s.controller1.AddStatusListener(func(status animation.AnimationStatus) {
         if status == animation.AnimationCompleted {
             s.controller2.Forward()
         }
     })
-
     s.controller2.AddStatusListener(func(status animation.AnimationStatus) {
         if status == animation.AnimationCompleted {
             s.controller3.Forward()
         }
     })
+}
+
+func (s *staggeredState) startAnimation() {
+    s.controller1.Forward()
 }
 ```
 
@@ -276,10 +280,10 @@ type fadeInState struct {
 }
 
 func (s *fadeInState) InitState() {
-    s.controller = core.UseController(&s.StateBase, func() *animation.AnimationController {
+    s.controller = core.UseController(s, func() *animation.AnimationController {
         return animation.NewAnimationController(300 * time.Millisecond)
     })
-    core.UseListenable(&s.StateBase, s.controller)
+    core.UseListenable(s, s.controller)
 
     // Start animation immediately
     s.controller.Forward()
@@ -315,11 +319,6 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
     startX := 0.0
     endX := 100.0
     currentX := startX + (endX-startX)*s.controller.Value
-
-    // Interpolate color
-    startColor := colors.Primary
-    endColor := colors.Secondary
-    // Use graphics.LerpColor for color interpolation
 
     return widgets.Container{
         // Use interpolated values

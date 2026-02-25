@@ -63,14 +63,33 @@ The color scheme follows Material Design 3:
 |-------|---------|
 | `Primary` | Main brand color |
 | `OnPrimary` | Text/icons on primary |
-| `Secondary` | Accent color |
+| `PrimaryContainer` | Tonal container for primary |
+| `OnPrimaryContainer` | Text/icons on primary container |
+| `Secondary` | Supporting brand color |
 | `OnSecondary` | Text/icons on secondary |
-| `Surface` | Background for cards, sheets |
+| `SecondaryContainer` | Tonal container for secondary |
+| `OnSecondaryContainer` | Text/icons on secondary container |
+| `Tertiary` | Accent color for contrast |
+| `OnTertiary` | Text/icons on tertiary |
+| `TertiaryContainer` | Tonal container for tertiary |
+| `OnTertiaryContainer` | Text/icons on tertiary container |
+| `Surface` | Background for cards, sheets, menus |
 | `OnSurface` | Text/icons on surface |
+| `SurfaceVariant` | Alternative surface color |
+| `OnSurfaceVariant` | Text/icons on surface variant |
 | `Background` | App background |
 | `OnBackground` | Text/icons on background |
 | `Error` | Error states |
 | `OnError` | Text/icons on error |
+| `ErrorContainer` | Tonal container for error |
+| `OnErrorContainer` | Text/icons on error container |
+| `Outline` | Borders and dividers |
+| `OutlineVariant` | Subtle outline for decorative elements |
+| `Shadow` | Elevation shadows |
+| `Scrim` | Modal barriers |
+| `InverseSurface` | Surface for inverse contexts |
+| `OnInverseSurface` | Text/icons on inverse surface |
+| `InversePrimary` | Primary color for inverse contexts |
 
 Usage:
 
@@ -166,11 +185,11 @@ myTheme := theme.ThemeData{
         Error:        graphics.RGB(0xB3, 0x26, 0x1E),
         OnError:      graphics.ColorWhite,
     },
-    TextTheme: theme.DefaultTextTheme(),
+    TextTheme: theme.DefaultTextTheme(graphics.ColorBlack),
 }
 
 theme.Theme{
-    Data:        myTheme,
+    Data:        &myTheme,
     Child: myApp,
 }
 ```
@@ -186,7 +205,7 @@ type appState struct {
 }
 
 func (s *appState) Build(ctx core.BuildContext) core.Widget {
-    var themeData theme.ThemeData
+    var themeData *theme.ThemeData
     if s.isDark {
         themeData = theme.DefaultDarkTheme()
     } else {
@@ -275,7 +294,7 @@ func (s *myState) Build(ctx core.BuildContext) core.Widget {
             widgets.VSpace(16),
 
             // Themed checkbox
-            theme.CheckboxOf(ctx, s.accepted.Get(), func(v bool) {
+            theme.CheckboxOf(ctx, s.accepted.Value(), func(v bool) {
                 s.accepted.Set(v)
             }),
 

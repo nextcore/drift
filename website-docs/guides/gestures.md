@@ -297,6 +297,17 @@ func (s *refreshState) Build(ctx core.BuildContext) core.Widget {
         Child: content,
     }
 }
+
+func (s *refreshState) doRefresh() {
+    // Simulate a network request
+    time.Sleep(2 * time.Second)
+    drift.Dispatch(func() {
+        s.SetState(func() {
+            s.isRefreshing = false
+            s.pullDistance = 0
+        })
+    })
+}
 ```
 
 ### Draggable Position
@@ -359,9 +370,11 @@ func (s *formState) handleSubmit(text string) {
 |------|-----|
 | `KeyboardTypeText` | General text input |
 | `KeyboardTypeNumber` | Numeric input |
-| `KeyboardTypeEmail` | Email address |
 | `KeyboardTypePhone` | Phone number |
+| `KeyboardTypeEmail` | Email address |
 | `KeyboardTypeURL` | URL input |
+| `KeyboardTypePassword` | Password input |
+| `KeyboardTypeMultiline` | Multiline text input |
 
 ## Haptic Feedback
 

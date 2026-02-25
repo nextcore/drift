@@ -89,22 +89,6 @@ widgets.Divider{
 }
 ```
 
-### Vertical Separator in a Row
-
-Pair `VerticalDivider` with `IntrinsicHeight` so the divider fills the row height:
-
-```go
-widgets.IntrinsicHeight{
-    Child: widgets.Row{
-        Children: []core.Widget{
-            leftSection,
-            theme.VerticalDividerOf(ctx),
-            rightSection,
-        },
-    },
-}
-```
-
 ## Theme Data
 
 Both widgets share `DividerThemeData`:

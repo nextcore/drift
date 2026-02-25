@@ -357,15 +357,15 @@ go func() {
 ```go
 type cameraState struct {
     core.StateBase
-    status           *core.ManagedState[string]
-    image            *core.ManagedState[image.Image]
-    permissionStatus *core.ManagedState[platform.PermissionStatus]
+    status           *core.Managed[string]
+    image            *core.Managed[image.Image]
+    permissionStatus *core.Managed[platform.PermissionStatus]
 }
 
 func (s *cameraState) InitState() {
-    s.status = core.NewManagedState(&s.StateBase, "Tap to capture")
-    s.image = core.NewManagedState[image.Image](&s.StateBase, nil)
-    s.permissionStatus = core.NewManagedState(&s.StateBase, platform.PermissionNotDetermined)
+    s.status = core.NewManaged(&s.StateBase, "Tap to capture")
+    s.image = core.NewManaged[image.Image](&s.StateBase, nil)
+    s.permissionStatus = core.NewManaged(&s.StateBase, platform.PermissionNotDetermined)
 
     ctx := context.Background()
 
@@ -602,41 +602,43 @@ Access files and directories:
 
 ```go
 // Read a file
-data, err := platform.ReadFile("/path/to/file.txt")
+data, err := platform.Storage.ReadFile("/path/to/file.txt")
 
 // Write a file
-err := platform.WriteFile("/path/to/file.txt", []byte("content"))
+err := platform.Storage.WriteFile("/path/to/file.txt", []byte("content"))
 
 // Delete a file
-err := platform.DeleteFile("/path/to/file.txt")
+err := platform.Storage.DeleteFile("/path/to/file.txt")
 
 // Get file info
-info, err := platform.GetFileInfo("/path/to/file.txt")
+info, err := platform.Storage.GetFileInfo("/path/to/file.txt")
 
 // Get app directory
-docsPath, err := platform.GetAppDirectory(platform.AppDirectoryDocuments)
-cachePath, err := platform.GetAppDirectory(platform.AppDirectoryCache)
+docsPath, err := platform.Storage.GetAppDirectory(platform.AppDirectoryDocuments)
+cachePath, err := platform.Storage.GetAppDirectory(platform.AppDirectoryCache)
 ```
 
 ### File Picker
 
 ```go
-// Open file picker
-platform.PickFile(platform.PickFileOptions{
-    AllowMultiple: false,
-    AllowedTypes:  []string{"image/*", "application/pdf"},
-})
-
-// Listen for results
+// Open file picker (runs synchronously, call from a goroutine)
 go func() {
-    for result := range platform.StorageResults() {
+    result, err := platform.Storage.PickFile(context.Background(), platform.PickFileOptions{
+        AllowMultiple: false,
+        AllowedTypes:  []string{"image/*", "application/pdf"},
+    })
+    drift.Dispatch(func() {
+        if err != nil {
+            handleError(err)
+            return
+        }
         if result.Cancelled {
-            continue
+            return
         }
         for _, file := range result.Files {
             handleSelectedFile(file)
         }
-    }
+    })
 }()
 ```
 

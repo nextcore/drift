@@ -99,10 +99,10 @@ Both styles produce identical results. Use whichever reads best for the complexi
 
 ## Constraints
 
-Every widget receives `BoxConstraints` from its parent:
+Every widget receives `Constraints` from its parent:
 
 ```go
-type BoxConstraints struct {
+type Constraints struct {
     MinWidth  float64
     MaxWidth  float64
     MinHeight float64
@@ -285,20 +285,6 @@ widgets.Column{
         settingsRow("Notifications", notificationsSwitch),
         theme.DividerOf(ctx),
         settingsRow("Language", languageDropdown),
-    },
-}
-```
-
-### Horizontal Sections with Vertical Divider
-
-```go
-widgets.IntrinsicHeight{
-    Child: widgets.Row{
-        Children: []core.Widget{
-            leftSection,
-            theme.VerticalDividerOf(ctx),
-            rightSection,
-        },
     },
 }
 ```

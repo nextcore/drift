@@ -43,17 +43,17 @@ Alignment positions the child within the content area (after padding). When Cont
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Color` | `color.Color` | Background color |
+| `Color` | `graphics.Color` | Background color |
 | `Width` | `float64` | Fixed width |
 | `Height` | `float64` | Fixed height |
 | `Padding` | `layout.EdgeInsets` | Inner padding |
 | `Alignment` | `layout.Alignment` | Child alignment within the container |
-| `BorderColor` | `color.Color` | Border color |
+| `BorderColor` | `graphics.Color` | Border color |
 | `BorderWidth` | `float64` | Border width |
 | `BorderRadius` | `float64` | Corner radius |
 | `BorderDash` | `*graphics.DashPattern` | Dashed border pattern |
-| `BorderGradient` | `graphics.Gradient` | Gradient applied to the border |
-| `Gradient` | `graphics.Gradient` | Background gradient |
+| `BorderGradient` | `*graphics.Gradient` | Gradient applied to the border |
+| `Gradient` | `*graphics.Gradient` | Background gradient |
 | `Shadow` | `*graphics.BoxShadow` | Drop shadow |
 | `Overflow` | `Overflow` | Clipping behavior |
 | `Child` | `core.Widget` | Child widget |

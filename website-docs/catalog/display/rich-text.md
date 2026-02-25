@@ -46,7 +46,7 @@ theme.RichTextOf(ctx, spans...).WithAlign(graphics.TextAlignCenter).WithMaxLines
 |----------|------|-------------|
 | `Content` | `graphics.TextSpan` | Root of the styled span tree |
 | `Style` | `graphics.SpanStyle` | Widget-level default style; spans inherit these values for any zero-valued fields |
-| `Wrap` | `bool` | Enable line wrapping within the available width |
+| `Wrap` | `graphics.TextWrap` | Wrapping behavior; zero value (`TextWrapWrap`) wraps at the constraint width, `TextWrapNoWrap` for single-line |
 | `MaxLines` | `int` | Maximum number of visible lines (0 = unlimited) |
 | `Align` | `graphics.TextAlign` | Horizontal text alignment (only visible when wrapping) |
 

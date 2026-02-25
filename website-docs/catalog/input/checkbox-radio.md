@@ -35,8 +35,8 @@ widgets.Checkbox{
 | Property | Type | Description |
 |----------|------|-------------|
 | `Value` | `bool` | Current checked state |
-| `ActiveColor` | `color.Color` | Fill color when checked |
-| `CheckColor` | `color.Color` | Checkmark color |
+| `ActiveColor` | `graphics.Color` | Fill color when checked |
+| `CheckColor` | `graphics.Color` | Checkmark color |
 | `OnChanged` | `func(bool)` | Called when toggled |
 
 ## Radio
@@ -68,7 +68,7 @@ widgets.Radio[string]{
 |----------|------|-------------|
 | `Value` | `T` | The value this radio button represents |
 | `GroupValue` | `T` | Currently selected value in the group |
-| `ActiveColor` | `color.Color` | Fill color when selected |
+| `ActiveColor` | `graphics.Color` | Fill color when selected |
 | `OnChanged` | `func(T)` | Called when selected |
 
 ## Common Patterns

@@ -26,6 +26,7 @@ func (s *loginState) Build(ctx core.BuildContext) core.Widget {
 
 // Separate widget to access FormOf(ctx)
 type loginForm struct {
+    core.StatelessBase
     state *loginState
 }
 

@@ -19,22 +19,22 @@ widgets.SafeArea{
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Top` | `bool` | Avoid top system UI (default true) |
-| `Bottom` | `bool` | Avoid bottom system UI (default true) |
-| `Left` | `bool` | Avoid left system UI (default true) |
-| `Right` | `bool` | Avoid right system UI (default true) |
+| `Top` | `bool` | Include top inset |
+| `Bottom` | `bool` | Include bottom inset |
+| `Left` | `bool` | Include left inset |
+| `Right` | `bool` | Include right inset |
 | `Child` | `core.Widget` | Child widget |
+
+By default (all fields `false`), SafeArea applies padding on **all** sides. Setting one or more sides to `true` switches to selective mode, where only the specified sides receive padding. For example, setting `Top: true, Bottom: true` applies padding on top and bottom only, leaving left and right unpadded.
 
 ## Selective Sides
 
-Disable safe area padding on specific sides:
+Apply safe area padding only on specific sides:
 
 ```go
 widgets.SafeArea{
     Top:    true,
     Bottom: true,
-    Left:   false,
-    Right:  false,
     Child:  content,
 }
 ```

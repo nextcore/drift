@@ -43,7 +43,7 @@ For full control over dialog content, use `ShowDialog` with a builder function. 
 dismiss := overlay.ShowDialog(ctx, overlay.DialogOptions{
     BarrierColor: graphics.RGBA(0, 0, 0, 0.5),
     Builder: func(ctx core.BuildContext, dismiss func()) core.Widget {
-        textTheme := theme.ThemeOf(ctx).TextTheme
+        textTheme := theme.TextThemeOf(ctx)
         return overlay.Dialog{
             Child: widgets.Column{
                 MainAxisSize: widgets.MainAxisSizeMin,
