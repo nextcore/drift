@@ -4,7 +4,6 @@ package widgets
 
 import (
 	"github.com/go-drift/drift/pkg/core"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/semantics"
 )
@@ -54,43 +53,7 @@ func (s Semantics) ChildWidget() core.Widget {
 }
 
 type renderSemanticsStub struct {
-	layout.RenderBoxBase
-	child layout.RenderObject
-}
-
-func (r *renderSemanticsStub) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderSemanticsStub) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true)
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderSemanticsStub) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderSemanticsStub) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
+	renderPassthrough
 }
 
 // MergeSemantics is a no-op widget on non-mobile platforms.
@@ -113,43 +76,7 @@ func (m MergeSemantics) ChildWidget() core.Widget {
 }
 
 type renderMergeSemanticsStub struct {
-	layout.RenderBoxBase
-	child layout.RenderObject
-}
-
-func (r *renderMergeSemanticsStub) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderMergeSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderMergeSemanticsStub) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true)
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderMergeSemanticsStub) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderMergeSemanticsStub) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
+	renderPassthrough
 }
 
 // ExcludeSemantics is a no-op on non-mobile platforms.
@@ -178,41 +105,5 @@ func (e ExcludeSemantics) ChildWidget() core.Widget {
 }
 
 type renderExcludeSemanticsStub struct {
-	layout.RenderBoxBase
-	child layout.RenderObject
-}
-
-func (r *renderExcludeSemanticsStub) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderExcludeSemanticsStub) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderExcludeSemanticsStub) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true) // true: we read child.Size()
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderExcludeSemanticsStub) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderExcludeSemanticsStub) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
+	renderPassthrough
 }

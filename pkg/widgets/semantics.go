@@ -5,7 +5,6 @@ package widgets
 import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/gestures"
-	"github.com/go-drift/drift/pkg/graphics"
 	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/semantics"
 )
@@ -112,8 +111,7 @@ func (s Semantics) ChildWidget() core.Widget {
 }
 
 type renderSemantics struct {
-	layout.RenderBoxBase
-	child              layout.RenderObject
+	renderPassthrough
 	label              string
 	value              string
 	hint               string
@@ -189,41 +187,6 @@ func (r *renderSemantics) update(s Semantics) {
 	}
 }
 
-func (r *renderSemantics) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderSemantics) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderSemantics) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true) // true: we read child.Size()
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderSemantics) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderSemantics) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
-}
-
 // DescribeSemanticsConfiguration implements SemanticsDescriber.
 func (r *renderSemantics) DescribeSemanticsConfiguration(config *semantics.SemanticsConfiguration) bool {
 	config.IsSemanticBoundary = r.container
@@ -286,44 +249,8 @@ func (e ExcludeSemantics) ChildWidget() core.Widget {
 }
 
 type renderExcludeSemantics struct {
-	layout.RenderBoxBase
-	child     layout.RenderObject
+	renderPassthrough
 	excluding bool
-}
-
-func (r *renderExcludeSemantics) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderExcludeSemantics) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderExcludeSemantics) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true) // true: we read child.Size()
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderExcludeSemantics) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderExcludeSemantics) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
 }
 
 // DescribeSemanticsConfiguration implements SemanticsDescriber.
@@ -359,43 +286,7 @@ func (m MergeSemantics) ChildWidget() core.Widget {
 }
 
 type renderMergeSemantics struct {
-	layout.RenderBoxBase
-	child layout.RenderObject
-}
-
-func (r *renderMergeSemantics) SetChild(child layout.RenderObject) {
-	layout.SetParentOnChild(r.child, nil)
-	r.child = child
-	layout.SetParentOnChild(r.child, r)
-}
-
-func (r *renderMergeSemantics) VisitChildren(visitor func(layout.RenderObject)) {
-	if r.child != nil {
-		visitor(r.child)
-	}
-}
-
-func (r *renderMergeSemantics) PerformLayout() {
-	constraints := r.Constraints()
-	if r.child != nil {
-		r.child.Layout(constraints, true) // true: we read child.Size()
-		r.SetSize(r.child.Size())
-	} else {
-		r.SetSize(constraints.Constrain(graphics.Size{}))
-	}
-}
-
-func (r *renderMergeSemantics) Paint(ctx *layout.PaintContext) {
-	if r.child != nil {
-		ctx.PaintChildWithLayer(r.child.(layout.RenderBox), graphics.Offset{})
-	}
-}
-
-func (r *renderMergeSemantics) HitTest(position graphics.Offset, result *layout.HitTestResult) bool {
-	if r.child != nil {
-		return r.child.HitTest(position, result)
-	}
-	return false
+	renderPassthrough
 }
 
 // DescribeSemanticsConfiguration implements SemanticsDescriber.
