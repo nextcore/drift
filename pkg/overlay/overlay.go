@@ -118,9 +118,7 @@ func (s *overlayState) Build(ctx core.BuildContext) core.Widget {
 		for _, op := range ops {
 			op()
 		}
-		if len(s.pendingOps) == 0 { // Only rebuild if ops were processed and no new ones added
-			s.Element().MarkNeedsBuild()
-		}
+		s.Element().MarkNeedsBuild()
 	}
 
 	// Build custom overlay render that handles Opaque hit testing
