@@ -3,9 +3,7 @@ package widgets
 import (
 	"github.com/go-drift/drift/pkg/core"
 	"github.com/go-drift/drift/pkg/graphics"
-	"github.com/go-drift/drift/pkg/layout"
 	"github.com/go-drift/drift/pkg/platform"
-	"github.com/go-drift/drift/pkg/semantics"
 )
 
 // TimePicker displays a time selection field that opens a native time picker modal.
@@ -96,133 +94,30 @@ func (s *timePickerState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *timePickerState) buildDefaultField(ctx core.BuildContext, w TimePicker) core.Widget {
-	// Apply defaults from decoration
 	decoration := w.Decoration
-	if decoration == nil {
-		decoration = &InputDecoration{}
-	}
 
-	borderRadius := decoration.BorderRadius
-	borderColor := decoration.BorderColor
-	bgColor := decoration.BackgroundColor
-
-	contentPadding := decoration.ContentPadding
-	if contentPadding == (layout.EdgeInsets{}) {
-		contentPadding = layout.EdgeInsets{Left: 12, Top: 12, Right: 12, Bottom: 12}
-	}
-
-	// Text style - use field values directly
-	textStyle := w.TextStyle
-	hintStyle := decoration.HintStyle
-	labelStyle := decoration.LabelStyle
-	helperStyle := decoration.HelperStyle
-
-	// Format the time value
 	var displayText string
 	var displayStyle graphics.TextStyle
 
 	showPlaceholder := w.ShowPlaceholder && w.Hour == 0 && w.Minute == 0
 	if showPlaceholder {
-		if w.Placeholder != "" {
-			displayText = w.Placeholder
-		} else if decoration.HintText != "" {
-			displayText = decoration.HintText
-		} else {
-			displayText = "Select time"
+		displayText = pickerPlaceholder(w.Placeholder, decoration, "Select time")
+		if decoration != nil {
+			displayStyle = decoration.HintStyle
 		}
-		displayStyle = hintStyle
 	} else {
 		displayText = formatTime(w.Hour, w.Minute, w.Format, w.Is24Hour)
-		displayStyle = textStyle
+		displayStyle = w.TextStyle
 	}
 
-	// Build the content row
-	var contentChildren []core.Widget
-
-	// Prefix icon
-	if decoration.PrefixIcon != nil {
-		contentChildren = append(contentChildren, decoration.PrefixIcon)
-		contentChildren = append(contentChildren, SizedBox{Width: 8})
-	}
-
-	// Text
-	contentChildren = append(contentChildren, Text{
-		Content: displayText,
-		Style:   displayStyle,
+	return buildPickerField(pickerFieldParams{
+		displayText:  displayText,
+		displayStyle: displayStyle,
+		decoration:   decoration,
+		disabled:     w.Disabled,
+		hint:         "Double tap to open time picker",
+		onTap:        s.showPicker,
 	})
-
-	// Suffix icon
-	if decoration.SuffixIcon != nil {
-		contentChildren = append(contentChildren, SizedBox{Width: 8})
-		contentChildren = append(contentChildren, decoration.SuffixIcon)
-	}
-
-	// Build the field
-	var children []core.Widget
-
-	// Label
-	if decoration.LabelText != "" {
-		children = append(children, Text{Content: decoration.LabelText, Style: labelStyle})
-		children = append(children, SizedBox{Height: 6})
-	}
-
-	// Apply disabled styling
-	opacity := 1.0
-	if w.Disabled {
-		opacity = 0.5
-	}
-
-	// Main input container
-	inputContainer := Opacity{
-		Opacity: opacity,
-		Child: DecoratedBox{
-			Color:        bgColor,
-			BorderColor:  borderColor,
-			BorderWidth:  1,
-			BorderRadius: borderRadius,
-			Child: Padding{
-				Padding: contentPadding,
-				Child: Row{
-					CrossAxisAlignment: CrossAxisAlignmentCenter,
-					MainAxisSize:       MainAxisSizeMin,
-					Children:           contentChildren,
-				},
-			},
-		},
-	}
-
-	children = append(children, inputContainer)
-
-	// Helper or error text
-	if decoration.ErrorText != "" {
-		errorStyle := helperStyle
-		errorStyle.Color = decoration.ErrorColor
-		children = append(children, SizedBox{Height: 6})
-		children = append(children, Text{Content: decoration.ErrorText, Style: errorStyle})
-	} else if decoration.HelperText != "" {
-		children = append(children, SizedBox{Height: 6})
-		children = append(children, Text{Content: decoration.HelperText, Style: helperStyle})
-	}
-
-	// Wrap with gesture detector
-	return GestureDetector{
-		OnTap: func() {
-			if !w.Disabled {
-				s.showPicker()
-			}
-		},
-		Child: Semantics{
-			Hint:  "Double tap to open time picker",
-			Role:  semantics.SemanticsRoleButton,
-			Flags: semantics.SemanticsHasEnabledState | boolToFlag(!w.Disabled, semantics.SemanticsIsEnabled),
-			OnTap: func() { s.showPicker() },
-			Child: Column{
-				MainAxisSize:       MainAxisSizeMin,
-				CrossAxisAlignment: CrossAxisAlignmentStart,
-				Children:           children,
-			},
-		},
-	}
 }
 
 func (s *timePickerState) showPicker() {

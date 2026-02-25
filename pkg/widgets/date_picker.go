@@ -141,28 +141,8 @@ func (s *datePickerState) Build(ctx core.BuildContext) core.Widget {
 }
 
 func (s *datePickerState) buildDefaultField(ctx core.BuildContext, w DatePicker) core.Widget {
-	// Apply defaults from decoration
 	decoration := w.Decoration
-	if decoration == nil {
-		decoration = &InputDecoration{}
-	}
 
-	borderRadius := decoration.BorderRadius
-	borderColor := decoration.BorderColor
-	bgColor := decoration.BackgroundColor
-
-	contentPadding := decoration.ContentPadding
-	if contentPadding == (layout.EdgeInsets{}) {
-		contentPadding = layout.EdgeInsets{Left: 12, Top: 12, Right: 12, Bottom: 12}
-	}
-
-	// Text style - use field values directly
-	textStyle := w.TextStyle
-	hintStyle := decoration.HintStyle
-	labelStyle := decoration.LabelStyle
-	helperStyle := decoration.HelperStyle
-
-	// Format the date value
 	format := w.Format
 	if format == "" {
 		format = "Jan 2, 2006"
@@ -172,105 +152,22 @@ func (s *datePickerState) buildDefaultField(ctx core.BuildContext, w DatePicker)
 	var displayStyle graphics.TextStyle
 	if w.Value != nil {
 		displayText = w.Value.Format(format)
-		displayStyle = textStyle
+		displayStyle = w.TextStyle
 	} else {
-		if w.Placeholder != "" {
-			displayText = w.Placeholder
-		} else if decoration.HintText != "" {
-			displayText = decoration.HintText
-		} else {
-			displayText = "Select date"
+		displayText = pickerPlaceholder(w.Placeholder, decoration, "Select date")
+		if decoration != nil {
+			displayStyle = decoration.HintStyle
 		}
-		displayStyle = hintStyle
 	}
 
-	// Build the content row
-	var contentChildren []core.Widget
-
-	// Prefix icon
-	if decoration.PrefixIcon != nil {
-		contentChildren = append(contentChildren, decoration.PrefixIcon)
-		contentChildren = append(contentChildren, SizedBox{Width: 8})
-	}
-
-	// Text
-	contentChildren = append(contentChildren, Text{
-		Content: displayText,
-		Style:   displayStyle,
+	return buildPickerField(pickerFieldParams{
+		displayText:  displayText,
+		displayStyle: displayStyle,
+		decoration:   decoration,
+		disabled:     w.Disabled,
+		hint:         "Double tap to open date picker",
+		onTap:        s.showPicker,
 	})
-
-	// Suffix icon (default to calendar)
-	if decoration.SuffixIcon != nil {
-		contentChildren = append(contentChildren, SizedBox{Width: 8})
-		contentChildren = append(contentChildren, decoration.SuffixIcon)
-	}
-
-	// Build the field
-	var children []core.Widget
-
-	// Label
-	if decoration.LabelText != "" {
-		children = append(children, Text{Content: decoration.LabelText, Style: labelStyle})
-		children = append(children, SizedBox{Height: 6})
-	}
-
-	// Apply disabled styling
-	opacity := 1.0
-	if w.Disabled {
-		opacity = 0.5
-	}
-
-	// Main input container
-	inputContainer := Opacity{
-		Opacity: opacity,
-		Child: DecoratedBox{
-			Color:        bgColor,
-			BorderColor:  borderColor,
-			BorderWidth:  1,
-			BorderRadius: borderRadius,
-			Child: Padding{
-				Padding: contentPadding,
-				Child: Row{
-					CrossAxisAlignment: CrossAxisAlignmentCenter,
-					MainAxisSize:       MainAxisSizeMin,
-					Children:           contentChildren,
-				},
-			},
-		},
-	}
-
-	children = append(children, inputContainer)
-
-	// Helper or error text
-	if decoration.ErrorText != "" {
-		errorStyle := helperStyle
-		errorStyle.Color = decoration.ErrorColor
-		children = append(children, SizedBox{Height: 6})
-		children = append(children, Text{Content: decoration.ErrorText, Style: errorStyle})
-	} else if decoration.HelperText != "" {
-		children = append(children, SizedBox{Height: 6})
-		children = append(children, Text{Content: decoration.HelperText, Style: helperStyle})
-	}
-
-	// Wrap with gesture detector
-	return GestureDetector{
-		OnTap: func() {
-			if !w.Disabled {
-				s.showPicker()
-			}
-		},
-		Child: Semantics{
-			Hint:  "Double tap to open date picker",
-			Role:  semantics.SemanticsRoleButton,
-			Flags: semantics.SemanticsHasEnabledState | boolToFlag(!w.Disabled, semantics.SemanticsIsEnabled),
-			OnTap: func() { s.showPicker() },
-			Child: Column{
-				MainAxisSize:       MainAxisSizeMin,
-				CrossAxisAlignment: CrossAxisAlignmentStart,
-				Children:           children,
-			},
-		},
-	}
 }
 
 func (s *datePickerState) showPicker() {
@@ -319,4 +216,112 @@ func boolToFlag(condition bool, flag semantics.SemanticsFlag) semantics.Semantic
 		return flag
 	}
 	return 0
+}
+
+// pickerPlaceholder returns the placeholder text for a picker field.
+func pickerPlaceholder(placeholder string, decoration *InputDecoration, fallback string) string {
+	if placeholder != "" {
+		return placeholder
+	}
+	if decoration != nil && decoration.HintText != "" {
+		return decoration.HintText
+	}
+	return fallback
+}
+
+// pickerFieldParams holds the varying parts of a picker field.
+type pickerFieldParams struct {
+	displayText  string
+	displayStyle graphics.TextStyle
+	decoration   *InputDecoration
+	disabled     bool
+	hint         string
+	onTap        func()
+}
+
+// buildPickerField builds a decorated input field for date/time pickers.
+func buildPickerField(p pickerFieldParams) core.Widget {
+	decoration := p.decoration
+	if decoration == nil {
+		decoration = &InputDecoration{}
+	}
+
+	contentPadding := decoration.ContentPadding
+	if contentPadding == (layout.EdgeInsets{}) {
+		contentPadding = layout.EdgeInsets{Left: 12, Top: 12, Right: 12, Bottom: 12}
+	}
+
+	// Build the content row
+	var contentChildren []core.Widget
+	if decoration.PrefixIcon != nil {
+		contentChildren = append(contentChildren, decoration.PrefixIcon)
+		contentChildren = append(contentChildren, SizedBox{Width: 8})
+	}
+	contentChildren = append(contentChildren, Text{
+		Content: p.displayText,
+		Style:   p.displayStyle,
+	})
+	if decoration.SuffixIcon != nil {
+		contentChildren = append(contentChildren, SizedBox{Width: 8})
+		contentChildren = append(contentChildren, decoration.SuffixIcon)
+	}
+
+	// Build the field
+	var children []core.Widget
+	if decoration.LabelText != "" {
+		children = append(children, Text{Content: decoration.LabelText, Style: decoration.LabelStyle})
+		children = append(children, SizedBox{Height: 6})
+	}
+
+	opacity := 1.0
+	if p.disabled {
+		opacity = 0.5
+	}
+
+	children = append(children, Opacity{
+		Opacity: opacity,
+		Child: DecoratedBox{
+			Color:        decoration.BackgroundColor,
+			BorderColor:  decoration.BorderColor,
+			BorderWidth:  1,
+			BorderRadius: decoration.BorderRadius,
+			Child: Padding{
+				Padding: contentPadding,
+				Child: Row{
+					CrossAxisAlignment: CrossAxisAlignmentCenter,
+					MainAxisSize:       MainAxisSizeMin,
+					Children:           contentChildren,
+				},
+			},
+		},
+	})
+
+	if decoration.ErrorText != "" {
+		errorStyle := decoration.HelperStyle
+		errorStyle.Color = decoration.ErrorColor
+		children = append(children, SizedBox{Height: 6})
+		children = append(children, Text{Content: decoration.ErrorText, Style: errorStyle})
+	} else if decoration.HelperText != "" {
+		children = append(children, SizedBox{Height: 6})
+		children = append(children, Text{Content: decoration.HelperText, Style: decoration.HelperStyle})
+	}
+
+	return GestureDetector{
+		OnTap: func() {
+			if !p.disabled {
+				p.onTap()
+			}
+		},
+		Child: Semantics{
+			Hint:  p.hint,
+			Role:  semantics.SemanticsRoleButton,
+			Flags: semantics.SemanticsHasEnabledState | boolToFlag(!p.disabled, semantics.SemanticsIsEnabled),
+			OnTap: p.onTap,
+			Child: Column{
+				MainAxisSize:       MainAxisSizeMin,
+				CrossAxisAlignment: CrossAxisAlignmentStart,
+				Children:           children,
+			},
+		},
+	}
 }
