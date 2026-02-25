@@ -73,11 +73,11 @@ func DriftSkiaLastError() *C.char {
 }
 
 // DriftStepAndSnapshot runs the engine pipeline and returns platform view
-// geometry as JSON. The caller must free *outData with C.free().
+// geometry as packed binary. The caller must free *outData with C.free().
 //
 //export DriftStepAndSnapshot
 func DriftStepAndSnapshot(width, height C.int, outData **C.char, outLen *C.int) C.int {
-	data, err := engine.StepAndSnapshot(int(width), int(height))
+	data, bp, err := engine.StepAndSnapshot(int(width), int(height))
 	if err != nil {
 		return 1
 	}
@@ -87,6 +87,7 @@ func DriftStepAndSnapshot(width, height C.int, outData **C.char, outLen *C.int) 
 		return 0
 	}
 	cData := C.CBytes(data)
+	engine.PutSnapshotBuffer(bp)
 	*outData = (*C.char)(cData)
 	*outLen = C.int(len(data))
 	return 0

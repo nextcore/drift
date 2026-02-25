@@ -326,39 +326,48 @@ final class DriftMetalView: UIView {
             if let clipLeft = view.clipLeft {
                 hasher.combine(clipLeft.bitPattern)
             } else {
-                hasher.combine(UInt64.max)
+                hasher.combine(UInt32.max)
             }
             if let clipTop = view.clipTop {
                 hasher.combine(clipTop.bitPattern)
             } else {
-                hasher.combine(UInt64.max - 1)
+                hasher.combine(UInt32.max - 1)
             }
             if let clipRight = view.clipRight {
                 hasher.combine(clipRight.bitPattern)
             } else {
-                hasher.combine(UInt64.max - 2)
+                hasher.combine(UInt32.max - 2)
             }
             if let clipBottom = view.clipBottom {
                 hasher.combine(clipBottom.bitPattern)
             } else {
-                hasher.combine(UInt64.max - 3)
+                hasher.combine(UInt32.max - 3)
             }
             hasher.combine(view.visibleLeft.bitPattern)
             hasher.combine(view.visibleTop.bitPattern)
             hasher.combine(view.visibleRight.bitPattern)
             hasher.combine(view.visibleBottom.bitPattern)
-            hasher.combine(view.occlusionMasks.count)
-            for mask in view.occlusionMasks {
-                hasher.combine(mask.count)
-                for cmd in mask {
-                    for val in cmd {
-                        if let s = val.stringValue {
-                            hasher.combine(s)
-                        } else if let d = val.doubleValue {
-                            hasher.combine(d.bitPattern)
-                        }
+            hasher.combine(view.occlusionPaths.count)
+            for path in view.occlusionPaths {
+                // Hash path elements: apply callback to each element to capture
+                // op codes and coordinates, ensuring shape changes are detected.
+                var pathHasher = Hasher()
+                path.applyWithBlock { element in
+                    pathHasher.combine(element.pointee.type.rawValue)
+                    let pointCount: Int
+                    switch element.pointee.type {
+                    case .moveToPoint, .addLineToPoint: pointCount = 1
+                    case .addQuadCurveToPoint: pointCount = 2
+                    case .addCurveToPoint: pointCount = 3
+                    case .closeSubpath: pointCount = 0
+                    @unknown default: pointCount = 0
+                    }
+                    for i in 0..<pointCount {
+                        pathHasher.combine(Float(element.pointee.points[i].x).bitPattern)
+                        pathHasher.combine(Float(element.pointee.points[i].y).bitPattern)
                     }
                 }
+                hasher.combine(pathHasher.finalize())
             }
         }
         return hasher.finalize()

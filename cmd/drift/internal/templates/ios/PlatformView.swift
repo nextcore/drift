@@ -335,7 +335,7 @@ enum PlatformViewHandler {
                 visibleTop: CGFloat(snap.visibleTop),
                 visibleRight: CGFloat(snap.visibleRight),
                 visibleBottom: CGFloat(snap.visibleBottom),
-                occlusionMasks: snap.occlusionMasks
+                occlusionPaths: snap.occlusionPaths
             )
             container.onGeometryChanged()
         }
@@ -604,7 +604,7 @@ enum PlatformViewHandler {
         viewWidth: CGFloat, viewHeight: CGFloat,
         visibleLeft: CGFloat, visibleTop: CGFloat,
         visibleRight: CGFloat, visibleBottom: CGFloat,
-        occlusionMasks: [[[JSONAny]]]
+        occlusionPaths: [CGPath]
     ) {
         CATransaction.setDisableActions(true)
 
@@ -629,51 +629,18 @@ enum PlatformViewHandler {
         // Fully visible (covers entire view) and no occlusion: clear mask.
         let coversFullView = localLeft <= 0 && localTop <= 0 &&
             localRight >= viewWidth && localBottom >= viewHeight
-        if coversFullView && occlusionMasks.isEmpty {
+        if coversFullView && occlusionPaths.isEmpty {
             view.layer.mask = nil
             view.isHidden = false
             return
         }
 
         // Build mask path: outer visible rect, with occlusion paths subtracted.
+        // Occlusion paths are already in view-local coordinates (transformed during decode).
         let maskPath = UIBezierPath(rect: visibleCGRect)
 
-        for maskCmds in occlusionMasks {
-            let holePath = UIBezierPath()
-            for cmd in maskCmds {
-                guard let op = cmd.first?.stringValue else { continue }
-                switch op {
-                case "M":
-                    guard cmd.count >= 3,
-                          let x = cmd[1].doubleValue, let y = cmd[2].doubleValue else { continue }
-                    holePath.move(to: CGPoint(x: CGFloat(x) - viewX, y: CGFloat(y) - viewY))
-                case "L":
-                    guard cmd.count >= 3,
-                          let x = cmd[1].doubleValue, let y = cmd[2].doubleValue else { continue }
-                    holePath.addLine(to: CGPoint(x: CGFloat(x) - viewX, y: CGFloat(y) - viewY))
-                case "Q":
-                    guard cmd.count >= 5,
-                          let x1 = cmd[1].doubleValue, let y1 = cmd[2].doubleValue,
-                          let x2 = cmd[3].doubleValue, let y2 = cmd[4].doubleValue else { continue }
-                    holePath.addQuadCurve(
-                        to: CGPoint(x: CGFloat(x2) - viewX, y: CGFloat(y2) - viewY),
-                        controlPoint: CGPoint(x: CGFloat(x1) - viewX, y: CGFloat(y1) - viewY))
-                case "C":
-                    guard cmd.count >= 7,
-                          let x1 = cmd[1].doubleValue, let y1 = cmd[2].doubleValue,
-                          let x2 = cmd[3].doubleValue, let y2 = cmd[4].doubleValue,
-                          let x3 = cmd[5].doubleValue, let y3 = cmd[6].doubleValue else { continue }
-                    holePath.addCurve(
-                        to: CGPoint(x: CGFloat(x3) - viewX, y: CGFloat(y3) - viewY),
-                        controlPoint1: CGPoint(x: CGFloat(x1) - viewX, y: CGFloat(y1) - viewY),
-                        controlPoint2: CGPoint(x: CGFloat(x2) - viewX, y: CGFloat(y2) - viewY))
-                case "Z":
-                    holePath.close()
-                default:
-                    break
-                }
-            }
-            maskPath.append(holePath)
+        for holePath in occlusionPaths {
+            maskPath.append(UIBezierPath(cgPath: holePath))
         }
 
         // Reuse cached mask layer to avoid per-frame allocation.
@@ -684,7 +651,7 @@ enum PlatformViewHandler {
             maskLayer = CAShapeLayer()
             maskLayers[viewId] = maskLayer
         }
-        maskLayer.fillRule = occlusionMasks.isEmpty ? .nonZero : .evenOdd
+        maskLayer.fillRule = occlusionPaths.isEmpty ? .nonZero : .evenOdd
         maskLayer.path = maskPath.cgPath
         view.layer.mask = maskLayer
         view.isHidden = false

@@ -3,7 +3,6 @@
 package engine
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"sync"
@@ -115,20 +114,25 @@ func RenderSkiaVulkanSync(width, height int, vkImage uintptr, vkFormat uint32) e
 }
 
 // StepAndSnapshot runs the engine pipeline and returns the platform view
-// geometry snapshot as JSON bytes. Called from the Android UI thread via JNI.
-func StepAndSnapshot(width, height int) ([]byte, error) {
+// geometry snapshot as packed binary bytes. Called from the Android UI thread
+// via JNI and from iOS main thread via FFI.
+//
+// Returns (data, pooledBuffer, error). The caller must call
+// PutSnapshotBuffer(pooledBuffer) after copying data (e.g. via C.CBytes).
+func StepAndSnapshot(width, height int) ([]byte, *[]byte, error) {
 	if width <= 0 || height <= 0 {
-		return nil, errInvalidSize
+		return nil, nil, errInvalidSize
 	}
 	size := graphics.Size{Width: float64(width), Height: float64(height)}
 	snapshot, err := app.StepFrame(size)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if snapshot == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return json.Marshal(snapshot)
+	bp := MarshalBinary(snapshot)
+	return *bp, bp, nil
 }
 
 // RenderSkiaMetalSync renders a frame into the provided Metal texture using the

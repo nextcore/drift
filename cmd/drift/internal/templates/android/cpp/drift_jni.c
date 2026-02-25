@@ -1228,7 +1228,7 @@ Java_{{.JNIPackage}}_NativeBridge_getHardwareBuffer(JNIEnv *env, jclass clazz, j
 
 /**
  * JNI: NativeBridge.stepAndSnapshot(width, height) -> ByteArray?
- * Calls Go DriftStepAndSnapshot and returns the JSON snapshot bytes.
+ * Calls Go DriftStepAndSnapshot and returns the binary snapshot bytes.
  */
 JNIEXPORT jbyteArray JNICALL
 Java_{{.JNIPackage}}_NativeBridge_stepAndSnapshot(JNIEnv *env, jclass clazz, jint width, jint height) {

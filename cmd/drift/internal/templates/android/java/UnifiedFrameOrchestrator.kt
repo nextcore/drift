@@ -16,8 +16,8 @@ import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.view.Choreographer
-import org.json.JSONArray
-import org.json.JSONObject
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 class UnifiedFrameOrchestrator(
@@ -69,46 +69,108 @@ class UnifiedFrameOrchestrator(
 
     private fun parseSnapshot(data: ByteArray): FrameSnapshot? {
         return try {
-            val json = JSONObject(String(data, Charsets.UTF_8))
-            val viewsArray = json.optJSONArray("views") ?: return FrameSnapshot(emptyList())
+            val buf = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
 
-            val views = ArrayList<ViewSnapshot>(viewsArray.length())
-            for (i in 0 until viewsArray.length()) {
-                val v = viewsArray.getJSONObject(i)
-                val hasClip = v.optBoolean("hasClip", false)
-                // Occlusion masks: path commands parsed into android.graphics.Path objects.
-                // Most views have no occlusion, so this skips allocation in the common case.
-                val masksArray = v.optJSONArray("occlusionMasks")
-                val occPaths = if (masksArray != null && masksArray.length() > 0) {
-                    ArrayList<Path>(masksArray.length()).also { list ->
-                        for (j in 0 until masksArray.length()) {
-                            list.add(parsePathCommands(masksArray.getJSONArray(j)))
+            // Header: version (uint32) + viewCount (uint32)
+            if (buf.remaining() < 8) return null
+            val version = buf.getInt().toUInt()
+            if (version != 1u) return null
+            val viewCount = buf.getInt().toUInt().toInt()
+
+            val views = ArrayList<ViewSnapshot>(viewCount)
+            for (i in 0 until viewCount) {
+                // Per-view fixed part: 60 bytes
+                if (buf.remaining() < 60) return null
+
+                val viewId = buf.getLong()
+                val x = buf.getFloat()
+                val y = buf.getFloat()
+                val width = buf.getFloat()
+                val height = buf.getFloat()
+                val clipLeft = buf.getFloat()
+                val clipTop = buf.getFloat()
+                val clipRight = buf.getFloat()
+                val clipBottom = buf.getFloat()
+                val visibleLeft = buf.getFloat()
+                val visibleTop = buf.getFloat()
+                val visibleRight = buf.getFloat()
+                val visibleBottom = buf.getFloat()
+                val flags = buf.get().toInt() and 0xFF
+                buf.get() // reserved
+                val pathCount = buf.getShort().toInt() and 0xFFFF
+
+                val hasClip = (flags and 1) != 0
+                val visible = (flags and 2) != 0
+
+                val occPaths = if (pathCount > 0) {
+                    ArrayList<Path>(pathCount).also { list ->
+                        for (j in 0 until pathCount) {
+                            if (buf.remaining() < 2) return null
+                            val cmdCount = buf.getShort().toInt() and 0xFFFF
+                            val path = Path()
+                            for (k in 0 until cmdCount) {
+                                if (buf.remaining() < 2) return null
+                                val op = buf.get().toInt() and 0xFF
+                                val argCount = buf.get().toInt() and 0xFF
+                                if (buf.remaining() < argCount * 4) return null
+                                when (op) {
+                                    0 -> { // MoveTo
+                                        val ax = buf.getFloat()
+                                        val ay = buf.getFloat()
+                                        path.moveTo(ax, ay)
+                                    }
+                                    1 -> { // LineTo
+                                        val ax = buf.getFloat()
+                                        val ay = buf.getFloat()
+                                        path.lineTo(ax, ay)
+                                    }
+                                    2 -> { // QuadTo
+                                        val x1 = buf.getFloat()
+                                        val y1 = buf.getFloat()
+                                        val x2 = buf.getFloat()
+                                        val y2 = buf.getFloat()
+                                        path.quadTo(x1, y1, x2, y2)
+                                    }
+                                    3 -> { // CubicTo
+                                        val x1 = buf.getFloat()
+                                        val y1 = buf.getFloat()
+                                        val x2 = buf.getFloat()
+                                        val y2 = buf.getFloat()
+                                        val x3 = buf.getFloat()
+                                        val y3 = buf.getFloat()
+                                        path.cubicTo(x1, y1, x2, y2, x3, y3)
+                                    }
+                                    4 -> { // Close
+                                        path.close()
+                                    }
+                                    else -> {
+                                        // Unknown op: skip argCount * 4 bytes
+                                        buf.position(buf.position() + argCount * 4)
+                                    }
+                                }
+                            }
+                            list.add(path)
                         }
                     }
                 } else {
                     emptyList()
                 }
 
-                val x = v.getDouble("x").toFloat()
-                val y = v.getDouble("y").toFloat()
-                val width = v.getDouble("width").toFloat()
-                val height = v.getDouble("height").toFloat()
-
                 views.add(ViewSnapshot(
-                    viewId = v.getLong("viewId"),
+                    viewId = viewId,
                     x = x,
                     y = y,
                     width = width,
                     height = height,
-                    clipLeft = if (hasClip) v.getDouble("clipLeft").toFloat() else null,
-                    clipTop = if (hasClip) v.getDouble("clipTop").toFloat() else null,
-                    clipRight = if (hasClip) v.getDouble("clipRight").toFloat() else null,
-                    clipBottom = if (hasClip) v.getDouble("clipBottom").toFloat() else null,
-                    visible = v.optBoolean("visible", true),
-                    visibleLeft = v.optDouble("visibleLeft", x.toDouble()).toFloat(),
-                    visibleTop = v.optDouble("visibleTop", y.toDouble()).toFloat(),
-                    visibleRight = v.optDouble("visibleRight", (x + width).toDouble()).toFloat(),
-                    visibleBottom = v.optDouble("visibleBottom", (y + height).toDouble()).toFloat(),
+                    clipLeft = if (hasClip) clipLeft else null,
+                    clipTop = if (hasClip) clipTop else null,
+                    clipRight = if (hasClip) clipRight else null,
+                    clipBottom = if (hasClip) clipBottom else null,
+                    visible = visible,
+                    visibleLeft = visibleLeft,
+                    visibleTop = visibleTop,
+                    visibleRight = visibleRight,
+                    visibleBottom = visibleBottom,
                     occlusionPaths = occPaths
                 ))
             }
@@ -122,29 +184,6 @@ class UnifiedFrameOrchestrator(
         if (active && frameScheduled.compareAndSet(false, true)) {
             mainHandler.post(postFrameRunnable)
         }
-    }
-
-    /** Parses a JSON array of path commands into an android.graphics.Path. */
-    private fun parsePathCommands(cmds: JSONArray): Path {
-        val path = Path()
-        for (i in 0 until cmds.length()) {
-            val cmd = cmds.getJSONArray(i)
-            when (cmd.getString(0)) {
-                "M" -> path.moveTo(cmd.getDouble(1).toFloat(), cmd.getDouble(2).toFloat())
-                "L" -> path.lineTo(cmd.getDouble(1).toFloat(), cmd.getDouble(2).toFloat())
-                "Q" -> path.quadTo(
-                    cmd.getDouble(1).toFloat(), cmd.getDouble(2).toFloat(),
-                    cmd.getDouble(3).toFloat(), cmd.getDouble(4).toFloat()
-                )
-                "C" -> path.cubicTo(
-                    cmd.getDouble(1).toFloat(), cmd.getDouble(2).toFloat(),
-                    cmd.getDouble(3).toFloat(), cmd.getDouble(4).toFloat(),
-                    cmd.getDouble(5).toFloat(), cmd.getDouble(6).toFloat()
-                )
-                "Z" -> path.close()
-            }
-        }
-        return path
     }
 
     fun start() {
