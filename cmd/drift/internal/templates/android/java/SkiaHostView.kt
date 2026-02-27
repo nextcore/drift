@@ -8,7 +8,7 @@
  * list, Skia content and overlays land in a single RenderThread buffer and a
  * single SurfaceFlinger layer, eliminating cross-surface sync lag.
  *
- * Requires API 31+ (minSdk) for Bitmap.wrapHardwareBuffer().
+ * Requires API 29+ (minSdk) for Bitmap.wrapHardwareBuffer().
  *
  * Vulkan initialization happens on a background thread. After init, all
  * rendering runs synchronously on the UI thread (called from

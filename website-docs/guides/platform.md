@@ -766,7 +766,7 @@ On Android, biometric protection is an app-enforced policy, not cryptographicall
 
 ### Platform Support
 
-Drift requires Android 12 (API 31) or later, which satisfies the secure storage minimum. On unsupported platforms, operations return `ErrPlatformNotSupported`:
+Drift requires Android 10 (API 29) or later. Secure storage uses EncryptedSharedPreferences, which requires API 23+. On unsupported platforms, operations return `ErrPlatformNotSupported`:
 
 ```go
 if err == platform.ErrPlatformNotSupported {
