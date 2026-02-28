@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"sync"
@@ -157,6 +158,33 @@ func (r *renderScrollView) VisitChildren(visitor func(layout.RenderObject)) {
 
 func (r *renderScrollView) PerformLayout() {
 	constraints := r.Constraints()
+
+	mainAxisUnbounded := false
+	if r.direction == AxisVertical && constraints.MaxHeight == math.MaxFloat64 {
+		mainAxisUnbounded = true
+	} else if r.direction == AxisHorizontal && constraints.MaxWidth == math.MaxFloat64 {
+		mainAxisUnbounded = true
+	}
+	if mainAxisUnbounded {
+		axis := "height"
+		direction := "Vertical"
+		if r.direction == AxisHorizontal {
+			axis = "width"
+			direction = "Horizontal"
+		}
+		panic(fmt.Sprintf(
+			"%s ScrollView was given unbounded %s.\n\n"+
+				"Scrollable widgets expand to fill their container in the scroll direction,\n"+
+				"so they require bounded constraints. This typically happens when:\n"+
+				"- A ScrollView or ListView is placed inside a Column/Row without Expanded\n"+
+				"- A scrollable is nested inside another scrollable in the same direction\n\n"+
+				"Solutions:\n"+
+				"- Wrap the scrollable in Expanded{} to fill remaining space in the Column/Row\n"+
+				"- Wrap in a SizedBox with a fixed %s",
+			direction, axis, axis,
+		))
+	}
+
 	size := graphics.Size{Width: constraints.MaxWidth, Height: constraints.MaxHeight}
 	if size.Width <= 0 {
 		size.Width = constraints.MinWidth

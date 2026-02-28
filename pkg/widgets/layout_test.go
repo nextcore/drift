@@ -856,3 +856,68 @@ func TestFlexible_ZeroValueFitIsLoose(t *testing.T) {
 		t.Errorf("expected zero-value fit child width 50 (loose), got %v", childSize.Width)
 	}
 }
+
+// TestScrollView_UnboundedMainAxis verifies that a vertical ScrollView panics
+// when given unbounded height constraints (e.g. placed in a Column without Expanded).
+func TestScrollView_UnboundedMainAxis(t *testing.T) {
+	scroll := &renderScrollView{
+		direction: AxisVertical,
+	}
+	scroll.SetSelf(scroll)
+
+	// Simulate what Column now passes to non-flex children: bounded width, unbounded height.
+	unboundedConstraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  400,
+		MinHeight: 0,
+		MaxHeight: math.MaxFloat64,
+	}
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for ScrollView with unbounded height")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "Vertical ScrollView was given unbounded height") {
+			t.Errorf("panic message should mention Vertical ScrollView and unbounded height, got: %s", msg)
+		}
+	}()
+
+	scroll.Layout(unboundedConstraints, false)
+}
+
+// TestScrollView_UnboundedMainAxis_Horizontal verifies that a horizontal ScrollView
+// panics when given unbounded width constraints.
+func TestScrollView_UnboundedMainAxis_Horizontal(t *testing.T) {
+	scroll := &renderScrollView{
+		direction: AxisHorizontal,
+	}
+	scroll.SetSelf(scroll)
+
+	unboundedConstraints := layout.Constraints{
+		MinWidth:  0,
+		MaxWidth:  math.MaxFloat64,
+		MinHeight: 0,
+		MaxHeight: 300,
+	}
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for ScrollView with unbounded width")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("expected string panic message, got %T: %v", r, r)
+		}
+		if !strings.Contains(msg, "Horizontal ScrollView was given unbounded width") {
+			t.Errorf("panic message should mention Horizontal ScrollView and unbounded width, got: %s", msg)
+		}
+	}()
+
+	scroll.Layout(unboundedConstraints, false)
+}

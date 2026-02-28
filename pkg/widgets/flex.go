@@ -476,22 +476,30 @@ func (r *renderFlex) flexFactor(child layout.RenderBox) int {
 }
 
 func (r *renderFlex) looseConstraints(maxSize graphics.Size) layout.Constraints {
-	if r.crossAlignment != CrossAxisAlignmentStretch {
-		return layout.Loose(maxSize)
-	}
 	if r.direction == AxisHorizontal {
+		crossMax := maxSize.Height
+		if r.crossAlignment == CrossAxisAlignmentStretch {
+			return layout.Constraints{
+				MinWidth: 0, MaxWidth: math.MaxFloat64,
+				MinHeight: crossMax, MaxHeight: crossMax,
+			}
+		}
 		return layout.Constraints{
-			MinWidth:  0,
-			MaxWidth:  maxSize.Width,
-			MinHeight: maxSize.Height,
-			MaxHeight: maxSize.Height,
+			MinWidth: 0, MaxWidth: math.MaxFloat64,
+			MinHeight: 0, MaxHeight: crossMax,
+		}
+	}
+	// AxisVertical
+	crossMax := maxSize.Width
+	if r.crossAlignment == CrossAxisAlignmentStretch {
+		return layout.Constraints{
+			MinWidth: crossMax, MaxWidth: crossMax,
+			MinHeight: 0, MaxHeight: math.MaxFloat64,
 		}
 	}
 	return layout.Constraints{
-		MinWidth:  maxSize.Width,
-		MaxWidth:  maxSize.Width,
-		MinHeight: 0,
-		MaxHeight: maxSize.Height,
+		MinWidth: 0, MaxWidth: crossMax,
+		MinHeight: 0, MaxHeight: math.MaxFloat64,
 	}
 }
 
