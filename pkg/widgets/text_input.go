@@ -95,8 +95,8 @@ type TextInput struct {
 	// OnSubmitted is called when the user submits (presses done/return).
 	OnSubmitted func(string)
 
-	// OnEditingComplete is called when editing is complete.
-	OnEditingComplete func()
+	// OnEditingComplete is called with the current text when editing is complete.
+	OnEditingComplete func(string)
 
 	// OnFocusChange is called when focus changes.
 	OnFocusChange func(bool)
@@ -452,8 +452,8 @@ func (s *textInputState) OnAction(action platform.TextInputAction) {
 		if w.OnSubmitted != nil && w.Controller != nil {
 			w.OnSubmitted(w.Controller.Text())
 		}
-		if w.OnEditingComplete != nil {
-			w.OnEditingComplete()
+		if w.OnEditingComplete != nil && w.Controller != nil {
+			w.OnEditingComplete(w.Controller.Text())
 		}
 		s.unfocus()
 	case platform.TextInputActionNext:

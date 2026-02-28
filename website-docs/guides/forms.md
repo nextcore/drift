@@ -100,7 +100,7 @@ func (f loginForm) Build(ctx core.BuildContext) core.Widget {
 | `OnSaved` | Called when the form is saved |
 | `OnChanged` | Called when the field value changes |
 | `OnSubmitted` | Called when the user submits |
-| `OnEditingComplete` | Called when editing is complete |
+| `OnEditingComplete` | Called with current text when editing is complete |
 | `Autovalidate` | Validate on every change |
 | `Label` | Label text shown above the field |
 | `Placeholder` | Placeholder text shown when empty |

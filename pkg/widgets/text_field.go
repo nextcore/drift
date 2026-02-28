@@ -74,8 +74,8 @@ type TextField struct {
 	OnChanged func(string)
 	// OnSubmitted is called when the user submits.
 	OnSubmitted func(string)
-	// OnEditingComplete is called when editing is complete.
-	OnEditingComplete func()
+	// OnEditingComplete is called with the current text when editing is complete.
+	OnEditingComplete func(string)
 	// Disabled controls whether the field rejects input.
 	Disabled bool
 	// Width of the text field. Zero expands to fill available width.
@@ -192,7 +192,7 @@ func (t TextField) WithOnSubmitted(fn func(string)) TextField {
 }
 
 // WithOnEditingComplete returns a copy with the specified editing-complete callback.
-func (t TextField) WithOnEditingComplete(fn func()) TextField {
+func (t TextField) WithOnEditingComplete(fn func(string)) TextField {
 	t.OnEditingComplete = fn
 	return t
 }

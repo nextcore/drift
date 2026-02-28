@@ -97,8 +97,8 @@ type TextFormField struct {
 	// OnSubmitted is called when the user submits.
 	OnSubmitted func(string)
 
-	// OnEditingComplete is called when editing is complete.
-	OnEditingComplete func()
+	// OnEditingComplete is called with the current text when editing is complete.
+	OnEditingComplete func(string)
 
 	// Disabled controls whether the field rejects input and validation.
 	Disabled bool
@@ -231,7 +231,7 @@ func (t TextFormField) WithOnSubmitted(fn func(string)) TextFormField {
 }
 
 // WithOnEditingComplete sets the callback invoked when editing is complete.
-func (t TextFormField) WithOnEditingComplete(fn func()) TextFormField {
+func (t TextFormField) WithOnEditingComplete(fn func(string)) TextFormField {
 	t.OnEditingComplete = fn
 	return t
 }

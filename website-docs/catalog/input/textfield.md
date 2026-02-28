@@ -60,7 +60,7 @@ widgets.TextField{
 | `ErrorColor` | `graphics.Color` | Error text and border color when `ErrorText` is set |
 | `OnChanged` | `func(string)` | Called when text changes |
 | `OnSubmitted` | `func(string)` | Called when the user submits |
-| `OnEditingComplete` | `func()` | Called when editing is complete |
+| `OnEditingComplete` | `func(string)` | Called with current text when editing is complete |
 | `KeyboardType` | `platform.KeyboardType` | Keyboard type (`KeyboardTypeEmail`, `KeyboardTypeNumber`, etc.) |
 | `InputAction` | `platform.TextInputAction` | Action button (`TextInputActionNext`, `TextInputActionDone`, etc.) |
 | `Obscure` | `bool` | Hide text (for passwords) |
