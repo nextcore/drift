@@ -576,7 +576,7 @@ func (p *ScrollPosition) Offset() float64 {
 
 // SetOffset updates the scroll offset.
 func (p *ScrollPosition) SetOffset(value float64) {
-	allowOverscroll := isBouncing(p.physics)
+	allowOverscroll := p.physics.AllowsOverscroll()
 	clamped := p.clampOffset(value, allowOverscroll)
 	if clamped == p.offset {
 		return
@@ -655,14 +655,29 @@ func (p *ScrollPosition) notify() {
 	}
 }
 
-// ScrollPhysics determines scroll behavior.
+// ScrollPhysics determines scroll behavior at content boundaries.
+//
+// Built-in implementations:
+//   - [ClampingScrollPhysics] stops at edges (Android default)
+//   - [BouncingScrollPhysics] bounces past edges with spring return (iOS style)
+//
+// Custom implementations must return true from AllowsOverscroll to enable
+// overscroll and spring-back animation.
 type ScrollPhysics interface {
 	ApplyPhysicsToUserOffset(position *ScrollPosition, offset float64) float64
 	ApplyBoundaryConditions(position *ScrollPosition, value float64) float64
+	// AllowsOverscroll reports whether scrolling past content boundaries is
+	// permitted. When true, the scroll view applies resistance during drag
+	// and uses a spring animation to return to bounds on release.
+	AllowsOverscroll() bool
 }
 
 // ClampingScrollPhysics clamps at edges (Android default).
+// AllowsOverscroll returns false.
 type ClampingScrollPhysics struct{}
+
+// AllowsOverscroll returns false; clamping physics stop at content boundaries.
+func (ClampingScrollPhysics) AllowsOverscroll() bool { return false }
 
 // ApplyPhysicsToUserOffset returns the raw delta for clamping physics.
 func (ClampingScrollPhysics) ApplyPhysicsToUserOffset(_ *ScrollPosition, offset float64) float64 {
@@ -680,8 +695,12 @@ func (ClampingScrollPhysics) ApplyBoundaryConditions(position *ScrollPosition, v
 	return 0
 }
 
-// BouncingScrollPhysics adds resistance near edges.
+// BouncingScrollPhysics adds resistance near edges (iOS style).
+// AllowsOverscroll returns true, enabling spring-back animation.
 type BouncingScrollPhysics struct{}
+
+// AllowsOverscroll returns true; bouncing physics allow scrolling past boundaries.
+func (BouncingScrollPhysics) AllowsOverscroll() bool { return true }
 
 // ApplyPhysicsToUserOffset reduces delta when overscrolling.
 func (BouncingScrollPhysics) ApplyPhysicsToUserOffset(position *ScrollPosition, offset float64) float64 {
@@ -724,14 +743,6 @@ func viewportExtentForPosition(p *ScrollPosition) float64 {
 	return 600
 }
 
-func isBouncing(physics ScrollPhysics) bool {
-	switch physics.(type) {
-	case BouncingScrollPhysics:
-		return true
-	default:
-		return false
-	}
-}
 
 func isOverscrolled(position *ScrollPosition) bool {
 	return position.offset < position.min || position.offset > position.max
@@ -751,7 +762,7 @@ func newBallisticState(position *ScrollPosition, velocity float64) *ballisticSta
 		lastTime: animation.Now(),
 	}
 	// If overscrolled, create spring simulation immediately
-	if isOverscrolled(position) && isBouncing(position.physics) {
+	if isOverscrolled(position) && position.physics.AllowsOverscroll() {
 		b.initSpring()
 	}
 	return b
@@ -811,7 +822,7 @@ func (b *ballisticState) advance(dt float64) bool {
 	}
 
 	// Check if we need to start spring animation (crossed boundary during fling)
-	if overscrolled && isBouncing(pos.physics) {
+	if overscrolled && pos.physics.AllowsOverscroll() {
 		b.initSpring()
 		done := b.spring.Step(dt)
 		pos.offset = b.spring.Position()
@@ -836,7 +847,7 @@ func (b *ballisticState) advance(dt float64) bool {
 	offset += velocity * dt
 
 	b.velocity = velocity
-	pos.offset = pos.clampOffset(offset, isBouncing(pos.physics))
+	pos.offset = pos.clampOffset(offset, pos.physics.AllowsOverscroll())
 	pos.notify()
 
 	if math.Abs(velocity) < 5 {

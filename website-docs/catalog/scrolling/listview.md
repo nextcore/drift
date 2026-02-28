@@ -48,7 +48,7 @@ widgets.ListViewBuilder{
 | `Children` | `[]core.Widget` | List items |
 | `ScrollDirection` | `Axis` | `AxisVertical` (default) or `AxisHorizontal` |
 | `Controller` | `*ScrollController` | Manages scroll position and provides scroll notifications |
-| `Physics` | `ScrollPhysics` | Determines how the scroll view responds to user input |
+| `Physics` | `ScrollPhysics` | Scroll behavior; see [ScrollView](/docs/catalog/scrolling/scrollview) |
 | `Padding` | `layout.EdgeInsets` | Padding around the list |
 | `MainAxisAlignment` | `MainAxisAlignment` | How children are positioned along the scroll axis |
 | `MainAxisSize` | `MainAxisSize` | How much space the list takes along the scroll axis |
@@ -63,7 +63,7 @@ widgets.ListViewBuilder{
 | `CacheExtent` | `float64` | Extra pixels to render beyond the viewport |
 | `ScrollDirection` | `Axis` | `AxisVertical` (default) or `AxisHorizontal` |
 | `Controller` | `*ScrollController` | Manages scroll position and provides scroll notifications |
-| `Physics` | `ScrollPhysics` | Determines how the scroll view responds to user input |
+| `Physics` | `ScrollPhysics` | Scroll behavior; see [ScrollView](/docs/catalog/scrolling/scrollview) |
 | `Padding` | `layout.EdgeInsets` | Padding around the list |
 | `MainAxisAlignment` | `MainAxisAlignment` | How children are positioned along the scroll axis |
 | `MainAxisSize` | `MainAxisSize` | How much space the list takes along the scroll axis |

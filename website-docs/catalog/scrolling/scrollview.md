@@ -52,6 +52,24 @@ widgets.ScrollView{
 | `BouncingScrollPhysics` | Bounces when reaching edges (iOS style) |
 | `ClampingScrollPhysics` | Clamps at edges (Android style, default) |
 
+### Custom Scroll Physics
+
+Implement the `ScrollPhysics` interface to define custom scroll behavior. Return `true` from `AllowsOverscroll()` to enable overscroll with spring-back animation:
+
+```go
+type MyCustomPhysics struct{}
+
+func (MyCustomPhysics) ApplyPhysicsToUserOffset(pos *widgets.ScrollPosition, offset float64) float64 {
+    return offset
+}
+
+func (MyCustomPhysics) ApplyBoundaryConditions(pos *widgets.ScrollPosition, value float64) float64 {
+    return 0
+}
+
+func (MyCustomPhysics) AllowsOverscroll() bool { return true }
+```
+
 ## Related
 
 - [ListView](/docs/catalog/scrolling/listview) for scrollable lists of items
