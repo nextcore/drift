@@ -9,7 +9,45 @@ All notable changes to Drift are documented here. Patch releases are grouped und
 
 ---
 
-## v0.22.0
+## v0.25.x
+
+### v0.25.0
+
+- **Reactive primitives renamed**: `Observable`, `DerivedObservable`, and `ChangeNotifier` renamed to `Signal`, `Derived`, and `Notifier` for clarity and consistency
+
+### v0.25.1
+
+- Added `ListenableBuilder` convenience widget
+
+---
+
+## v0.24.0
+
+- **App lifecycle callbacks**: `OnInit` and `OnDispose` callbacks for app-level setup and teardown
+- **New hooks**: `UseSubscription` for stream subscriptions; `UseLifecycleObserver` for observing app lifecycle events
+- **Fix**: `DidChangeDependencies` now called on initial mount
+
+---
+
+## v0.23.x
+
+### v0.23.0
+
+- **Android minimum SDK lowered**: Minimum Android SDK reduced from API 31 to API 29
+
+### v0.23.1 to v0.23.4
+
+- Added `DerivedObservable` and `GlobalKey`
+- Added `LayoutIssue` error type for developer-friendly error screens
+- Added `AllowsOverscroll` method to `ScrollPhysics` interface
+- `OnEditingComplete` callback now receives the current text value
+- Fixed unbounded constraint propagation to non-flex children
+
+---
+
+## v0.22.x
+
+### v0.22.0
 
 - **Vulkan rendering backend**: Android rendering migrated from OpenGL/EGL to Vulkan ([#34](https://github.com/go-drift/drift/pull/34))
 - **Fade transition opacity**: Navigation fade transitions now support opacity
@@ -17,6 +55,12 @@ All notable changes to Drift are documented here. Patch releases are grouped und
 - **Refactoring**: Extracted `RenderObjectBase` and `StateBase` to reduce widget boilerplate; hoisted shared render and element tree helpers; consolidated type conversion helpers; simplified `Center` as stateless wrapper around `Align`
 - **Skia bridge**: Moved shared bridge implementation to a dedicated compilation unit
 - **Fixes**: Fixed navigation resource cleanup for routes and tab navigators; fixed transition disposal; fixed base64 decoding in storage handler; fixed SVG icon cache race on concurrent hit; fixed overlay rebuild after pending ops
+
+### v0.22.1
+
+- CLI warns when its version mismatches the project's drift dependency
+- Replaced JSON frame snapshots with packed binary encoding for better performance
+- Batched display list replay into single CGO calls
 
 ---
 
