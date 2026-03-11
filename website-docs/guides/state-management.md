@@ -277,6 +277,30 @@ func (s *cartViewState) Build(ctx core.BuildContext) core.Widget {
 }
 ```
 
+### ListenableBuilder
+
+When a widget only needs to rebuild when a `Listenable` changes and has no other state, `ListenableBuilder` avoids the ceremony of a full StatefulWidget:
+
+```go
+core.ListenableBuilder{
+    Listenable: cart,
+    Builder: func(ctx core.BuildContext) core.Widget {
+        return widgets.Text{
+            Content: fmt.Sprintf("%d items in cart", len(cart.Items())),
+        }
+    },
+}
+```
+
+`ListenableBuilder` accepts a single `Listenable`. For multiple sources, merge them with `NewDerived` or use a StatefulWidget with `UseListenable`.
+
+**When to use what:**
+
+| Pattern | Best for |
+|---------|----------|
+| `ListenableBuilder` | Leaf widgets that just display a listenable's current value |
+| `UseListenable` in a StatefulWidget | Widgets that combine listenable subscriptions with local state, lifecycle hooks, or multiple listenables |
+
 ## Reactive State
 
 `Signal` and `Derived` provide thread-safe, typed reactive values with change notification and computed derivations.
@@ -642,6 +666,12 @@ s.SetState(func() { s.isValid = true })
 | `Signal[T]` | Yes | Reactive value with equality-based notification |
 | `Derived[T]` | Yes | Computed value that tracks source signals |
 | `Notifier` | Yes | Embed in custom state holders for listener management |
+
+### Convenience Widgets
+
+| Widget | Use case |
+|--------|----------|
+| `ListenableBuilder` | Rebuild a subtree when a single `Listenable` changes, without a full StatefulWidget |
 
 ### Hooks
 

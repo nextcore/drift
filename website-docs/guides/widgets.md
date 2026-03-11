@@ -221,11 +221,12 @@ func (g Greeting) Build(ctx core.BuildContext) core.Widget {
 
 ## Stateful Widgets
 
-Stateful widgets manage mutable state that can change over time. There are two
+Stateful widgets manage mutable state that can change over time. There are three
 patterns, depending on complexity:
 
 | Pattern | Best for |
 |---------|----------|
+| `ListenableBuilder` | Rebuild a subtree when a single `Listenable` changes (no local state) |
 | `Stateful[S]` | Quick inline fragments (no lifecycle, no `StateBase`) |
 | `StatefulBase` embedding | All other stateful widgets (full lifecycle, `StateBase`) |
 
